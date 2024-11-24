@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "looper_workflow.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "looper_workflow.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_3364.jpeg", "-o",  "foo", "-c", "vader_trip.csv",
+            ]
+        }
+    ]
+}
