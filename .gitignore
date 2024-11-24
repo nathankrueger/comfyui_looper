@@ -1,2 +1,3 @@
-comfyui.log
-comfyui.prev.log
+comfyui*.log
+test_output
+__pycache__

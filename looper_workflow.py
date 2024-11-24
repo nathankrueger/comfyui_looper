@@ -7,11 +7,11 @@ import torch
 import csv
 import argparse
 from pathlib import Path
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFile
 import numpy as np
+import gif_maker
 
-LOOP_IMG='looper'
-START_IMG='base'
+LOOP_IMG='looper.png'
 
 # handle args which are otherwise consumed by comfyui
 LOOPER_ARGS = sys.argv[1:]
@@ -130,9 +130,28 @@ from nodes import (
     KSampler,
 )
 
+def zoom_in(img: ImageFile, amt: float) -> ImageFile:
+    init_width, init_height = img.size
+
+    mod_width = int(amt * float(init_width))
+    mod_height = int(amt * float(init_height))
+
+    left = init_width - mod_width
+    right = init_width - left
+    top = init_height - mod_height
+    bottom = init_height - top
+
+    cropped = img.crop((left, top, right, bottom))
+    result = cropped.resize((init_width, init_height))
+    return result
+    
 def load_image(image):
     image_path = folder_paths.get_annotated_filepath(image)
     i = Image.open(image_path)
+
+    if True:
+        i = zoom_in(i, 0.985)
+
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
     image = np.array(image).astype(np.float32) / 255.0
@@ -144,15 +163,23 @@ def load_image(image):
         mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
     return (image, mask.unsqueeze(0))
 
-def save_images(output_filenames: list[str], image, iter: int):
+def save_images(image, output_filenames: list[str]):
+    first_image_path = None
     for output_filename in output_filenames:
         output_folder = os.path.dirname(output_filename)
         os.makedirs(output_folder, exist_ok=True)
-        i = 255. * image.cpu().numpy()
-        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-        img.save(output_filename, pnginfo=None, compress_level=0)
+        if first_image_path is None:
+            i = 255. * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            img.save(output_filename, pnginfo=None, compress_level=0)
+            first_image_path = output_filename
+        else:
+            shutil.copy(first_image_path, output_filename)
 
-def main(loop_img_path, output_folder, csv_file):
+def get_loop_img_filename(idx: int) -> str:
+    return f"loop_img_{idx:05}.png"
+
+def main(loop_img_path: str, output_folder: str, csv_file: str, gif_file: str | None, gif_max_dim: int, gif_frame_delay: int):
     import_custom_nodes()
     with torch.inference_mode():
         checkpointloadersimple = CheckpointLoaderSimple()
@@ -250,24 +277,33 @@ def main(loop_img_path, output_folder, csv_file):
 
                     # save the images -- loop filename, and requested output
                     save_images(
-                        output_filenames=[loop_img_path, os.path.join(output_folder, f"loop_img_{count}.png")],
-                        image=get_value_at_index(vaedecode_result, 0)[0],
-                        iter=count
+                        output_filenames=[loop_img_path, os.path.join(output_folder, get_loop_img_filename(count+1))],
+                        image=get_value_at_index(vaedecode_result, 0)[0]
                     )
                     count += 1
+
+    # save gif animation
+    if gif_file is not None:
+        gif_maker.make_gif(
+            input_folder=output_folder,
+            frame_delay=gif_frame_delay,
+            max_dimension=gif_max_dim,
+            gif_output=gif_file
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Loop hallucinate')
     parser.add_argument('-i', '--input_img', type=str, required=True)
     parser.add_argument('-o', '--output_folder', type=str, required=True)
     parser.add_argument('-c', '--csv_file', type=str, required=True)
+    parser.add_argument('-g', '--gif_file', type=str, required=False)
+    parser.add_argument('-d', '--gif_frame_delay', type=int, default=250)
+    parser.add_argument('-s', '--gif_max_dimension', type=int, default=0)
     args=parser.parse_args(LOOPER_ARGS)
 
     path_parts = os.path.splitext(args.input_img)
-    loop_img = LOOP_IMG + path_parts[1]
-    start_img = START_IMG + path_parts[1]
-    loopback_filename = str(Path(folder_paths.get_input_directory()) / loop_img)
-    starting_point_filename = str(Path(args.output_folder) / start_img)
+    loopback_filename = str(Path(folder_paths.get_input_directory()) / LOOP_IMG)
+    starting_point_filename = str(Path(args.output_folder) / get_loop_img_filename(0))
     
     # ensure the output folder exists
     os.makedirs(args.output_folder, exist_ok=True)
@@ -277,4 +313,11 @@ if __name__ == "__main__":
     shutil.copy(args.input_img, starting_point_filename)
     
     # run the diffusion
-    main(loopback_filename, os.path.abspath(args.output_folder), args.csv_file)
+    main(
+        loop_img_path=loopback_filename,
+        output_folder=os.path.abspath(args.output_folder),
+        csv_file=args.csv_file,
+        gif_file=args.gif_file,
+        gif_frame_delay=args.gif_frame_delay,
+        gif_max_dim=args.gif_max_dimension
+    )
