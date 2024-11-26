@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "pytest",
+            "type": "shell",
+            "command": "..\\python_embeded\\python.exe -m pytest tests",
+            "problemMatcher": []
+        }
+    ]
+}
