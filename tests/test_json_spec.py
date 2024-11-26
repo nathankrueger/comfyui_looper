@@ -27,6 +27,8 @@ def test_serdes_workflow():
     test_json = test_workflow.to_json(indent=4)
     test_clone = Workflow.schema().loads(test_json)
     assert test_workflow == test_clone
+    # with open('test.json', 'w', encoding='utf-8') as f:
+    #     f.write(test_json)
 
 def test_settings_manager():
     pass

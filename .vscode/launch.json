@@ -4,13 +4,14 @@
             "name": "looper_workflow.py",
             "type": "debugpy",
             "request": "launch",
+            "cwd": "comfyui_looper",
             "program": "looper_workflow.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_3364.jpeg",
-                "-o", "test_output",
-                "-c", "csv\\vader_trip.csv",
-                "-g", "test_output\\test.gif",
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
+                "-o", "../test_output",
+                "-j", "../data/vader_trip.json",
+                "-g", "../test_output/test.gif",
                 "-d", "100",
                 "-s", "512"
             ]
@@ -19,7 +20,7 @@
             "name": "gif_maker.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "gif_maker.py",
+            "program": "comfyui_looper/gif_maker.py",
             "console": "integratedTerminal",
             "args": [
                 "-i", "test_output", "-o", "test_output\\test.gif", "-s", "512",

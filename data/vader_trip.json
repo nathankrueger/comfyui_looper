@@ -1,0 +1,50 @@
+{
+    "all_settings": [
+        {
+            "loop_iterations": 30,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "vader, circuit, evil, patterns, skeleton",
+            "denoise_steps": 30,
+            "denoise_amt": 0.5,
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.985
+                }
+            ]
+        },
+        {
+            "loop_iterations": 20,
+            "prompt": "vader, circuit, evil, patterns, skeleton, psychedelic, dmt",
+            "denoise_steps": 30,
+            "denoise_amt": 0.5,
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.985
+                }
+            ]
+        }
+    ],
+    "version": 1
+}
