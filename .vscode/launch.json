@@ -7,8 +7,12 @@
             "program": "looper_workflow.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_3364.jpeg", "-o",  "test_output", "-c", "csv\\vader_trip.csv",
-                "-g", "test_output\\test.gif", "-d", "100", "-s", "512"
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_3364.jpeg",
+                "-o", "test_output",
+                "-c", "csv\\vader_trip.csv",
+                "-g", "test_output\\test.gif",
+                "-d", "100",
+                "-s", "512"
             ]
         },
         {
@@ -20,6 +24,12 @@
             "args": [
                 "-i", "test_output", "-o", "test_output\\test.gif", "-s", "512",
             ]
+        },
+        {
+            "name": "Python Debugger: Python File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}"
         }
     ]
 }
