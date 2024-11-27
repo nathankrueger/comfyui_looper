@@ -8,11 +8,11 @@ from pathlib import Path
 
 import gif_maker as gif_maker
 from json_spec import SettingsManager
+from transforms import Transform, load_image_with_transforms
 from util import (
     import_custom_nodes,
     add_comfyui_directory_to_sys_path,
     add_extra_model_paths,
-    load_image,
     save_images,
     get_loop_img_filename,
 )
@@ -55,15 +55,17 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             denoise = sm.get_setting_for_iter('denoise_amt', iter)
             lora_list = sm.get_setting_for_iter('loras', iter)
             checkpoint = sm.get_setting_for_iter('checkpoint', iter)
+            transforms = sm.get_setting_for_iter('transforms', iter) if iter > 0 else None
 
             # load in image & resize it
-            image_load_result = load_image(image_path=loop_img_path)
+            image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms)
+
             image_scale_to_side_result, = image_scale_to_side.upscale(
                         side_length=1024,
                         side="Longest",
                         upscale_method="nearest-exact",
                         crop="disabled",
-                        image=image_load_result[0]
+                        image=image_tensor
             )
 
             # load in new checkpoint if changed

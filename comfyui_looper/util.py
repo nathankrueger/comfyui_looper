@@ -133,3 +133,6 @@ def save_images(image, output_filenames: list[str]):
 
 def get_loop_img_filename(idx: int) -> str:
     return f"loop_img_{idx:06}.png"
+
+def all_subclasses(cls) -> set:
+    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])

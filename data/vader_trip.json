@@ -1,11 +1,11 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 30,
+            "loop_iterations": 15,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "vader, circuit, evil, patterns, skeleton",
+            "prompt": "darth vader, cyborg, motherboard, circuitry, evil, patterns, skeleton",
             "denoise_steps": 30,
-            "denoise_amt": 0.5,
+            "denoise_amt": 0.6,
             "loras": [
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -13,25 +13,29 @@
                 ],
                 [
                     "SDXL-PsyAI-v4.safetensors",
-                    0.0
+                    1.0
                 ]
             ],
             "transforms": [
                 {
-                    "name": "zoom_in",
-                    "zoom_amt": 0.985
+                    "name": "zoom_in_up",
+                    "zoom_amt": 0.95
+                },
+                {
+                    "name": "zoom_in_left",
+                    "zoom_amt": 0.95                    
                 }
             ]
         },
         {
-            "loop_iterations": 20,
-            "prompt": "vader, circuit, evil, patterns, skeleton, psychedelic, dmt",
+            "loop_iterations": 15,
+            "prompt": "darth vader, circuit, evil, patterns, skeleton, psychedelic, dmt",
             "denoise_steps": 30,
             "denoise_amt": 0.5,
             "loras": [
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
+                    0.0
                 ],
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -41,7 +45,7 @@
             "transforms": [
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.985
+                    "zoom_amt": 0.95
                 }
             ]
         }
