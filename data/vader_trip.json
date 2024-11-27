@@ -1,11 +1,11 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 0,
+            "loop_iterations": 10,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "darth vader, cyborg, motherboard, circuitry, evil, patterns, skeleton",
+            "prompt": "cyborg, motherboard, circuitry, evil, patterns, robot, ai",
             "denoise_steps": 30,
-            "denoise_amt": 0.6,
+            "denoise_amt": 0.5,
             "loras": [
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -17,29 +17,21 @@
                 ]
             ],
             "transforms": [
-                // {
-                //     "name": "zoom_in_up",
-                //     "zoom_amt": 0.05
-                // },
-                // {
-                //     "name": "zoom_in_left",
-                //     "zoom_amt": 0.05
-                // }
-                // {
-                //     "name": "squeeze_tall",
-                //     "squeeze_amt": 0.05
-                // }
                 {
                     "name": "fisheye",
-                    "strength": -1
+                    "strength": 0.7
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.2
                 }
             ]
         },
         {
-            "loop_iterations": 20,
-            "prompt": "darth vader, circuit, evil, patterns, skeleton, psychedelic, dmt",
-            "denoise_steps": 25,
-            "denoise_amt": 0.5,
+            "loop_iterations": 10,
+            "prompt": "darth vader, evil, patterns, skeleton, sharp teeth, bite, psychedelic, dmt",
+            "denoise_steps": 30,
+            "denoise_amt": 0.6,
             "loras": [
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -51,14 +43,6 @@
                 ]
             ],
             "transforms": [
-                // {
-                //     "name": "fisheye",
-                //     "strength": 0.7
-                // },
-                // {
-                //     "name": "zoom_in",
-                //     "zoom_amt": 0.2
-                // }
                 {
                     "name": "fisheye",
                     "strength": -0.4

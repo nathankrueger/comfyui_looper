@@ -139,9 +139,9 @@ def all_subclasses(cls) -> set:
 
 def resize_image(input_path: str, output_path: str, max_dim: int):
     img = Image.open(input_path)
-    width, height = img.size
     img = ImageOps.exif_transpose(img)
-
+    width, height = img.size
+    
     if width > height:
         ratio = max_dim / width
         img = img.resize((max_dim, int(height * ratio)))
