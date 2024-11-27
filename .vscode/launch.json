@@ -9,10 +9,10 @@
             "args": [
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
                 "-o", "test_output",
-                "-j", "data/vader_trip.json",
+                "-j", "data/test_canny.json",
                 "-g", "test_output/test.gif",
                 "-d", "100",
-                "-s", "512"
+                "-s", "768"
             ]
         },
         {
@@ -23,6 +23,16 @@
             "console": "integratedTerminal",
             "args": [
                 "-i", "test_output", "-o", "test_output\\test.gif", "-s", "512",
+            ]
+        },
+        {
+            "name": "transform_tester.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/transform_tester.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG", "-o", "test_output"
             ]
         },
         {
