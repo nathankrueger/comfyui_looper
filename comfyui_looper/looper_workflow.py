@@ -1,7 +1,6 @@
 import os
 import random
 import sys
-import shutil
 import torch
 import argparse
 from pathlib import Path
@@ -32,6 +31,8 @@ from nodes import (
     VAEDecode,
     VAEEncode,
     KSampler,
+    ControlNetLoader,
+    ControlNetApply,
     NODE_CLASS_MAPPINGS,
 )
 
@@ -43,13 +44,19 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
     import_custom_nodes()
     sm = SettingsManager(json_file)
     with torch.inference_mode():
+        # comfy nodes
         cliptextencodesdxl = NODE_CLASS_MAPPINGS["CLIPTextEncodeSDXL"]()
         image_scale_to_side = NODE_CLASS_MAPPINGS["Image scale to side"]()
+        canny_node = NODE_CLASS_MAPPINGS["Canny"]()
+        controlnetloader = ControlNetLoader()
+        controlnetapply = ControlNetApply()
         vaeencode = VAEEncode()
         ksampler = KSampler()
         vaedecode = VAEDecode()
         lora_mgr = LoraManager()
         ckpt_mgr = CheckpointManager()
+
+        controlnetloader_result = None
     
         for iter in range(sm.get_total_iterations()):
             positive_keywords = sm.get_setting_for_iter('prompt', iter)
@@ -58,6 +65,13 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             lora_list = sm.get_setting_for_iter('loras', iter)
             checkpoint = sm.get_setting_for_iter('checkpoint', iter)
             transforms = sm.get_setting_for_iter('transforms', iter) if iter > 0 else None
+            canny = sm.get_setting_for_iter('canny', iter)
+
+            # load in the canny if needed
+            if canny is not None:
+                canny_strength, canny_low_thresh, canny_high_thresh = canny
+                if controlnetloader_result is None:
+                    controlnetloader_result, = controlnetloader.load_controlnet("control-lora-canny-rank256.safetensors")
 
             # load in image & resize it
             image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms)
@@ -83,7 +97,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             lora_model, lora_clip = lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
 
             # conditioning
-            positive_encoding, = cliptextencodesdxl.encode(
+            positive_conditioning, = cliptextencodesdxl.encode(
                 width=1024,
                 height=1024,
                 crop_w=0,
@@ -94,7 +108,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
                 text_l=positive_keywords,
                 clip=lora_clip
             )
-            negative_encoding, = cliptextencodesdxl.encode(
+            negative_conditioning, = cliptextencodesdxl.encode(
                 width=1024,
                 height=1024,
                 crop_w=0,
@@ -106,6 +120,20 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
                 clip=lora_clip
             )
 
+            # canny
+            if canny is not None:
+                canny_result, = canny_node.detect_edge(
+                    low_threshold=canny_low_thresh,
+                    high_threshold=canny_high_thresh,
+                    image=image_scale_to_side_result,
+                )
+                positive_conditioning, = controlnetapply.apply_controlnet(
+                    strength=canny_strength,
+                    conditioning=positive_conditioning,
+                    control_net=controlnetloader_result,
+                    image=canny_result,
+                )
+
             # latent sampler
             ksampler_result, = ksampler.sample(
                 seed=random.randint(1, 2**64),
@@ -115,8 +143,8 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
                 scheduler="normal",
                 denoise=denoise,
                 model=lora_model,
-                positive=positive_encoding,
-                negative=negative_encoding,
+                positive=positive_conditioning,
+                negative=negative_conditioning,
                 latent_image=vaeencode_result
             )
 

@@ -13,6 +13,7 @@ class LoopSettings:
     prompt: str = None
     denoise_steps: int = None
     denoise_amt: float = None
+    canny: tuple[float, float, float] = None
     loras: list[tuple[str, float]] = field(default_factory=list)
     transforms: list[dict[str, Any]] = field(default_factory=list)
 
