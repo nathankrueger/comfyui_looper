@@ -1,8 +1,12 @@
 from nodes import (
     LoraLoader,
     CheckpointLoaderSimple,
+    CLIPTextEncode,
+    ControlNetLoader,
     NODE_CLASS_MAPPINGS,
 )
+
+from util import unload_model
 
 class LoraManager:
     def __init__(self):
@@ -59,7 +63,6 @@ class CheckpointManager:
         
         return self.prev_ckpt_model, self.prev_ckpt_clip, self.prev_ckpt_vae
 
-
 class SDXLClipEncodeWrapper:
     def __init__(self):
         self.node = NODE_CLASS_MAPPINGS["CLIPTextEncodeSDXL"]()
@@ -89,3 +92,28 @@ class SDXLClipEncodeWrapper:
         )
 
         return positive_conditioning, negative_conditioning
+    
+class ClipEncodeWrapper:
+    def __init__(self):
+        self.node = CLIPTextEncode()
+
+    def encode(self, pos_text: str, neg_text: str, clip):
+        positive_conditioning, = self.node.encode(clip=clip, text=pos_text)
+        negative_conditioning, = self.node.encode(clip=clip, text=neg_text)
+        return positive_conditioning, negative_conditioning
+    
+class ControlNetManager:
+    def __init__(self, controlnet_model_file: str):
+        self.node = ControlNetLoader()
+        self.controlnet_model = None
+        self.controlnet_model_file = controlnet_model_file
+
+    def reload_if_needed(self, canny_param):
+        if canny_param is not None and any(canny_param):
+            if self.controlnet_model is None:
+                self.controlnet_model = self.node.load_controlnet(self.controlnet_model_file)[0]
+        else:
+            self.controlnet_model = None
+
+        return self.controlnet_model
+

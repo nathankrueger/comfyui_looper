@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import math
 from typing import Sequence, Mapping, Any, Union
 from PIL import Image, ImageOps
 import numpy as np
@@ -150,3 +151,24 @@ def resize_image(input_path: str, output_path: str, max_dim: int):
         img = img.resize((int(width * ratio), max_dim))
 
     img.save(output_path, pnginfo=None, compress_level=0)
+
+def resize_image_match_area(input_path: str, output_path: str, area: int, modulo: int | None):
+    img = Image.open(input_path)
+    img = ImageOps.exif_transpose(img)
+    width, height = img.size
+
+    w2h_ratio = float(width) / float(height)
+    new_h = int(math.sqrt(float(area) / w2h_ratio))
+    new_w = int(float(area) / float(new_h))
+
+    if modulo is not None:
+        new_h = new_h - (new_h % modulo)
+        new_w = new_w - (new_w % modulo)
+    
+    img = img.resize((new_w, new_h))
+    img.save(output_path, pnginfo=None, compress_level=0)
+
+def get_torch_device_vram_used_gb() -> float:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    vram_used = torch.cuda.memory_allocated(device) / (1024 ** 3)
+    return vram_used
