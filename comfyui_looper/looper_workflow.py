@@ -25,7 +25,11 @@ sys.argv = [sys.argv[0]]
 # ComfyUI imports
 add_comfyui_directory_to_sys_path()
 add_extra_model_paths()
-from node_helpers import LoraManager, CheckpointManager
+from node_helpers import (
+    LoraManager,
+    CheckpointManager,
+    SDXLClipEncodeWrapper,
+)
 import folder_paths
 from nodes import (
     VAEDecode,
@@ -39,14 +43,14 @@ from nodes import (
 # constants
 LOOP_IMG='looper.png'
 SDXL_WIDTH=1024
+CANNY_CONTROLNET='control-lora-canny-rank256.safetensors'
+NEGATIVE_TEXT='text, watermark, logo'
 
 def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file: str | None, gif_max_dim: int, gif_frame_delay: int):
     import_custom_nodes()
     sm = SettingsManager(json_file)
     with torch.inference_mode():
         # comfy nodes
-        cliptextencodesdxl = NODE_CLASS_MAPPINGS["CLIPTextEncodeSDXL"]()
-        image_scale_to_side = NODE_CLASS_MAPPINGS["Image scale to side"]()
         canny_node = NODE_CLASS_MAPPINGS["Canny"]()
         controlnetloader = ControlNetLoader()
         controlnetapply = ControlNetApply()
@@ -55,11 +59,12 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
         vaedecode = VAEDecode()
         lora_mgr = LoraManager()
         ckpt_mgr = CheckpointManager()
+        text_cond = SDXLClipEncodeWrapper()
 
         controlnetloader_result = None
     
         for iter in range(sm.get_total_iterations()):
-            positive_keywords = sm.get_setting_for_iter('prompt', iter)
+            positive_text = sm.get_setting_for_iter('prompt', iter)
             steps = sm.get_setting_for_iter('denoise_steps', iter)
             denoise = sm.get_setting_for_iter('denoise_amt', iter)
             lora_list = sm.get_setting_for_iter('loras', iter)
@@ -71,25 +76,17 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             if canny is not None:
                 canny_strength, canny_low_thresh, canny_high_thresh = canny
                 if controlnetloader_result is None:
-                    controlnetloader_result, = controlnetloader.load_controlnet("control-lora-canny-rank256.safetensors")
+                    controlnetloader_result, = controlnetloader.load_controlnet(CANNY_CONTROLNET)
 
             # load in image & resize it
             image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms)
-
-            image_scale_to_side_result, = image_scale_to_side.upscale(
-                        side_length=1024,
-                        side="Longest",
-                        upscale_method="nearest-exact",
-                        crop="disabled",
-                        image=image_tensor
-            )
 
             # load in new checkpoint if changed
             ckpt_model, ckpt_clip, ckpt_vae = ckpt_mgr.reload_if_needed(checkpoint)
 
             # VAE encode
             vaeencode_result, = vaeencode.encode(
-                pixels=image_scale_to_side_result,
+                pixels=image_tensor,
                 vae=ckpt_vae
             )
 
@@ -97,39 +94,19 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             lora_model, lora_clip = lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
 
             # conditioning
-            positive_conditioning, = cliptextencodesdxl.encode(
-                width=1024,
-                height=1024,
-                crop_w=0,
-                crop_h=0,
-                target_width=1024,
-                target_height=1024,
-                text_g=positive_keywords,
-                text_l=positive_keywords,
-                clip=lora_clip
-            )
-            negative_conditioning, = cliptextencodesdxl.encode(
-                width=1024,
-                height=1024,
-                crop_w=0,
-                crop_h=0,
-                target_width=1024,
-                target_height=1024,
-                text_g="text, watermark, logo",
-                text_l="text, watermark, logo",
-                clip=lora_clip
-            )
+            h, w = image_tensor.shape[1:3]
+            pos_cond, neg_cond = text_cond.encode(w, h, positive_text, NEGATIVE_TEXT, lora_clip)
 
             # canny
             if canny is not None:
                 canny_result, = canny_node.detect_edge(
                     low_threshold=canny_low_thresh,
                     high_threshold=canny_high_thresh,
-                    image=image_scale_to_side_result,
+                    image=image_tensor,
                 )
-                positive_conditioning, = controlnetapply.apply_controlnet(
+                pos_cond, = controlnetapply.apply_controlnet(
                     strength=canny_strength,
-                    conditioning=positive_conditioning,
+                    conditioning=pos_cond,
                     control_net=controlnetloader_result,
                     image=canny_result,
                 )
@@ -143,8 +120,8 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
                 scheduler="normal",
                 denoise=denoise,
                 model=lora_model,
-                positive=positive_conditioning,
-                negative=negative_conditioning,
+                positive=pos_cond,
+                negative=neg_cond,
                 latent_image=vaeencode_result
             )
 

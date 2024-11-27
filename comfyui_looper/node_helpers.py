@@ -1,4 +1,8 @@
-from nodes import LoraLoader, CheckpointLoaderSimple
+from nodes import (
+    LoraLoader,
+    CheckpointLoaderSimple,
+    NODE_CLASS_MAPPINGS,
+)
 
 class LoraManager:
     def __init__(self):
@@ -54,3 +58,34 @@ class CheckpointManager:
             self.prev_ckpt_vae = ckpt_vae
         
         return self.prev_ckpt_model, self.prev_ckpt_clip, self.prev_ckpt_vae
+
+
+class SDXLClipEncodeWrapper:
+    def __init__(self):
+        self.node = NODE_CLASS_MAPPINGS["CLIPTextEncodeSDXL"]()
+
+    def encode(self, w: int, h: int, pos_text: str, neg_text: str, clip):
+        positive_conditioning, = self.node.encode(
+            width=w,
+            height=h,
+            crop_w=0,
+            crop_h=0,
+            target_width=w,
+            target_height=h,
+            text_g=pos_text,
+            text_l=pos_text,
+            clip=clip
+        )
+        negative_conditioning, = self.node.encode(
+            width=w,
+            height=h,
+            crop_w=0,
+            crop_h=0,
+            target_width=w,
+            target_height=h,
+            text_g=neg_text,
+            text_l=neg_text,
+            clip=clip
+        )
+
+        return positive_conditioning, negative_conditioning
