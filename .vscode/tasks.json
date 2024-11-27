@@ -4,7 +4,7 @@
         {
             "label": "pytest",
             "type": "shell",
-            "command": "..\\python_embeded\\python.exe -m pytest tests",
+            "command": "../python_embeded/python.exe -m pytest tests -s",
             "problemMatcher": []
         }
     ]
