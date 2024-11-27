@@ -7,10 +7,10 @@
             "program": "comfyui_looper/looper_workflow.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_2978.JPEG",
                 "-o", "test_output",
-                "-j", "data/test_canny.json",
-                "-g", "test_output/test.gif",
+                "-j", "data/goodrobot_badrobot.json",
+                "-g", "goodbad_hd.gif",
                 "-d", "100",
                 "-s", "768"
             ]
@@ -32,7 +32,7 @@
             "program": "scripts/transform_tester.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG", "-o", "test_output"
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG", "-o", "test_output", "-n", "25"
             ]
         },
         {

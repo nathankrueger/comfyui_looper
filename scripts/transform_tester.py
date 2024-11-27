@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 import argparse
+import tqdm
 import torchvision.transforms as T
 
 ppath = str(os.path.realpath(Path(os.path.dirname(__file__)) / ".." / "comfyui_looper"))
@@ -12,9 +13,17 @@ import transforms
 import gif_maker
 
 TRANSFORMS_TO_TEST = [
+    # {
+    #     'name': 'fisheye',
+    #     'strength': 0.175
+    # },
+    # {
+    #     'name': 'zoom_in',
+    #     'zoom_amt': 0.075
+    # }
     {
-        'name': 'fisheye',
-        'strength': -0.25
+        'name': 'rotate',
+        'angle': 1
     }
 ]
 
@@ -31,7 +40,7 @@ if __name__ == '__main__':
     os.makedirs(args.output_folder, exist_ok=True)
     shutil.copy(args.input_img, get_filename_for_idx(0, args.output_folder))
 
-    for idx in range(args.loops):
+    for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
         next_img_path = get_filename_for_idx(idx+1, args.output_folder)
         torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST)

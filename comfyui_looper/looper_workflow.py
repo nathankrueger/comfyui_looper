@@ -66,8 +66,12 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
         control_net_mgr = ControlNetManager(CANNY_CONTROLNET)
 
         controlnetloader_result = None
-    
-        for iter in range(sm.get_total_iterations()):
+        total_iter = sm.get_total_iterations()
+
+        for iter in range(total_iter):
+            print(f"Generating image [{iter} / {total_iter}]")
+            
+            # load settings from JSON
             positive_text = sm.get_setting_for_iter('prompt', iter)
             steps = sm.get_setting_for_iter('denoise_steps', iter)
             denoise = sm.get_setting_for_iter('denoise_amt', iter)
@@ -146,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--input_img', type=str, required=True)
     parser.add_argument('-o', '--output_folder', type=str, required=True)
     parser.add_argument('-j', '--json_file', type=str, required=True)
-    parser.add_argument('-g', '--gif_file', type=str, required=False)
+    parser.add_argument('-g', '--gif_filename', type=str, required=False)
     parser.add_argument('-d', '--gif_frame_delay', type=int, default=250)
     parser.add_argument('-s', '--gif_max_dimension', type=int, default=0)
     args=parser.parse_args(LOOPER_ARGS)
@@ -166,7 +170,7 @@ if __name__ == "__main__":
         loop_img_path=loopback_filename,
         output_folder=os.path.abspath(args.output_folder),
         json_file=args.json_file,
-        gif_file=args.gif_file,
+        gif_file=os.path.join(args.output_folder, args.gif_filename),
         gif_frame_delay=args.gif_frame_delay,
         gif_max_dim=args.gif_max_dimension
     )

@@ -1,0 +1,137 @@
+{
+    "all_settings": [
+        {
+            // canny image starts getting weird...
+            "loop_iterations": 25,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
+            "denoise_steps": 30,
+            "denoise_amt": 0.5,
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "canny": [
+                0.6,
+                0.01,
+                0.6
+            ]
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 15,
+            "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "denoise_amt": 0.55,
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "canny": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.175
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.075
+                }
+            ]
+        },
+        {
+            // psychedelic madness takes over (rotate positive)
+            "loop_iterations": 30,
+            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, teeth, scary",
+            "denoise_amt": 0.6,
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": 1
+                }
+            ]
+        },
+        {
+            // psychedelic madness takes over (rotate negative)
+            "loop_iterations": 30,
+            "prompt": "lsd, vader, skeleton, detailed, 4k, photorealistic",
+            "denoise_amt": 0.6,
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": 1
+                }
+            ]
+        },
+        {
+            // nebula
+            "loop_iterations": 50,
+            "prompt": "lsd, vader, skeleton, detailed, 4k, photorealistic, future, space, nebula, spiders",
+            "denoise_amt": 0.6,
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Space_Nebula_Style_SDXL.safetensors",
+                    0.43
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "angle": 0.05
+                }
+            ]
+        }
+    ],
+    "version": 1
+}
