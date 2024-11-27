@@ -1,13 +1,13 @@
 import argparse
 import glob
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 
 IMG_TYPE = '.png'
 
 def make_gif(input_folder: str, gif_output: str, frame_delay: int, max_dimension: int):
     # find all images
-    frames = [Image.open(image_path) for image_path in glob.glob(f'{input_folder}/*{IMG_TYPE}')]
+    frames = [ImageOps.exif_transpose(Image.open(image_path)) for image_path in glob.glob(f'{input_folder}/*{IMG_TYPE}')]
 
     # resize as needed
     if max_dimension > 0:

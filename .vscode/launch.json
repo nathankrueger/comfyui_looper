@@ -4,14 +4,13 @@
             "name": "looper_workflow.py",
             "type": "debugpy",
             "request": "launch",
-            "cwd": "comfyui_looper",
-            "program": "looper_workflow.py",
+            "program": "comfyui_looper/looper_workflow.py",
             "console": "integratedTerminal",
             "args": [
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-o", "../test_output",
-                "-j", "../data/vader_trip.json",
-                "-g", "../test_output/test.gif",
+                "-o", "test_output",
+                "-j", "data/vader_trip.json",
+                "-g", "test_output/test.gif",
                 "-d", "100",
                 "-s", "512"
             ]

@@ -42,6 +42,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
     sm = SettingsManager(json_file)
     with torch.inference_mode():
         cliptextencodesdxl = NODE_CLASS_MAPPINGS["CLIPTextEncodeSDXL"]()
+        image_scale_to_side = NODE_CLASS_MAPPINGS["Image scale to side"]()
         vaeencode = VAEEncode()
         ksampler = KSampler()
         vaedecode = VAEDecode()
@@ -55,15 +56,22 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             lora_list = sm.get_setting_for_iter('loras', iter)
             checkpoint = sm.get_setting_for_iter('checkpoint', iter)
 
-            # load in image
+            # load in image & resize it
             image_load_result = load_image(image_path=loop_img_path)
+            image_scale_to_side_result, = image_scale_to_side.upscale(
+                        side_length=1024,
+                        side="Longest",
+                        upscale_method="nearest-exact",
+                        crop="disabled",
+                        image=image_load_result[0]
+            )
 
             # load in new checkpoint if changed
             ckpt_model, ckpt_clip, ckpt_vae = ckpt_mgr.reload_if_needed(checkpoint)
 
             # VAE encode
             vaeencode_result, = vaeencode.encode(
-                pixels=image_load_result[0],
+                pixels=image_scale_to_side_result,
                 vae=ckpt_vae
             )
 
