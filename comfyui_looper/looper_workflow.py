@@ -8,13 +8,14 @@ from pathlib import Path
 
 import gif_maker as gif_maker
 from json_spec import SettingsManager
-from transforms import Transform, load_image_with_transforms
+from transforms import load_image_with_transforms
 from util import (
     import_custom_nodes,
     add_comfyui_directory_to_sys_path,
     add_extra_model_paths,
-    save_images,
+    save_tensor_to_images,
     get_loop_img_filename,
+    resize_image,
 )
 
 # handle args which are otherwise consumed by comfyui
@@ -36,6 +37,7 @@ from nodes import (
 
 # constants
 LOOP_IMG='looper.png'
+SDXL_WIDTH=1024
 
 def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file: str | None, gif_max_dim: int, gif_frame_delay: int):
     import_custom_nodes()
@@ -125,7 +127,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             )
 
             # save the images -- loop filename, and requested output
-            save_images(output_filenames=[loop_img_path, os.path.join(output_folder, get_loop_img_filename(iter+1))], image=vaedecode_result[0])
+            save_tensor_to_images(output_filenames=[loop_img_path, os.path.join(output_folder, get_loop_img_filename(iter+1))], image=vaedecode_result[0])
             iter += 1
 
     # save gif animation
@@ -154,8 +156,8 @@ if __name__ == "__main__":
     os.makedirs(args.output_folder, exist_ok=True)
     
     # make a copy of the starting image to the loopback image, and to the output folder
-    shutil.copy(args.input_img, loopback_filename)
-    shutil.copy(args.input_img, starting_point_filename)
+    resize_image(args.input_img, loopback_filename, SDXL_WIDTH)
+    resize_image(args.input_img, starting_point_filename, SDXL_WIDTH)
     
     # run the diffusion
     looper_main(

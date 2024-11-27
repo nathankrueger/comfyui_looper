@@ -118,7 +118,7 @@ def load_image(image_path: str):
         mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
     return (image, mask.unsqueeze(0))
 
-def save_images(image, output_filenames: list[str]):
+def save_tensor_to_images(image, output_filenames: list[str]):
     first_image_path = None
     for output_filename in output_filenames:
         output_folder = os.path.dirname(output_filename)
@@ -136,3 +136,17 @@ def get_loop_img_filename(idx: int) -> str:
 
 def all_subclasses(cls) -> set:
     return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])
+
+def resize_image(input_path: str, output_path: str, max_dim: int):
+    img = Image.open(input_path)
+    width, height = img.size
+    img = ImageOps.exif_transpose(img)
+
+    if width > height:
+        ratio = max_dim / width
+        img = img.resize((max_dim, int(height * ratio)))
+    else:
+        ratio = max_dim / height
+        img = img.resize((int(width * ratio), max_dim))
+
+    img.save(output_path, pnginfo=None, compress_level=0)

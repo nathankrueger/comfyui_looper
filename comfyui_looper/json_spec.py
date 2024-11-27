@@ -1,3 +1,4 @@
+import os
 from typing import Any
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
@@ -32,7 +33,8 @@ class SettingsManager:
 
     def __init__(self, workflow_json_path: str):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
-            self.workflow: Workflow = Workflow.schema().loads(json_file.read())
+            json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
+            self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
 
         assert self.workflow.version == SettingsManager.SUPPORTED_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}

@@ -1,7 +1,7 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 15,
+            "loop_iterations": 0,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "darth vader, cyborg, motherboard, circuitry, evil, patterns, skeleton",
             "denoise_steps": 30,
@@ -17,20 +17,28 @@
                 ]
             ],
             "transforms": [
+                // {
+                //     "name": "zoom_in_up",
+                //     "zoom_amt": 0.05
+                // },
+                // {
+                //     "name": "zoom_in_left",
+                //     "zoom_amt": 0.05
+                // }
+                // {
+                //     "name": "squeeze_tall",
+                //     "squeeze_amt": 0.05
+                // }
                 {
-                    "name": "zoom_in_up",
-                    "zoom_amt": 0.95
-                },
-                {
-                    "name": "zoom_in_left",
-                    "zoom_amt": 0.95                    
+                    "name": "fisheye",
+                    "strength": -1
                 }
             ]
         },
         {
-            "loop_iterations": 15,
+            "loop_iterations": 20,
             "prompt": "darth vader, circuit, evil, patterns, skeleton, psychedelic, dmt",
-            "denoise_steps": 30,
+            "denoise_steps": 25,
             "denoise_amt": 0.5,
             "loras": [
                 [
@@ -43,9 +51,17 @@
                 ]
             ],
             "transforms": [
+                // {
+                //     "name": "fisheye",
+                //     "strength": 0.7
+                // },
+                // {
+                //     "name": "zoom_in",
+                //     "zoom_amt": 0.2
+                // }
                 {
-                    "name": "zoom_in",
-                    "zoom_amt": 0.95
+                    "name": "fisheye",
+                    "strength": -0.4
                 }
             ]
         }
