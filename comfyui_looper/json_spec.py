@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Optional
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 
@@ -9,11 +9,11 @@ class LoopSettings:
     loop_iterations: int
 
     # all of these have empty defaults -- they will grab the value from the previous LoopSettings, if available
-    checkpoint: str = None
-    prompt: str = None
-    denoise_steps: int = None
-    denoise_amt: float = None
-    canny: tuple[float, float, float] = None
+    checkpoint: Optional[str] = None
+    prompt: Optional[str] = None
+    denoise_steps: Optional[int] = None
+    denoise_amt: Optional[float] = None
+    canny: Optional[tuple[float, float, float]] = None
     loras: list[tuple[str, float]] = field(default_factory=list)
     transforms: list[dict[str, Any]] = field(default_factory=list)
 

@@ -6,8 +6,6 @@ from nodes import (
     NODE_CLASS_MAPPINGS,
 )
 
-from util import unload_model
-
 class LoraManager:
     def __init__(self):
         self.prev_hash = None
