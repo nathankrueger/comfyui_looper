@@ -1,7 +1,7 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 2,
+            "loop_iterations": 30,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
             "denoise_steps": 20,
@@ -17,9 +17,19 @@
                 ]
             ],
             "transforms": [
+                // {
+                //     "name": "rotate",
+                //     "angle": "0.5*n - 1"
+                // }
                 {
-                    "name": "rotate",
-                    "angle": "0.5*n - 1"
+                    "name": "wave",
+                    "strength": 10,
+                    "period": 60,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.1
                 }
             ]
         }

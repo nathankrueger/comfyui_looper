@@ -7,6 +7,12 @@ import cv2
 
 import util
 
+MAGIC_SEQUENCE_PARAMS = {
+    'n',
+    'offset',
+    'total_n'
+}
+
 class Transform:
     NAME = None
     REQUIRED_PARAMS = None
@@ -27,12 +33,18 @@ class Transform:
         return img
     
     @staticmethod
-    def apply_transformations(img: Image, transforms: list[dict[str, Any]]) -> Image:
+    def apply_transformations(img: Image, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> Image:
         curr_img = img
         for tdict in transforms:
             tdict = dict(tdict)
             t_name = tdict.pop('name')
             t_params = tdict
+
+            # magic params partaining to where we are in the sequence
+            t_params['n'] = iter
+            t_params['offset'] = offset
+            t_params['total_n'] = total_iter
+
             t = TRANSFORM_LIBRARY[t_name](t_params)
             curr_img = t.transform(curr_img)
 
@@ -51,6 +63,7 @@ class Transform:
             tdict_params = tdict
             assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
             for key in tdict_params:
+                assert key not in MAGIC_SEQUENCE_PARAMS
                 if key not in TRANSFORM_LIBRARY[t_name].get_required_params():
                     print(f"Warning, ignored transform param: {key} for transform {t_name}")
 
@@ -379,39 +392,102 @@ class PasteImageTransform(Transform):
         result = Image.blend(img, paste_img, opacity)
         return result
 
-TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in util.all_subclasses(Transform)}
+class WaveDistortionTransformation(Transform):
+    NAME = 'wave'
+    REQUIRED_PARAMS = {'period', 'strength', 'rate'}
 
-def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int):
+    class WaveDeformer:
+        def __init__(self, positive: bool, period: int, strength: int):
+            self.positive = positive
+            self.strength = strength
+            self.period = period
+
+        def transform(self, x, y):
+            if self.positive:
+                y = y + self.strength*math.sin(x/self.period)
+            else:
+                y = y - self.strength*math.sin(x/self.period)
+
+            return x, y
+
+        def transform_rectangle(self, x0, y0, x1, y1):
+            return (*self.transform(x0, y0),
+                    *self.transform(x0, y1),
+                    *self.transform(x1, y1),
+                    *self.transform(x1, y0),
+                    )
+
+        def getmesh(self, img):
+            self.w, self.h = img.size
+            gridspace = 20
+
+            target_grid = []
+            for x in range(0, self.w, gridspace):
+                for y in range(0, self.h, gridspace):
+                    target_grid.append((x, y, x + gridspace, y + gridspace))
+
+            source_grid = [self.transform_rectangle(*rect) for rect in target_grid]
+
+            return [t for t in zip(target_grid, source_grid)]
+
+    def transform(self, img: Image) -> Image:
+        n = int(self.params['n'])
+        strength = int(self.params['strength'])
+        period = int(self.params['period'])
+        rate = int(self.params['rate'])
+
+        # alternating pattern
+        modval = (n / rate) % rate
+        positive = modval > (rate / 4) and modval <= ((rate*3) / 4)
+
+        result = ImageOps.deform(img, WaveDistortionTransformation.WaveDeformer(positive=positive, period=period, strength=strength))
+        return result
+
+def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int, total_iter: int):
         """
         n --> total iteration sequence number
         offset --> current LoopSettings sequence number
         """
 
         if isinstance(transform_expr, str):
-            return util.MathParser({'n':iter, 'offset':offset})(transform_expr)
+            return util.MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
         else:
             return transform_expr
 
-def get_elaborated_transform_values(transforms: list[dict[str, Any]], iter: int, offset: int) -> list[dict[str, Any]]:
+def get_elaborated_transform_values(transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> list[dict[str, Any]]:
     elaborated_transforms = []
     if transforms is not None:
         for tdict in transforms:
             elab_tdict = dict()
             for key, val in tdict.items():
-                elab_tdict[key] = elaborate_transform_expr(val, iter, offset) if key != 'name' else val
+                elab_tdict[key] = elaborate_transform_expr(val, iter, offset, total_iter) if key != 'name' else val
             elaborated_transforms.append(elab_tdict)
     
     return elaborated_transforms
 
-def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int) -> torch.Tensor:
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> torch.Tensor:
     i = Image.open(image_path)
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
 
     if transforms is not None:
-        elaborated_transforms = get_elaborated_transform_values(transforms=transforms, iter=iter, offset=offset)
-        image = Transform.apply_transformations(image, elaborated_transforms)
+        elaborated_transforms = get_elaborated_transform_values(transforms=transforms, iter=iter, offset=offset, total_iter=total_iter)
+        image = Transform.apply_transformations(
+            img=image,
+            transforms=elaborated_transforms,
+            iter=iter,
+            offset=offset,
+            total_iter=total_iter
+        )
 
     image = np.array(image).astype(np.float32) / 255.0
     image = torch.from_numpy(image)[None,]
     return image
+
+TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in util.all_subclasses(Transform)}
+
+def get_transform_help_string() -> str:
+    result = 'Available transforms:\n'
+    for tfname in TRANSFORM_LIBRARY:
+        result += f'\tname:{tfname} params:{TRANSFORM_LIBRARY[tfname].get_required_params()}\n'
+    return result + '\n'

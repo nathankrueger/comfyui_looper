@@ -3,6 +3,7 @@ import sys
 import argparse
 from pathlib import Path
 from sdxl_looper_workflow import sdxl_looper_main, SDXL_WIDTH, SDXL_LATENT_REDUCTION_FACTOR
+from transforms import get_transform_help_string
 from util import (
     resize_image_match_area,
     get_log_filename,
@@ -21,7 +22,7 @@ LOG_BASENAME='looper_log.log'
 LOOP_IMG='looper.png'
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Loop hallucinate')
+    parser = argparse.ArgumentParser(description='Loop hallucinate', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=get_transform_help_string())
     parser.add_argument('-i', '--input_img', type=str, required=True)
     parser.add_argument('-o', '--output_folder', type=str, required=True)
     parser.add_argument('-j', '--json_file', type=str, required=True)

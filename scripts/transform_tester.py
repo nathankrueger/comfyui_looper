@@ -13,18 +13,30 @@ import transforms
 import animator
 
 TRANSFORMS_TO_TEST = [
+    {
+        "name": "fisheye",
+        "strength": 0.1
+    },
+    {
+        "name": "wave",
+        "strength": 7,
+        "period": 40,
+        "rate": 4
+    },
+    {
+        "name": "zoom_in",
+        "zoom_amt": 0.06
+    }
     # {
-    #     'name': 'fisheye',
-    #     'strength': 0.175
+    #     'name': 'wave',
+    #     'strength': 7,
+    #     'period': 40,
+    #     'rate': 4
     # },
     # {
     #     'name': 'zoom_in',
-    #     'zoom_amt': 0.075
+    #     'zoom_amt': 0.03
     # }
-    {
-        'name': 'rotate',
-        'angle': "n*2"
-    }
     # {
     #     'name': 'squeeze_tall',
     #     'squeeze_amt': 0.05
@@ -54,7 +66,7 @@ if __name__ == '__main__':
     for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
         next_img_path = get_filename_for_idx(idx+1, args.output_folder)
-        torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, idx)
+        torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, 0, args.loops)
 
         torch_tensor = torch_tensor.squeeze(0)
         torch_tensor = torch_tensor.permute(2, 0, 1)

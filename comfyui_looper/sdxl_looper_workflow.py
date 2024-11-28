@@ -95,7 +95,8 @@ def sdxl_looper_main(
                 image_path=loop_img_path,
                 transforms=transforms,
                 iter=iter,
-                offset=loopsettings.offset
+                offset=loopsettings.offset,
+                total_iter=total_iter
             )
 
             # load in new checkpoint if changed

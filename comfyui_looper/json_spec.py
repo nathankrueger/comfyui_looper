@@ -67,6 +67,8 @@ class SettingsManager:
             ls.offset = running_offset
             running_offset += ls.loop_iterations
 
+        self.total_iterations: int = self.workflow.get_total_iterations()
+
     def validate(self):
         # transforms
         transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms if tdict is not None]
@@ -101,7 +103,7 @@ class SettingsManager:
             raise Exception(f"Invalid iteration: {iter}")
 
     def get_total_iterations(self) -> int:
-        return self.workflow.get_total_iterations()
+        return self.total_iterations
 
     def eval_expr(self, iter: int, setting_name: str, expr: str, loopsetting: LoopSettings) -> float:
         """
@@ -110,7 +112,7 @@ class SettingsManager:
         """
 
         if setting_name in SettingsManager.EXPR_VARIABLES and isinstance(expr, str):
-            return MathParser({'n':iter, 'offset':loopsetting.offset})(expr)
+            return MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
         else:
             return expr
 
