@@ -32,7 +32,7 @@
             "program": "scripts/transform_tester.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG", "-o", "test_output", "-n", "25"
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG", "-o", "transform_test_output", "-n", "25"
             ]
         },
         {

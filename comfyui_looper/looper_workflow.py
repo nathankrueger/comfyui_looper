@@ -3,6 +3,7 @@ import random
 import sys
 import torch
 import argparse
+import tqdm
 from pathlib import Path
 
 import gif_maker as gif_maker
@@ -68,7 +69,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
         controlnetloader_result = None
         total_iter = sm.get_total_iterations()
 
-        for iter in range(total_iter):
+        for iter in tqdm.tqdm(range(total_iter)):
             print(f"Generating image [{iter} / {total_iter}]")
             
             # load settings from JSON

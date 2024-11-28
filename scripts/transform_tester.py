@@ -21,9 +21,13 @@ TRANSFORMS_TO_TEST = [
     #     'name': 'zoom_in',
     #     'zoom_amt': 0.075
     # }
+    # {
+    #     'name': 'rotate',
+    #     'angle': 1
+    # }
     {
-        'name': 'rotate',
-        'angle': 1
+        'name': 'squeeze_tall',
+        'squeeze_amt': 0.05
     }
 ]
 
@@ -36,6 +40,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output_folder', type=str, required=True)
     parser.add_argument('-n', '--loops', type=int, default=15)
     args=parser.parse_args()
+
+    transforms.Transform.validate_transformation_params(TRANSFORMS_TO_TEST)
 
     os.makedirs(args.output_folder, exist_ok=True)
     shutil.copy(args.input_img, get_filename_for_idx(0, args.output_folder))

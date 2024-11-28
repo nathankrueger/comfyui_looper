@@ -65,7 +65,7 @@
         {
             // psychedelic madness takes over (rotate positive)
             "loop_iterations": 30,
-            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, teeth, scary, evil, motherboard",
+            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, sharp teeth, scary, evil, motherboard",
             "denoise_amt": 0.6,
             "loras": [
                 [
@@ -94,15 +94,14 @@
             "transforms": [
                 {
                     "name": "rotate",
-                    "angle": 1.5
+                    "angle": -1.5
                 }
             ]
         },
         {
             // nebula
             "loop_iterations": 50,
-            "prompt": "lsd, vader, skeleton, detailed, 4k, photorealistic, future, space, nebula, spiders",
-            "denoise_amt": 0.6,
+            "prompt": "vader, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -115,12 +114,41 @@
                 [
                     "Space_Nebula_Style_SDXL.safetensors",
                     0.43
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
                 ]
             ],
             "transforms": [
                 {
                     "name": "zoom_in",
                     "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // city
+            "loop_iterations": 50,
+            "prompt": "city, terror, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "squeeze_tall",
+                    "squeeze_amt": 0.05
                 }
             ]
         }
