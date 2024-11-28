@@ -151,6 +151,37 @@
                     "squeeze_amt": 0.05
                 }
             ]
+        },
+        {
+            // ai brain (raise denoise amount briefly)
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "brain connected to motherboard, digital, circuit, detailed, 4k, photorealistic, future, ai",
+            "loras": [
+                [
+                    "Electrical_Wires_Style_SDXL.safetensors",
+                    1.0
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
+                    "squeeze_amt": 0.025
+                }
+            ]
+        },
+        {
+            // ai brain cont'd
+            "denoise_amt": 0.6,
+            "loop_iterations": 49
         }
     ],
     "version": 1

@@ -4,6 +4,10 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from transforms import Transform
 
+EMPTY_LIST = [None]
+def empty_list_factory():
+    return list(EMPTY_LIST)
+
 @dataclass_json
 @dataclass
 class LoopSettings:
@@ -15,8 +19,8 @@ class LoopSettings:
     denoise_steps: Optional[int] = None
     denoise_amt: Optional[float] = None
     canny: Optional[tuple[float, float, float]] = None
-    loras: list[tuple[str, float]] = field(default_factory=list)
-    transforms: list[dict[str, Any]] = field(default_factory=list)
+    loras: list[tuple[str, float]] = field(default_factory=empty_list_factory)
+    transforms: list[dict[str, Any]] = field(default_factory=empty_list_factory)
 
 @dataclass_json
 @dataclass
@@ -42,7 +46,7 @@ class SettingsManager:
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
         self.prev_setting_map: dict[str, Any] = {}
         
-        transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms]
+        transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms if tdict is not None]
         Transform.validate_transformation_params(transform_params)
 
     def get_loopsettings_for_iter(self, iter: int) -> tuple[int, LoopSettings]:
@@ -69,7 +73,7 @@ class SettingsManager:
         setting_idx, loopsetting = self.get_loopsettings_for_iter(iter)
         setting_val = loopsetting.__getattribute__(setting_name)
 
-        if setting_val is None:
+        if setting_val is None or (isinstance(setting_val, list) and setting_val == EMPTY_LIST):
             setting_idx -= 1
             while setting_idx >= 0:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
