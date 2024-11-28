@@ -90,7 +90,7 @@ def sdxl_looper_main(
             prev_seed = seed
 
             # load in image & resize it
-            image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms)
+            image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms, iter=iter, loopsetting=loopsettings)
 
             # load in new checkpoint if changed
             ckpt_model, ckpt_clip, ckpt_vae = ckpt_mgr.reload_if_needed(checkpoint)

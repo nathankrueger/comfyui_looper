@@ -24,7 +24,7 @@ class Transform:
     
     def transform(self, img: Image) -> Image:
         # override me
-        return None
+        return img
     
     @staticmethod
     def apply_transformations(img: Image, transforms: list[dict[str, Any]]) -> Image:
@@ -381,14 +381,32 @@ class PasteImageTransform(Transform):
 
 TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in util.all_subclasses(Transform)}
 
-def load_image_with_transforms(image_path: str, transforms: dict[str, Any]):
-    i = Image.open(image_path)
+def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int):
+        """
+        n --> total iteration sequence number
+        offset --> current LoopSettings sequence number
+        """
 
+        if isinstance(transform_expr, str):
+            return util.MathParser({'n':iter, 'offset':offset})(transform_expr)
+        else:
+            return transform_expr
+
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, loopsetting: Any) -> torch.Tensor:
+    i = Image.open(image_path)
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
 
+    elaborated_transforms = []
     if transforms is not None:
-        image = Transform.apply_transformations(image, transforms)
+        for tdict in transforms:
+            elab_tdict = dict()
+            for key, val in tdict.items():
+                elab_tdict[key] = elaborate_transform_expr(val, iter, loopsetting.offset) if key != 'name' else val
+            elaborated_transforms.append(elab_tdict)
+
+    if transforms is not None:
+        image = Transform.apply_transformations(image, elaborated_transforms)
 
     image = np.array(image).astype(np.float32) / 255.0
     image = torch.from_numpy(image)[None,]

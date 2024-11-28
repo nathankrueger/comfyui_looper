@@ -15,6 +15,12 @@
                     "SDXL-PsyAI-v4.safetensors",
                     1.0
                 ]
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": "0.1*n - 1"
+                }
             ]
         }
     ],
