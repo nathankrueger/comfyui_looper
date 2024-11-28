@@ -46,11 +46,7 @@
                     1.0
                 ]
             ],
-            "canny": [
-                0.0,
-                0.0,
-                0.0
-            ],
+            "canny": [],
             "transforms": [
                 {
                     "name": "fisheye",
@@ -61,6 +57,27 @@
                     "zoom_amt": 0.09
                 }
             ]
+        },
+        {
+            // terminator
+            "loop_iterations": 40,
+            "prompt": "terminator, t2, arnold schwarzenegger, skull, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "denoise_amt": "0.4 + 0.25*sin(0.4*n)",
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": []
         },
         {
             // psychedelic madness takes over (rotate positive)
@@ -128,9 +145,40 @@
             ]
         },
         {
+            // h.r. giger alien
+            "loop_iterations": 50,
+            "prompt": "alien, h.r. giger, monster, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
+            "denoise_amt": "0.4 + 0.25*sin(0.2*n)",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "tbh295-sdxl.safetensors",
+                    0.8
+                ],
+                [
+                    "Space_Nebula_Style_SDXL.safetensors",
+                    0.43
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
             // city
             "loop_iterations": 50,
             "prompt": "city, skyline, tower, skyscraper, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
+            "denoise_amt": 0.55,
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -148,7 +196,7 @@
             "transforms": [
                 {
                     "name": "squeeze_tall",
-                    "squeeze_amt": 0.03
+                    "squeeze_amt": 0.025
                 }
             ]
         },
@@ -217,6 +265,69 @@
             // boom cont'd!
             "denoise_amt": 0.6,
             "loop_iterations": 29
+        },
+        {
+            // back to the ocean
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, wires, electricity, eel, circuit, 4k, dmt",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Electrical_Wires_Style_SDXL.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "wave",
+                    "strength": 7,
+                    "period": 40,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
+            // ocean cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 69
+        },
+        {
+            // shark!
+            "denoise_amt": 0.6,
+            "loop_iterations": 30,
+            "prompt": "great white shark, hammerhead shark, ocean, coral reef, dmt, lsd, colors, beautiful, fish, wires, electricity, eel, circuit, 4k, dmt",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.1
+                },
+                {
+                    "name": "wave",
+                    "strength": 7,
+                    "period": 40,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                }
+            ]
         }
     ],
     "version": 1

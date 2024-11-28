@@ -396,6 +396,7 @@ class WaveDistortionTransformation(Transform):
     NAME = 'wave'
     REQUIRED_PARAMS = {'period', 'strength', 'rate'}
 
+    # Adapted from: https://www.pythoninformer.com/python-libraries/pillow/imageops-deforming/
     class WaveDeformer:
         def __init__(self, positive: bool, period: int, strength: int):
             self.positive = positive

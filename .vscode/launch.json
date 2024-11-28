@@ -8,11 +8,11 @@
             "console": "integratedTerminal",
             "args": [
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-o", "test_output4",
-                //"-j", "data/goodrobot_badrobot.json",
-                "-j", "data/tests/test_expr.json",
+                "-o", "test_output2",
+                "-j", "data/goodrobot_badrobot.json",
+                //"-j", "data/tests/test_expr.json",
                 "-t", "mp4",
-                "-a", "goodbad_boom_v2.mp4",
+                "-a", "goodbad_shark.mp4",
                 "-x", "frame_delay:150",
                 "-x", "max_dim:768"
             ]
