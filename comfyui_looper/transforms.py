@@ -392,20 +392,24 @@ def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int
         else:
             return transform_expr
 
-def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, loopsetting: Any) -> torch.Tensor:
-    i = Image.open(image_path)
-    i = ImageOps.exif_transpose(i)
-    image = i.convert("RGB")
-
+def get_elaborated_transform_values(transforms: list[dict[str, Any]], iter: int, offset: int) -> list[dict[str, Any]]:
     elaborated_transforms = []
     if transforms is not None:
         for tdict in transforms:
             elab_tdict = dict()
             for key, val in tdict.items():
-                elab_tdict[key] = elaborate_transform_expr(val, iter, loopsetting.offset) if key != 'name' else val
+                elab_tdict[key] = elaborate_transform_expr(val, iter, offset) if key != 'name' else val
             elaborated_transforms.append(elab_tdict)
+    
+    return elaborated_transforms
+
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int) -> torch.Tensor:
+    i = Image.open(image_path)
+    i = ImageOps.exif_transpose(i)
+    image = i.convert("RGB")
 
     if transforms is not None:
+        elaborated_transforms = get_elaborated_transform_values(transforms=transforms, iter=iter, offset=offset)
         image = Transform.apply_transformations(image, elaborated_transforms)
 
     image = np.array(image).astype(np.float32) / 255.0

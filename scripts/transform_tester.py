@@ -10,7 +10,7 @@ ppath = str(os.path.realpath(Path(os.path.dirname(__file__)) / ".." / "comfyui_l
 sys.path.append(ppath)
 
 import transforms
-import gif_maker
+import animator
 
 TRANSFORMS_TO_TEST = [
     # {
@@ -21,19 +21,19 @@ TRANSFORMS_TO_TEST = [
     #     'name': 'zoom_in',
     #     'zoom_amt': 0.075
     # }
-    # {
-    #     'name': 'rotate',
-    #     'angle': 1
-    # }
+    {
+        'name': 'rotate',
+        'angle': "n*2"
+    }
     # {
     #     'name': 'squeeze_tall',
     #     'squeeze_amt': 0.05
     # }
-    {
-        'name': 'paste_img',
-        'img_path': 'C:/Users/natek/Downloads/IMG_1127.jpeg',
-        'opacity': 0.3
-    }
+    # {
+    #     'name': 'paste_img',
+    #     'img_path': 'C:/Users/natek/Downloads/IMG_1127.jpeg',
+    #     'opacity': 0.3
+    # }
 ]
 
 def get_filename_for_idx(idx: int, output_dir: str) -> str:
@@ -54,16 +54,15 @@ if __name__ == '__main__':
     for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
         next_img_path = get_filename_for_idx(idx+1, args.output_folder)
-        torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST)
+        torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, idx)
 
         torch_tensor = torch_tensor.squeeze(0)
         torch_tensor = torch_tensor.permute(2, 0, 1)
         img = T.ToPILImage()(torch_tensor)
         img.save(next_img_path, pnginfo=None, compress_level=5)
 
-    gif_maker.make_gif(
+    animator.make_gif(
         input_folder=args.output_folder,
-        frame_delay=200,
-        max_dimension=768,
-        gif_output=os.path.join(args.output_folder, "test.gif")
+        gif_output=os.path.join(args.output_folder, "test.gif"),
+        params={'frame_delay': 200, 'max_dim': 768}
     )

@@ -1,3 +1,5 @@
-comfyui*.log
-test_output
+*.mp4
+*.gif
+*.log
+*.png
 __pycache__

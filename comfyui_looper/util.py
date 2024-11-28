@@ -120,7 +120,7 @@ def load_image(image_path: str):
         mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
     return (image, mask.unsqueeze(0))
 
-def save_tensor_to_images(image, output_filenames: list[str]):
+def save_tensor_to_images(image, output_filenames: list[str], png_info=None):
     first_image_path = None
     for output_filename in output_filenames:
         output_folder = os.path.dirname(output_filename)
@@ -128,7 +128,7 @@ def save_tensor_to_images(image, output_filenames: list[str]):
         if first_image_path is None:
             i = 255. * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            img.save(output_filename, pnginfo=None, compress_level=0)
+            img.save(output_filename, pnginfo=png_info, compress_level=0)
             first_image_path = output_filename
         else:
             shutil.copy(first_image_path, output_filename)

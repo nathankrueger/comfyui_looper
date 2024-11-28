@@ -2,6 +2,7 @@ import os
 import torch
 import tqdm
 from typing import IO
+from PIL.PngImagePlugin import PngInfo
 
 from animator import make_animation
 from json_spec import SettingsManager, default_seed
@@ -90,7 +91,12 @@ def sdxl_looper_main(
             prev_seed = seed
 
             # load in image & resize it
-            image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms, iter=iter, loopsetting=loopsettings)
+            image_tensor = load_image_with_transforms(
+                image_path=loop_img_path,
+                transforms=transforms,
+                iter=iter,
+                offset=loopsettings.offset
+            )
 
             # load in new checkpoint if changed
             ckpt_model, ckpt_clip, ckpt_vae = ckpt_mgr.reload_if_needed(checkpoint)
@@ -143,11 +149,18 @@ def sdxl_looper_main(
             )
 
             # save the images -- loop filename, and requested output
+            loopsettings_json = loopsettings.to_json(indent=4)
             output_image_filename = os.path.join(output_folder, get_loop_img_filename(iter+1))
-            save_tensor_to_images(output_filenames=[loop_img_path, output_image_filename], image=vaedecode_result[0])
+            pnginfo = PngInfo()
+            pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
+            save_tensor_to_images(
+                output_filenames=[loop_img_path, output_image_filename],
+                image=vaedecode_result[0],
+                png_info=pnginfo
+            )
 
             # add entry to the logfile
-            log_file.write(f"{output_image_filename}: " + loopsettings.to_json(indent=4) + os.linesep)
+            log_file.write(f"{output_image_filename}:" + loopsettings_json + os.linesep)
 
     # save animation
     if animation_file is not None:

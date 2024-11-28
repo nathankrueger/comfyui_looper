@@ -1,7 +1,7 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 30,
+            "loop_iterations": 2,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
             "denoise_steps": 20,
@@ -19,7 +19,7 @@
             "transforms": [
                 {
                     "name": "rotate",
-                    "angle": "0.1*n - 1"
+                    "angle": "0.5*n - 1"
                 }
             ]
         }
