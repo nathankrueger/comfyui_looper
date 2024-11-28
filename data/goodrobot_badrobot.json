@@ -2,10 +2,10 @@
     "all_settings": [
         {
             // canny image starts getting weird...
-            "loop_iterations": 25,
+            "loop_iterations": 35,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
-            "denoise_steps": 30,
+            "denoise_steps": 45,
             "denoise_amt": 0.5,
             "loras": [
                 [
@@ -29,7 +29,7 @@
         },
         {
             // fisheye effect, robot gets angry!
-            "loop_iterations": 15,
+            "loop_iterations": 20,
             "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
             "denoise_amt": 0.55,
             "loras": [
@@ -99,7 +99,7 @@
             ]
         },
         {
-            // nebula
+            // nebula / vader
             "loop_iterations": 50,
             "prompt": "vader, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
             "loras": [
@@ -108,8 +108,8 @@
                     1.1
                 ],
                 [
-                    "detailer_v5.safetensors",
-                    1.0
+                    "star wars style.safetensors",
+                    0.8
                 ],
                 [
                     "Space_Nebula_Style_SDXL.safetensors",
@@ -123,14 +123,14 @@
             "transforms": [
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.05
+                    "zoom_amt": 0.03
                 }
             ]
         },
         {
             // city
             "loop_iterations": 50,
-            "prompt": "city, terror, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
+            "prompt": "city, skyline, tower, skyscraper, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -148,7 +148,7 @@
             "transforms": [
                 {
                     "name": "squeeze_tall",
-                    "squeeze_amt": 0.05
+                    "squeeze_amt": 0.03
                 }
             ]
         },
@@ -182,6 +182,41 @@
             // ai brain cont'd
             "denoise_amt": 0.6,
             "loop_iterations": 49
+        },
+        {
+            // boom!
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // boom cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 29
         }
     ],
     "version": 1

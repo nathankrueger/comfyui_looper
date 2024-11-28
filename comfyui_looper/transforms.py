@@ -364,6 +364,21 @@ class RotateTransform(Transform):
         resized_result = Image.fromarray(image_rotated_cropped).resize((image_width, image_height))
         return resized_result
 
+class PasteImageTransform(Transform):
+    NAME = 'paste_img'
+    REQUIRED_PARAMS = {'img_path', 'opacity'}
+
+    def transform(self, img: Image) -> Image:
+        init_width, init_height = img.size
+        opacity: float = self.params['opacity']
+        paste_img_path = self.params['img_path']
+
+        paste_img = Image.open(paste_img_path)
+        paste_img = paste_img.resize((init_width, init_height))
+        
+        result = Image.blend(img, paste_img, opacity)
+        return result
+
 TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in util.all_subclasses(Transform)}
 
 def load_image_with_transforms(image_path: str, transforms: dict[str, Any]):

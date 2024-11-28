@@ -25,9 +25,14 @@ TRANSFORMS_TO_TEST = [
     #     'name': 'rotate',
     #     'angle': 1
     # }
+    # {
+    #     'name': 'squeeze_tall',
+    #     'squeeze_amt': 0.05
+    # }
     {
-        'name': 'squeeze_tall',
-        'squeeze_amt': 0.05
+        'name': 'paste_img',
+        'img_path': 'C:/Users/natek/Downloads/IMG_1127.jpeg',
+        'opacity': 0.3
     }
 ]
 
