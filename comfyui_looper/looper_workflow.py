@@ -70,7 +70,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
         total_iter = sm.get_total_iterations()
 
         for iter in tqdm.tqdm(range(total_iter)):
-            print(f"Generating image [{iter} / {total_iter}]")
+            print()
             
             # load settings from JSON
             positive_text = sm.get_setting_for_iter('prompt', iter)

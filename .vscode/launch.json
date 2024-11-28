@@ -7,11 +7,12 @@
             "program": "comfyui_looper/looper_workflow.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "C:\\Users\\natek\\Downloads\\IMG_2978.JPEG",
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
                 "-o", "test_output",
                 "-j", "data/goodrobot_badrobot.json",
-                "-g", "goodbad_hd.gif",
-                "-d", "100",
+                //"-j", "data/test_paste_img.json",
+                "-g", "goodbad_boom_v2.gif",
+                "-d", "150",
                 "-s", "768"
             ]
         },
@@ -22,7 +23,7 @@
             "program": "comfyui_looper/gif_maker.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "test_output", "-o", "test_output\\test.gif", "-s", "512",
+                "-i", "test_output", "-o", "test_output/test.gif", "-s", "512",
             ]
         },
         {
