@@ -1,0 +1,22 @@
+{
+    "all_settings": [
+        {
+            "loop_iterations": 30,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
+            "denoise_steps": 20,
+            "denoise_amt": "0.4 + 0.25*sin(0.5*n)",
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ]
+            ]
+        }
+    ],
+    "version": 1
+}

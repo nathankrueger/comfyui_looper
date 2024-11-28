@@ -3,7 +3,9 @@ import random
 from typing import Any, Optional
 from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
+
 from transforms import Transform
+from util import MathParser
 
 CURRENT_WORKFLOW_VERSION = 1
 
@@ -22,12 +24,15 @@ class LoopSettings:
     # all of these have empty defaults -- they will grab the value from the previous LoopSettings, if available
     checkpoint: Optional[str] = None
     prompt: Optional[str] = None
-    denoise_steps: Optional[int] = None
-    denoise_amt: Optional[float] = None
+    denoise_steps: Optional[int | str] = None
+    denoise_amt: Optional[float | str] = None
     seed: int = field(default_factory=default_seed)
     canny: list[float | None] = field(default_factory=empty_list_factory)
     loras: list[tuple[str, float] | None] = field(default_factory=empty_list_factory)
     transforms: list[dict[str, Any] | None] = field(default_factory=empty_list_factory)
+
+    def __post_init__(self):
+        self.offset = None
 
 @dataclass_json
 @dataclass
@@ -42,6 +47,11 @@ class Workflow:
         return cnt
 
 class SettingsManager:
+    EXPR_VARIABLES = {
+        'denoise_amt',
+        'denoise_steps'
+    }
+
     def __init__(self, workflow_json_path: str):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
             json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
@@ -50,6 +60,12 @@ class SettingsManager:
         assert self.workflow.version == CURRENT_WORKFLOW_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
         self.prev_setting_map: dict[str, Any] = {}
+        
+        # set offsets
+        running_offset = 0
+        for ls in self.workflow.all_settings:
+            ls.offset = running_offset
+            running_offset += ls.loop_iterations
 
     def validate(self):
         # transforms
@@ -87,6 +103,17 @@ class SettingsManager:
     def get_total_iterations(self) -> int:
         return self.workflow.get_total_iterations()
 
+    def eval_expr(self, iter: int, setting_name: str, expr: str, loopsetting: LoopSettings) -> float:
+        """
+        n --> total iteration sequence number
+        offset --> current LoopSettings sequence number
+        """
+
+        if setting_name in SettingsManager.EXPR_VARIABLES and isinstance(expr, str):
+            return MathParser({'n':iter, 'offset':loopsetting.offset})(expr)
+        else:
+            return expr
+
     def get_setting_for_iter(self, setting_name: str, iter: int) -> Any:
         setting_idx, loopsetting = self.get_loopsettings_for_iter(iter)
         setting_val = loopsetting.__getattribute__(setting_name)
@@ -97,11 +124,11 @@ class SettingsManager:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
                 prev_setting_val = prev_loopsetting.__getattribute__(setting_name)
                 if prev_setting_val is not None and prev_setting_val != EMPTY_LIST:
-                    return prev_setting_val
+                    return self.eval_expr(iter, setting_name, prev_setting_val, prev_loopsetting)
                 setting_idx -= 1
             return [] if setting_val == EMPTY_LIST else None
         else:
-            return setting_val
+            return self.eval_expr(iter, setting_name, setting_val, loopsetting)
 
     def get_elaborated_loopsettings_for_iter(self, iter:int) -> LoopSettings:
         _, loopsetting = self.get_loopsettings_for_iter(iter)

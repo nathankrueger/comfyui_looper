@@ -1,30 +1,31 @@
 {
     "configurations": [
         {
-            "name": "looper_workflow.py",
+            "name": "main.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "comfyui_looper/looper_workflow.py",
+            "program": "comfyui_looper/main.py",
             "console": "integratedTerminal",
             "args": [
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-o", "test_output",
-                "-j", "data/goodrobot_badrobot.json",
-                //"-j", "data/tests/test_no_lora.json",
-                "-g", "goodbad_boom_v2.gif",
-                "-d", "150",
-                "-s", "768"
+                "-o", "test_output4",
+                //"-j", "data/goodrobot_badrobot.json",
+                "-j", "data/tests/test_expr.json",
+                "-t", "mp4",
+                "-a", "goodbad_boom_v2.mp4",
+                "-x", "frame_delay:150",
+                "-x", "max_dim:768"
             ]
         },
         {
-            "name": "gif_maker.py",
+            "name": "animator.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "comfyui_looper/gif_maker.py",
+            "program": "comfyui_looper/animator.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "test_output", "-o", "bounce.gif", "-s", "768", "-d", "150",
-                "-x", "bounce", "-x", "bounce_frame_skip:2"
+                "-i", "test_output", "-o", "bounce.gif", "-x", "max_dim:768", "-x", "frame_delay:150",
+                "-x", "bounce", "-x", "bounce_frame_skip:2", "-t", "gif"
             ]
         },
         {

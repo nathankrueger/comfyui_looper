@@ -1,6 +1,7 @@
 import tempfile
 import pytest
 
+# workaround for running in debugger -- it picks up pytest.ini this way
 if __name__ == '__main__':
     pytest.main(['-s'])
 

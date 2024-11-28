@@ -1,2 +1,6 @@
+pytest
+moviepy
+pillow
+opencv-python
 dataclasses-json
 tqdm
