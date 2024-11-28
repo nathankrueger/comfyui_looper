@@ -1,32 +1,39 @@
 import os
+import random
 from typing import Any, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 from transforms import Transform
 
+CURRENT_WORKFLOW_VERSION = 1
+
 EMPTY_LIST = [None]
-def empty_list_factory():
+def empty_list_factory() -> list:
     return list(EMPTY_LIST)
+
+def default_seed() -> int:
+    return random.randint(1, 2**64)
 
 @dataclass_json
 @dataclass
 class LoopSettings:
-    loop_iterations: int
+    loop_iterations: int = 1
 
     # all of these have empty defaults -- they will grab the value from the previous LoopSettings, if available
     checkpoint: Optional[str] = None
     prompt: Optional[str] = None
     denoise_steps: Optional[int] = None
     denoise_amt: Optional[float] = None
-    canny: Optional[tuple[float, float, float]] = None
-    loras: list[tuple[str, float]] = field(default_factory=empty_list_factory)
-    transforms: list[dict[str, Any]] = field(default_factory=empty_list_factory)
+    seed: int = field(default_factory=default_seed)
+    canny: list[float | None] = field(default_factory=empty_list_factory)
+    loras: list[tuple[str, float] | None] = field(default_factory=empty_list_factory)
+    transforms: list[dict[str, Any] | None] = field(default_factory=empty_list_factory)
 
 @dataclass_json
 @dataclass
 class Workflow:
     all_settings: list[LoopSettings]
-    version: int
+    version: int = CURRENT_WORKFLOW_VERSION
 
     def get_total_iterations(self) -> int:
         cnt = 0
@@ -35,19 +42,30 @@ class Workflow:
         return cnt
 
 class SettingsManager:
-    SUPPORTED_VERSION = 1
-
     def __init__(self, workflow_json_path: str):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
             json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
             self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
 
-        assert self.workflow.version == SettingsManager.SUPPORTED_VERSION
+        assert self.workflow.version == CURRENT_WORKFLOW_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
         self.prev_setting_map: dict[str, Any] = {}
-        
+
+    def validate(self):
+        # transforms
         transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms if tdict is not None]
         Transform.validate_transformation_params(transform_params)
+
+        # canny
+        for ls in self.workflow.all_settings:
+            assert ls.canny == EMPTY_LIST or len(ls.canny) == 3 or len(ls.canny) == 0
+
+    def update_seed(self, iter: int, seed: int):
+        self.get_loopsettings_for_iter(iter)[1].seed = seed
+
+    @staticmethod
+    def should_infer_setting(setting_val: Any) -> bool:
+        return setting_val is None or (isinstance(setting_val, list) and setting_val == EMPTY_LIST)
 
     def get_loopsettings_for_iter(self, iter: int) -> tuple[int, LoopSettings]:
         if iter in self.iter_to_setting_map:
@@ -73,14 +91,23 @@ class SettingsManager:
         setting_idx, loopsetting = self.get_loopsettings_for_iter(iter)
         setting_val = loopsetting.__getattribute__(setting_name)
 
-        if setting_val is None or (isinstance(setting_val, list) and setting_val == EMPTY_LIST):
+        if SettingsManager.should_infer_setting(setting_val):
             setting_idx -= 1
             while setting_idx >= 0:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
                 prev_setting_val = prev_loopsetting.__getattribute__(setting_name)
-                if prev_setting_val is not None:
+                if prev_setting_val is not None and prev_setting_val != EMPTY_LIST:
                     return prev_setting_val
                 setting_idx -= 1
-            return None
+            return [] if setting_val == EMPTY_LIST else None
         else:
             return setting_val
+
+    def get_elaborated_loopsettings_for_iter(self, iter:int) -> LoopSettings:
+        _, loopsetting = self.get_loopsettings_for_iter(iter)
+        result = LoopSettings()
+        for dc_field in fields(loopsetting):
+            result.__setattr__(dc_field.name, self.get_setting_for_iter(dc_field.name, iter))
+        result.loop_iterations = 1
+
+        return result

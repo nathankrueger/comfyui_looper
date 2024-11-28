@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import math
+from datetime import datetime
 from typing import Sequence, Mapping, Any, Union
 from PIL import Image, ImageOps
 import numpy as np
@@ -134,6 +135,15 @@ def save_tensor_to_images(image, output_filenames: list[str]):
 
 def get_loop_img_filename(idx: int) -> str:
     return f"loop_img_{idx:06}.png"
+
+def get_log_filename(log_basename: str) -> str:
+    dt = datetime.now()
+    dt_str = dt.strftime("%Y_%m_%d__%H_%M_%S")
+
+    log_ext = log_basename.split('.')[-1] if '.' in log_basename else ""
+    log_basename_no_ext = '.'.join(log_basename.split('.')[:-1])
+
+    return f"{log_basename_no_ext}_{dt_str}.{log_ext}"
 
 def all_subclasses(cls) -> set:
     return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])

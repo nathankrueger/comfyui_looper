@@ -107,7 +107,7 @@ class ControlNetManager:
         self.controlnet_model_file = controlnet_model_file
 
     def reload_if_needed(self, canny_param):
-        if canny_param is not None and any(canny_param):
+        if canny_param is not None and len(canny_param) == 3:
             if self.controlnet_model is None:
                 self.controlnet_model = self.node.load_controlnet(self.controlnet_model_file)[0]
         else:

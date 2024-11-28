@@ -1,13 +1,13 @@
 import os
-import random
 import sys
 import torch
 import argparse
 import tqdm
 from pathlib import Path
+from typing import IO
 
 import gif_maker as gif_maker
-from json_spec import SettingsManager
+from json_spec import SettingsManager, default_seed
 from transforms import load_image_with_transforms
 from util import (
     import_custom_nodes,
@@ -15,6 +15,7 @@ from util import (
     add_extra_model_paths,
     save_tensor_to_images,
     get_loop_img_filename,
+    get_log_filename,
     resize_image_match_area,
 )
 
@@ -26,6 +27,7 @@ sys.argv = [sys.argv[0]]
 # ComfyUI imports
 add_comfyui_directory_to_sys_path()
 add_extra_model_paths()
+import_custom_nodes()
 from node_wrappers import (
     LoraManager,
     CheckpointManager,
@@ -37,21 +39,30 @@ from nodes import (
     VAEDecode,
     VAEEncode,
     KSampler,
-    ControlNetLoader,
     ControlNetApply,
     NODE_CLASS_MAPPINGS,
 )
 
 # constants
+LOG_BASENAME='looper_log.log'
 LOOP_IMG='looper.png'
 SDXL_WIDTH=1024
 SDXL_LATENT_REDUCTION_FACTOR=8
 NEGATIVE_TEXT='text, watermark, logo'
 CANNY_CONTROLNET='control-lora-canny-rank256.safetensors'
 
-def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file: str | None, gif_max_dim: int, gif_frame_delay: int):
-    import_custom_nodes()
+def sdxl_looper_main(
+    loop_img_path: str,
+    output_folder: str,
+    json_file: str,
+    gif_file: str | None,
+    gif_max_dim: int,
+    gif_frame_delay: int,
+    log_file: IO[str]
+):
     sm = SettingsManager(json_file)
+    sm.validate()
+
     with torch.inference_mode():
         # comfy nodes
         canny_node = NODE_CLASS_MAPPINGS["Canny"]()
@@ -66,6 +77,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
         text_cond = ClipEncodeWrapper()
         control_net_mgr = ControlNetManager(CANNY_CONTROLNET)
 
+        prev_seed = None
         controlnetloader_result = None
         total_iter = sm.get_total_iterations()
 
@@ -73,13 +85,22 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             print()
             
             # load settings from JSON
-            positive_text = sm.get_setting_for_iter('prompt', iter)
-            steps = sm.get_setting_for_iter('denoise_steps', iter)
-            denoise = sm.get_setting_for_iter('denoise_amt', iter)
-            lora_list = sm.get_setting_for_iter('loras', iter)
-            checkpoint = sm.get_setting_for_iter('checkpoint', iter)
-            transforms = sm.get_setting_for_iter('transforms', iter) if iter > 0 else None
-            canny = sm.get_setting_for_iter('canny', iter)
+            loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
+            positive_text = loopsettings.prompt
+            steps = loopsettings.denoise_steps
+            denoise = loopsettings.denoise_amt
+            lora_list = loopsettings.loras
+            checkpoint = loopsettings.checkpoint
+            canny = loopsettings.canny
+            transforms = loopsettings.transforms if iter > 0 else None
+            seed = loopsettings.seed
+
+            # if a new seed is explicitly set, use it, otherwise always get a new one
+            if seed == prev_seed:
+                seed = default_seed()
+                loopsettings.seed = seed
+            sm.update_seed(iter, seed)
+            prev_seed = seed
 
             # load in image & resize it
             image_tensor = load_image_with_transforms(image_path=loop_img_path, transforms=transforms)
@@ -116,7 +137,7 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
 
             # latent sampler
             ksampler_result, = ksampler.sample(
-                seed=random.randint(1, 2**64),
+                seed=seed,
                 steps=steps,
                 cfg=8,
                 sampler_name="euler",
@@ -135,14 +156,18 @@ def looper_main(loop_img_path: str, output_folder: str, json_file: str, gif_file
             )
 
             # save the images -- loop filename, and requested output
-            save_tensor_to_images(output_filenames=[loop_img_path, os.path.join(output_folder, get_loop_img_filename(iter+1))], image=vaedecode_result[0])
+            output_image_filename = os.path.join(output_folder, get_loop_img_filename(iter+1))
+            save_tensor_to_images(output_filenames=[loop_img_path, output_image_filename], image=vaedecode_result[0])
+
+            # add entry to the logfile
+            log_file.write(f"{output_image_filename}: " + loopsettings.to_json(indent=4) + os.linesep)
 
     # save gif animation
     if gif_file is not None:
         gif_maker.make_gif(
             input_folder=output_folder,
             frame_delay=gif_frame_delay,
-            max_dimension=gif_max_dim,
+            max_dim=gif_max_dim,
             gif_output=gif_file
         )
 
@@ -167,11 +192,14 @@ if __name__ == "__main__":
     resize_image_match_area(args.input_img, starting_point_filename, SDXL_WIDTH**2, SDXL_LATENT_REDUCTION_FACTOR)
     
     # run the diffusion
-    looper_main(
-        loop_img_path=loopback_filename,
-        output_folder=os.path.abspath(args.output_folder),
-        json_file=args.json_file,
-        gif_file=os.path.join(args.output_folder, args.gif_filename),
-        gif_frame_delay=args.gif_frame_delay,
-        gif_max_dim=args.gif_max_dimension
-    )
+    log_filename = get_log_filename(LOG_BASENAME)
+    with open(os.path.join(args.output_folder, log_filename), 'w', encoding='utf-8') as log_file:
+        sdxl_looper_main(
+            loop_img_path=loopback_filename,
+            output_folder=os.path.abspath(args.output_folder),
+            json_file=args.json_file,
+            gif_file=os.path.join(args.output_folder, args.gif_filename),
+            gif_frame_delay=args.gif_frame_delay,
+            gif_max_dim=args.gif_max_dimension,
+            log_file=log_file
+        )

@@ -1,10 +1,10 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 20,
+            "loop_iterations": 2,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
-            "denoise_steps": 10,
+            "denoise_steps": 3,
             "denoise_amt": 0.5,
             "loras": [
                 [
@@ -30,7 +30,7 @@
             ]
         },
         {
-            "loop_iterations": 20,
+            "loop_iterations": 2,
 
             // disable canny
             "canny": [

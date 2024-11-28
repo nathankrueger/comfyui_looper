@@ -1,0 +1,28 @@
+{
+    "all_settings": [
+        {
+            "loop_iterations": 2,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "lsd, dmt, motherboard, circuit, crazy, vader",
+            "denoise_steps": 30,
+            "denoise_amt": 0.8,
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ]
+            ]
+        },
+        {
+            "loop_iterations": 5,
+            "denoise_steps": 2,
+            "loras": [],
+            "seed": 123
+        }
+    ],
+    "version": 1
+}

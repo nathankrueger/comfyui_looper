@@ -10,7 +10,7 @@
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
                 "-o", "test_output",
                 "-j", "data/goodrobot_badrobot.json",
-                //"-j", "data/test_paste_img.json",
+                //"-j", "data/tests/test_no_lora.json",
                 "-g", "goodbad_boom_v2.gif",
                 "-d", "150",
                 "-s", "768"
@@ -23,7 +23,8 @@
             "program": "comfyui_looper/gif_maker.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "test_output", "-o", "test_output/test.gif", "-s", "512",
+                "-i", "test_output", "-o", "bounce.gif", "-s", "768", "-d", "150",
+                "-x", "bounce", "-x", "bounce_frame_skip:2"
             ]
         },
         {
