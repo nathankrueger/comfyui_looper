@@ -2,6 +2,7 @@ import os
 from typing import Any, Optional
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
+from transforms import Transform
 
 @dataclass_json
 @dataclass
@@ -40,6 +41,9 @@ class SettingsManager:
         assert self.workflow.version == SettingsManager.SUPPORTED_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
         self.prev_setting_map: dict[str, Any] = {}
+        
+        transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms]
+        Transform.validate_transformation_params(transform_params)
 
     def get_loopsettings_for_iter(self, iter: int) -> tuple[int, LoopSettings]:
         if iter in self.iter_to_setting_map:

@@ -54,20 +54,24 @@
             "transforms": [
                 {
                     "name": "fisheye",
-                    "strength": 0.175
+                    "strength": 0.21
                 },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.075
+                    "zoom_amt": 0.09
                 }
             ]
         },
         {
             // psychedelic madness takes over (rotate positive)
             "loop_iterations": 30,
-            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, teeth, scary",
+            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, teeth, scary, evil, motherboard",
             "denoise_amt": 0.6,
             "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ],
                 [
                     "SDXL-PsyAI-v4.safetensors",
                     1.0
@@ -80,29 +84,17 @@
             "transforms": [
                 {
                     "name": "rotate",
-                    "angle": 1
+                    "angle": 1.5
                 }
             ]
         },
         {
             // psychedelic madness takes over (rotate negative)
             "loop_iterations": 30,
-            "prompt": "lsd, vader, skeleton, detailed, 4k, photorealistic",
-            "denoise_amt": 0.6,
-            "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
-            ],
             "transforms": [
                 {
                     "name": "rotate",
-                    "angle": 1
+                    "angle": 1.5
                 }
             ]
         },
@@ -128,7 +120,7 @@
             "transforms": [
                 {
                     "name": "zoom_in",
-                    "angle": 0.05
+                    "zoom_amt": 0.05
                 }
             ]
         }

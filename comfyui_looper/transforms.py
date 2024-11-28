@@ -9,6 +9,7 @@ import util
 
 class Transform:
     NAME = None
+    REQUIRED_PARAMS = None
 
     def __init__(self, params: dict[str, Any]):
         self.params = params
@@ -16,6 +17,10 @@ class Transform:
     @classmethod
     def get_name(cls) -> str:
         return cls.NAME
+    
+    @classmethod
+    def get_required_params(cls) -> set[str]:
+        return cls.REQUIRED_PARAMS
     
     def transform(self, img: Image) -> Image:
         # override me
@@ -32,9 +37,26 @@ class Transform:
             curr_img = t.transform(curr_img)
 
         return curr_img
+    
+    @staticmethod
+    def validate_transformation_params(transforms: list[dict[str, Any]]):
+        for tdict in transforms:
+            tdict = dict(tdict)
+            if len(tdict) == 0:
+                continue
+
+            assert 'name' in tdict
+            t_name = tdict.pop('name')
+            assert t_name in TRANSFORM_LIBRARY
+            tdict_params = tdict
+            assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
+            for key in tdict_params:
+                if key not in TRANSFORM_LIBRARY[t_name].get_required_params():
+                    print(f"Warning, ignored transform param: {key} for transform {t_name}")
 
 class ZoomInTransform(Transform):
     NAME = 'zoom_in'
+    REQUIRED_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -54,6 +76,7 @@ class ZoomInTransform(Transform):
 
 class ZoomInLeftTransform(Transform):
     NAME = 'zoom_in_left'
+    REQUIRED_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -72,6 +95,7 @@ class ZoomInLeftTransform(Transform):
     
 class ZoomInRightTransform(Transform):
     NAME = 'zoom_in_right'
+    REQUIRED_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -90,6 +114,7 @@ class ZoomInRightTransform(Transform):
     
 class ZoomInUpTransform(Transform):
     NAME = 'zoom_in_up'
+    REQUIRED_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -108,6 +133,7 @@ class ZoomInUpTransform(Transform):
     
 class ZoomInDownTransform(Transform):
     NAME = 'zoom_in_down'
+    REQUIRED_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -126,6 +152,7 @@ class ZoomInDownTransform(Transform):
     
 class SqueezeWideTransform(Transform):
     NAME = 'squeeze_wide'
+    REQUIRED_PARAMS = {'squeeze_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -144,6 +171,7 @@ class SqueezeWideTransform(Transform):
 
 class SqueezeTallTransform(Transform):
     NAME = 'squeeze_tall'
+    REQUIRED_PARAMS = {'squeeze_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -162,6 +190,7 @@ class SqueezeTallTransform(Transform):
 
 class FisheyeTransform(Transform):
     NAME = 'fisheye'
+    REQUIRED_PARAMS = {'strength'}
 
     def transform(self, img: Image) -> Image:
         width, height = img.size
@@ -190,6 +219,7 @@ class FisheyeTransform(Transform):
 # algo stolen from https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders
 class RotateTransform(Transform):
     NAME = 'rotate'
+    REQUIRED_PARAMS = {'angle'}
 
     def rotate(self, image: Image, angle: float):
         """
