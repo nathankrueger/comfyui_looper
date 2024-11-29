@@ -20,26 +20,25 @@ add_comfyui_directory_to_sys_path()
 add_extra_model_paths()
 import_custom_nodes()
 from node_wrappers import (
+    Flux1DModelManager,
     LoraManager,
-    SDXLCheckpointManager,
-    ClipEncodeWrapper,
-    ControlNetManager,
 )
 from nodes import (
+    CLIPTextEncode,
     VAEDecode,
     VAEEncode,
-    KSampler,
-    ControlNetApply,
     NODE_CLASS_MAPPINGS,
 )
 
 # constants
-SDXL_WIDTH=1024
-SDXL_LATENT_REDUCTION_FACTOR=8
-NEGATIVE_TEXT='text, watermark, logo'
-CANNY_CONTROLNET='control-lora-canny-rank256.safetensors'
+FLUX1D_WIDTH=1024
+FLUX1D_LATENT_REDUCTION_FACTOR=8
+FLUX_VAE="ae.safetensors"
+FLUX_CLIP1="t5xxl_fp8_e4m3fn.safetensors"  #TODO: these should be part of json spec
+FLUX_CLIP2="clip_l.safetensors"
+FLUX_GUIDANCE=3.5
 
-def sdxl_looper_main(
+def flux1d_looper_main(
     loop_img_path: str,
     output_folder: str,
     json_file: str,
@@ -53,20 +52,21 @@ def sdxl_looper_main(
 
     with torch.inference_mode():
         # comfy nodes
-        canny_node = NODE_CLASS_MAPPINGS["Canny"]()
-        controlnetapply = ControlNetApply()
         vaeencode = VAEEncode()
-        ksampler = KSampler()
         vaedecode = VAEDecode()
+        cliptextencode = CLIPTextEncode()
+        fluxguidance = NODE_CLASS_MAPPINGS["FluxGuidance"]()
+        basicguider = NODE_CLASS_MAPPINGS["BasicGuider"]()
+        basicscheduler = NODE_CLASS_MAPPINGS["BasicScheduler"]()
+        samplercustomadvanced = NODE_CLASS_MAPPINGS["SamplerCustomAdvanced"]()
+        randomnoise = NODE_CLASS_MAPPINGS["RandomNoise"]()
+        sampler_select_val = NODE_CLASS_MAPPINGS["KSamplerSelect"]().get_sampler(sampler_name="ddim")[0]
 
         # wrappers
         lora_mgr = LoraManager()
-        ckpt_mgr = SDXLCheckpointManager()
-        text_cond = ClipEncodeWrapper()
-        control_net_mgr = ControlNetManager(CANNY_CONTROLNET)
+        model_mgr = Flux1DModelManager()
 
         prev_seed = None
-        controlnetloader_result = None
         total_iter = sm.get_total_iterations()
 
         for iter in tqdm.tqdm(range(total_iter)):
@@ -79,7 +79,6 @@ def sdxl_looper_main(
             denoise = loopsettings.denoise_amt
             lora_list = loopsettings.loras
             checkpoint = loopsettings.checkpoint
-            canny = loopsettings.canny
             transforms = loopsettings.transforms if iter > 0 else None
             seed = loopsettings.seed
 
@@ -99,54 +98,51 @@ def sdxl_looper_main(
                 total_iter=total_iter
             )
 
-            # load in new checkpoint if changed
-            ckpt_model, ckpt_clip, ckpt_vae = ckpt_mgr.reload_if_needed(checkpoint)
+            # load in new model if changed
+            unet_model, clip_model, vae_model = model_mgr.reload_if_needed(checkpoint, FLUX_VAE, FLUX_CLIP1, FLUX_CLIP2)
 
             # only load in new loras as needd
-            lora_model, lora_clip = lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
-
-            # conditioning
-            pos_cond, neg_cond = text_cond.encode(positive_text, NEGATIVE_TEXT, lora_clip)
+            lora_model, lora_clip = lora_mgr.reload_if_needed(lora_list, unet_model, clip_model)
 
             # VAE encode
             vaeencode_result, = vaeencode.encode(
                 pixels=image_tensor,
-                vae=ckpt_vae
+                vae=vae_model
             )
 
-            # load in the canny if needed
-            if (controlnetloader_result := control_net_mgr.reload_if_needed(canny)) is not None:
-                canny_strength, canny_low_thresh, canny_high_thresh = canny  
-                canny_result, = canny_node.detect_edge(
-                    low_threshold=canny_low_thresh,
-                    high_threshold=canny_high_thresh,
-                    image=image_tensor,
-                )
-                pos_cond, = controlnetapply.apply_controlnet(
-                    strength=canny_strength,
-                    conditioning=pos_cond,
-                    control_net=controlnetloader_result,
-                    image=canny_result,
-                )
+            # text conditioning
+            conditioning, = cliptextencode.encode(
+                text=positive_text,
+                clip=lora_clip,
+            )
+            fluxguidance_result, = fluxguidance.append(
+                guidance=FLUX_GUIDANCE, conditioning=conditioning
+            )
+            guider_result, = basicguider.get_guider(
+                model=lora_model,
+                conditioning=fluxguidance_result
+            )
 
             # latent sampler
-            ksampler_result, = ksampler.sample(
-                seed=seed,
+            noise_result, = randomnoise.get_noise(noise_seed=seed)
+            sigma_result, = basicscheduler.get_sigmas(
+                scheduler="beta",
                 steps=steps,
-                cfg=8,
-                sampler_name="euler",
-                scheduler="normal",
                 denoise=denoise,
                 model=lora_model,
-                positive=pos_cond,
-                negative=neg_cond,
+            )
+            sampler_output, denoised_output = samplercustomadvanced.sample(
+                noise=noise_result,
+                guider=guider_result,
+                sampler=sampler_select_val,
+                sigmas=sigma_result,
                 latent_image=vaeencode_result
             )
 
             # VAE decode
             vaedecode_result, = vaedecode.decode(
-                samples=ksampler_result,
-                vae=ckpt_vae
+                samples=denoised_output,
+                vae=vae_model
             )
 
             # save the images -- loop filename, and requested output
