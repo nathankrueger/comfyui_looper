@@ -1,16 +1,35 @@
 {
     "configurations": [
         {
-            "name": "main.py",
+            "name": "main.py SDXL",
             "type": "debugpy",
             "request": "launch",
             "program": "comfyui_looper/main.py",
             "console": "integratedTerminal",
             "args": [
                 "-w", "sdxl",
+                "-i", "C:\\Users\\natek\\Downloads\\cell.png",
+                "-o", "evolution",
+                "-j", "data/evolution.json",
+                "-t", "mp4",
+                "-a", "evolution.mp4",
+                "-x", "frame_delay:110",
+                "-x", "max_dim:768",
+                "-x", "v_bitrate:4000k",
+                "-x", "bounce", "-x", "bounce_frame_skip:2"
+            ]
+        },
+        {
+            "name": "main.py FLUX1.D",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "comfyui_looper/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-w", "flux1d",
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-o", "test_output_sdxl",
-                "-j", "data/goodrobot_badrobot.json",
+                "-o", "test_output_flux",
+                "-j", "data/goodrobot_badrobot_flux.json",
                 // "-j", "data/tests/test_expr.json",
                 "-t", "mp4",
                 "-a", "flux.mp4",

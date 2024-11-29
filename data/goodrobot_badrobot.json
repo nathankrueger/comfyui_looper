@@ -6,7 +6,7 @@
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
             "denoise_steps": 45,
-            "denoise_amt": 0.5,
+            "denoise_amt": "0.2 + (0.5/35)*n",
             "loras": [
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -81,7 +81,7 @@
         },
         {
             // terminator cont'd
-            "loop_iterations": 49,
+            "loop_iterations": 79,
             "denoise_amt": "0.6 + 0.5*sin(0.4*n)"
         },
         {
@@ -121,8 +121,8 @@
         },
         {
             // nebula / vader
-            "loop_iterations": 50,
-            "prompt": "vader, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
+            "loop_iterations": 80,
+            "prompt": "darth vader, sith, lord, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -150,17 +150,17 @@
         },
         {
             // h.r. giger alien
-            "loop_iterations": 50,
-            "prompt": "xenomorph, alien, H.R. Giger, bright, scary, monster, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
+            "loop_iterations": 80,
+            "prompt": "dmt, xenomorph, H.R. Giger, mouth, teeth, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula, high contrast",
             "denoise_amt": "0.4 + 0.25*sin(0.2*n)",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
-                    1.1
+                    1.0
                 ],
                 [
-                    "tbh295-sdxl.safetensors",
-                    0.8
+                    "Xenomorph.safetensors",
+                    1.0
                 ],
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -264,13 +264,13 @@
         {
             // boom cont'd!
             "denoise_amt": 0.6,
-            "loop_iterations": 29
+            "loop_iterations": 39
         },
         {
             // back to the ocean
             "denoise_amt": 0.7,
             "loop_iterations": 1,
-            "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, digital, electricity, eel, circuit, 4k, dmt",
+            "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, jellyfish, digital, electricity, eel, circuit, 4k, dmt",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",

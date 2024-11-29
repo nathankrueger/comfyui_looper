@@ -4,43 +4,44 @@
             // canny image starts getting weird...
             "loop_iterations": 35,
             "checkpoint": "flux1-schnell-fp8.safetensors",
-            "prompt": "a happy cyborg, very realistic finely detailed, intricate, circuit board, digital, no text shown in the image",
-            "denoise_steps": 4,
-            "denoise_amt": 0.75,
+            //"checkpoint": "flux1-dev.safetensors",
+            "prompt": "a happy male cyborg, very realistic, finely detailed, intricate patterns, circuit board, wire, digital, binary, hexadecimal, code, no text shown in the image",
+            "denoise_steps": 5,
+            "denoise_amt": 0.78,
             "loras": [
                 [
                     "boFLUX Psychedelic Surrealism v1.safetensors",
                     1.0
+                ],
+                [
+                    "Circuit_Board_FLUX.safetensors",
+                    1.0
                 ]
             ]
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 1,
+            "prompt": "psychedelic, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "denoise_amt": 0.83,
+            "denoise_steps": 10,
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 30,
+            "denoise_steps": 5,
+            "denoise_amt": 0.78
         }
-        //,
-        // {
-        //     // fisheye effect, robot gets angry!
-        //     "loop_iterations": 40,
-        //     "prompt": "psychedelic, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
-        //     "denoise_amt": 0.55,
-        //     "loras": [
-        //         [
-        //             "Circuit_Board_FLUX.safetensors",
-        //             1.0
-        //         ],
-        //         [
-        //             "FLUX_AMARI_HEROIC.safetensors",
-        //             0.9
-        //         ]
-        //     ],
-        //     "transforms": [
-        //         {
-        //             "name": "fisheye",
-        //             "strength": 0.21
-        //         },
-        //         {
-        //             "name": "zoom_in",
-        //             "zoom_amt": 0.09
-        //         }
-        //     ]
-        // }
     ],
     "version": 1
 }
