@@ -22,14 +22,18 @@
                 //     "angle": "0.5*n - 1"
                 // }
                 {
+                    "name": "fisheye",
+                    "strength": 0.1
+                },
+                {
                     "name": "wave",
-                    "strength": 10,
-                    "period": 60,
+                    "strength": 13,
+                    "period": 30,
                     "rate": 4
                 },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.1
+                    "zoom_amt": 0.06
                 }
             ]
         }

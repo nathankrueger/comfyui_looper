@@ -30,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--animation_filename', type=str, required=False)
     parser.add_argument('-x', '--animation_param', action='append', dest='animation_params')
     parser.add_argument('-w', '--workflow_type', default='sdxl', choices=['sdxl'])
-    args=parser.parse_args(LOOPER_ARGS)
+    args = parser.parse_args(LOOPER_ARGS)
     animation_params = parse_params(args.animation_params)
 
     loopback_filename = str(Path(get_input_directory()) / LOOP_IMG)
@@ -53,6 +53,6 @@ if __name__ == "__main__":
                 json_file=args.json_file,
                 animation_file=args.animation_filename,
                 animation_type=args.animation_type,
-                animation_params=args.animation_params,
+                animation_params=animation_params,
                 log_file=log_file
             )
