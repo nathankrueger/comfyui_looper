@@ -4,6 +4,7 @@ from typing import Any, Optional
 from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 
+import folder_paths
 from transforms import Transform
 from util import MathParser
 
@@ -77,6 +78,14 @@ class SettingsManager:
         # canny
         for ls in self.workflow.all_settings:
             assert ls.canny == EMPTY_LIST or len(ls.canny) == 3 or len(ls.canny) == 0
+
+        # lora & checkpoint files
+        for ls in self.workflow.all_settings:
+            if ls.loras != EMPTY_LIST:
+                for lorafile in ls.loras:
+                    assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], lorafile[0]))
+            if ls.checkpoint is not None:
+                assert os.path.exists(os.path.join(folder_paths.get_folder_paths("checkpoints")[0], ls.checkpoint))
 
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed
