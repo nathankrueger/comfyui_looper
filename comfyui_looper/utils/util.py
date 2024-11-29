@@ -65,25 +65,6 @@ def add_comfyui_directory_to_sys_path() -> None:
         sys.path.append(comfyui_path)
         print(f"'{comfyui_path}' added to sys.path")
 
-def add_extra_model_paths() -> None:
-    """
-    Parse the optional extra_model_paths.yaml file and add the parsed paths to the sys.path.
-    """
-    try:
-        from main import load_extra_path_config
-    except ImportError:
-        print(
-            "Could not import load_extra_path_config from main.py. Looking in utils.extra_config instead."
-        )
-        from utils.extra_config import load_extra_path_config
-
-    extra_model_paths = find_path("extra_model_paths.yaml")
-
-    if extra_model_paths is not None:
-        load_extra_path_config(extra_model_paths)
-    else:
-        print("Could not find the extra_model_paths config file.")
-
 def import_custom_nodes() -> None:
     """Find all custom nodes in the custom_nodes folder and add those node objects to NODE_CLASS_MAPPINGS
 

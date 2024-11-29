@@ -5,8 +5,8 @@ from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 
 import folder_paths
-from transforms import Transform
-from util import MathParser
+from image_processing.transforms import Transform
+from utils.util import MathParser
 
 CURRENT_WORKFLOW_VERSION = 1
 

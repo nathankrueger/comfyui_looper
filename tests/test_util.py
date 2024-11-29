@@ -4,7 +4,7 @@ import pytest
 if __name__ == '__main__':
     pytest.main(['-s'])
 
-from comfyui_looper.util import *
+from comfyui_looper.utils.util import *
 
 def test_math_parser():
     test_val = 5

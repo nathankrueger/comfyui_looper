@@ -7,10 +7,10 @@
             "program": "comfyui_looper/main.py",
             "console": "integratedTerminal",
             "args": [
-                "-w", "flux1d",
+                "-w", "sdxl",
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-o", "test_output_flux",
-                "-j", "data/goodrobot_badrobot_flux.json",
+                "-o", "test_output_sdxl",
+                "-j", "data/goodrobot_badrobot.json",
                 // "-j", "data/tests/test_expr.json",
                 "-t", "mp4",
                 "-a", "flux.mp4",

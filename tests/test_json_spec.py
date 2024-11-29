@@ -5,7 +5,7 @@ import pytest
 if __name__ == '__main__':
     pytest.main(['-s'])
 
-from comfyui_looper.json_spec import *
+from comfyui_looper.utils.json_spec import *
 
 def get_loop_settings():
     return LoopSettings(

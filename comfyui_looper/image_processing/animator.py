@@ -4,7 +4,7 @@ from moviepy import ImageSequenceClip
 import glob
 from PIL import Image, ImageOps
 
-from util import parse_params
+from utils.util import parse_params
 
 IMG_TYPE = '.png'
 DEFAULT_GIF_FRAME_DELAY_MS = 250

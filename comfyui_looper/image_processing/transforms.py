@@ -5,7 +5,7 @@ import math
 import torch
 import cv2
 
-import util
+import utils.util as util
 
 MAGIC_SEQUENCE_PARAMS = {
     'n',
