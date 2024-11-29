@@ -87,20 +87,6 @@ def import_custom_nodes() -> None:
     # Initializing custom nodes
     init_extra_nodes()
 
-def load_image(image_path: str):
-    i = Image.open(image_path)
-
-    i = ImageOps.exif_transpose(i)
-    image = i.convert("RGB")
-    image = np.array(image).astype(np.float32) / 255.0
-    image = torch.from_numpy(image)[None,]
-    if 'A' in i.getbands():
-        mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
-        mask = 1. - torch.from_numpy(mask)
-    else:
-        mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
-    return (image, mask.unsqueeze(0))
-
 def save_tensor_to_images(image, output_filenames: list[str], png_info=None):
     first_image_path = None
     for output_filename in output_filenames:
@@ -132,6 +118,7 @@ def all_subclasses(cls) -> set:
 def resize_image(input_path: str, output_path: str, max_dim: int):
     img = Image.open(input_path)
     img = ImageOps.exif_transpose(img)
+    img = img.convert("RGB")
     width, height = img.size
     
     if width > height:
@@ -146,6 +133,7 @@ def resize_image(input_path: str, output_path: str, max_dim: int):
 def resize_image_match_area(input_path: str, output_path: str, area: int, modulo: int | None):
     img = Image.open(input_path)
     img = ImageOps.exif_transpose(img)
+    img = img.convert("RGB")
     width, height = img.size
 
     w2h_ratio = float(width) / float(height)
