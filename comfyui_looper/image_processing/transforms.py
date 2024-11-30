@@ -8,11 +8,11 @@ import torch
 import cv2
 
 try:
+    from utils.util import util
+except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
     from comfyui_looper.utils import util
-except ModuleNotFoundError:
-    from utils.util import util
 
 MAGIC_SEQUENCE_PARAMS = {
     'n',

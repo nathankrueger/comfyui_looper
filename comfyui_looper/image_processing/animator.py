@@ -7,11 +7,11 @@ import glob
 from PIL import Image, ImageOps
 
 try:
+    from utils.util import parse_params
+except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
     from comfyui_looper.utils.util import parse_params
-except ModuleNotFoundError:
-    from utils.util import parse_params
 
 IMG_TYPE = '.png'
 DEFAULT_GIF_FRAME_DELAY_MS = 250

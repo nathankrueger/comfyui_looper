@@ -1,12 +1,17 @@
+from os.path import (
+    abspath,
+    dirname,
+    join,
+) 
+from os import makedirs
+from shutil import copy
 import sys
-import os
-import shutil
 import argparse
 import tqdm
 import torchvision.transforms as T
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
+SCRIPT_DIR = dirname(abspath(__file__))
+sys.path.append(dirname(SCRIPT_DIR))
 
 import comfyui_looper.image_processing.transforms as transforms
 import comfyui_looper.image_processing.animator as animator
@@ -48,7 +53,7 @@ TRANSFORMS_TO_TEST = [
 ]
 
 def get_filename_for_idx(idx: int, output_dir: str) -> str:
-    return os.path.join(output_dir, f"test_file_{idx:06}.png")
+    return join(output_dir, f"test_file_{idx:06}.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Transform tester')
@@ -59,8 +64,8 @@ if __name__ == '__main__':
 
     transforms.Transform.validate_transformation_params(TRANSFORMS_TO_TEST)
 
-    os.makedirs(args.output_folder, exist_ok=True)
-    shutil.copy(args.input_img, get_filename_for_idx(0, args.output_folder))
+    makedirs(args.output_folder, exist_ok=True)
+    copy(args.input_img, get_filename_for_idx(0, args.output_folder))
 
     for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
@@ -74,6 +79,6 @@ if __name__ == '__main__':
 
     animator.make_gif(
         input_folder=args.output_folder,
-        gif_output=os.path.join(args.output_folder, "test.gif"),
+        gif_output=join(args.output_folder, "test.gif"),
         params={'frame_delay': 200, 'max_dim': 768}
     )
