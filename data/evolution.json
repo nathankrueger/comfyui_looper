@@ -2,10 +2,10 @@
     "all_settings": [
         {
             // cells
-            "loop_iterations": 30,
+            "loop_iterations": 50,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "lsd, single cell, virus, amoeba",
-            "denoise_steps": 30,
+            "prompt": "lsd, single cell, bacteria, virus, amoeba",
+            "denoise_steps": 40,
             "denoise_amt": "0.2 + (0.5/35)*n",
             "loras": [
                 [
@@ -20,6 +20,22 @@
                     "detailer_v5.safetensors",
                     1.0
                 ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in_right",
+                    "zoom_amt": 0.1
+                },
+                {
+                    "name": "wave",
+                    "strength": 12,
+                    "period": 30,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.08
+                }
             ]
         },
         {
@@ -41,7 +57,6 @@
                     1.0
                 ]
             ],
-            "canny": [],
             "transforms": [
                 {
                     "name": "fisheye",
@@ -54,7 +69,7 @@
             ]
         },
         {
-            // small animals
+            // insectiods
             "loop_iterations": 40,
             "prompt": "ants, many small spiders, dmt, lsd, colors, beautiful, digital, electricity, circuit, 4k, dmt",
             "denoise_amt": 0.55,
@@ -107,13 +122,13 @@
         },
         {
             // crabs cont'd
-            "loop_iterations": 29,
-            "denoise_amt": "0.6 + 0.5*sin(0.4*n)"
+            "loop_iterations": 39,
+            "denoise_amt": "0.55 + 0.5*sin(0.3*n)"
         },
         {
             // lizard (rotate positive)
-            "loop_iterations": 30,
-            "prompt": "lsd, dmt, trip, lizard, komodo dragon, platypus, aligator, skeleton, detailed, 4k, photorealistic, sharp teeth, scary, evil, motherboard",
+            "loop_iterations": 40,
+            "prompt": "lsd, dmt, trip, lizard, platypus, aligator, skeleton, detailed, 4k, photorealistic, sharp teeth, scary, evil, motherboard",
             "denoise_amt": 0.6,
             "loras": [
                 [
@@ -147,7 +162,7 @@
         },
         {
             // rodent
-            "loop_iterations": 30,
+            "loop_iterations": 40,
             "prompt": "rodents, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
             "loras": [
                 [
@@ -197,9 +212,52 @@
             ]
         },
         {
+            // dinosaurs stegosaurus
+            "loop_iterations": 50,
+            "prompt": "dmt, stegosaurus, mouth, teeth, motherboard, digital, lsd, detailed, 4k, photorealistic, high contrast",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in_right",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
+            // saharan deset
+            "loop_iterations": 50,
+            "prompt": "dmt, africa, sahara, plains, trees, sabertooth tiger, lion, giraffe, gazelle, mouth, teeth, digital, lsd, detailed, 4k, photorealistic, high contrast",
+            "denoise_amt": "0.6",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in_left",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
             // apes
             "loop_iterations": 50,
-            "prompt": "ape, monkey, trees, neandertal, fire, sticks, hut, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
+            "prompt": "ape, monkey, trees, fire, sticks, hut, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
             "denoise_amt": 0.55,
             "loras": [
                 [
@@ -218,136 +276,106 @@
             "transforms": [
                 {
                     "name": "squeeze_tall",
+                    "squeeze_amt": 0.015
+                }
+            ]
+        },
+        {
+            // man
+            "loop_iterations": 50,
+            "prompt": "man, neanderthal, hunting, spear, homo sapien, cavement, trees, fire, sticks, hut, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic",
+            "denoise_amt": 0.55,
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "squeeze_tall",
+                    "squeeze_amt": 0.005
+                },
+                {
+                    "name": "zoom_in_right",
+                    "zoom_amt": 0.01
+                }
+            ]
+        },
+        {
+            // ai brain (raise denoise amount briefly)
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "brain connected to motherboard, digital, circuit, detailed, 4k, photorealistic, future, ai",
+            "loras": [
+                [
+                    "Electrical_Wires_Style_SDXL.safetensors",
+                    1.0
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
                     "squeeze_amt": 0.025
                 }
             ]
+        },
+        {
+            // ai brain cont'd
+            "denoise_amt": 0.6,
+            "loop_iterations": 49
+        },
+        {
+            // boom!
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // boom cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 39
         }
-        // ,
-        // {
-        //     // ai brain (raise denoise amount briefly)
-        //     "denoise_amt": 0.7,
-        //     "loop_iterations": 1,
-        //     "prompt": "brain connected to motherboard, digital, circuit, detailed, 4k, photorealistic, future, ai",
-        //     "loras": [
-        //         [
-        //             "Electrical_Wires_Style_SDXL.safetensors",
-        //             1.0
-        //         ],
-        //         [
-        //             "detailer_v5.safetensors",
-        //             1.0
-        //         ],
-        //         [
-        //             "Dark_Futuristic_Circuit_Boards.safetensors",
-        //             1.0
-        //         ]
-        //     ],
-        //     "transforms": [
-        //         {
-        //             "name": "squeeze_wide",
-        //             "squeeze_amt": 0.025
-        //         }
-        //     ]
-        // },
-        // {
-        //     // ai brain cont'd
-        //     "denoise_amt": 0.6,
-        //     "loop_iterations": 49
-        // },
-        // {
-        //     // boom!
-        //     "denoise_amt": 0.7,
-        //     "loop_iterations": 1,
-        //     "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
-        //     "loras": [
-        //         [
-        //             "SDXL-PsyAI-v4.safetensors",
-        //             1.1
-        //         ],
-        //         [
-        //             "detailer_v5.safetensors",
-        //             1.0
-        //         ],
-        //         [
-        //             "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
-        //             1.0
-        //         ]
-        //     ],
-        //     "transforms": [
-        //         {
-        //             "name": "fisheye",
-        //             "strength": 0.21
-        //         },
-        //         {
-        //             "name": "zoom_in",
-        //             "zoom_amt": 0.09
-        //         }
-        //     ]
-        // },
-        // {
-        //     // boom cont'd!
-        //     "denoise_amt": 0.6,
-        //     "loop_iterations": 39
-        // },
-        // {
-        //     // back to the ocean
-        //     "denoise_amt": 0.7,
-        //     "loop_iterations": 1,
-        //     "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, jellyfish, digital, electricity, eel, circuit, 4k, dmt",
-        //     "loras": [
-        //         [
-        //             "SDXL-PsyAI-v4.safetensors",
-        //             1.1
-        //         ],
-        //         [
-        //             "detailer_v5.safetensors",
-        //             1.0
-        //         ],
-        //         [
-        //             "Dark_Futuristic_Circuit_Boards.safetensors",
-        //             1.0
-        //         ]
-        //     ],
-        //     "transforms": [
-        //         {
-        //             "name": "wave",
-        //             "strength": 12,
-        //             "period": 30,
-        //             "rate": 4
-        //         },
-        //         {
-        //             "name": "zoom_in",
-        //             "zoom_amt": 0.05
-        //         }
-        //     ]
-        // },
-        // {
-        //     // ocean cont'd!
-        //     "denoise_amt": 0.6,
-        //     "loop_iterations": 69
-        // },
-        // {
-        //     // shark!
-        //     "denoise_amt": 0.6,
-        //     "loop_iterations": 30,
-        //     "prompt": "great white shark, hammerhead shark, ocean, coral reef, dmt, lsd, colors, beautiful, fish, digital, electricity, eel, circuit, 4k, dmt",
-        //     "transforms": [
-        //         {
-        //             "name": "fisheye",
-        //             "strength": 0.1
-        //         },
-        //         {
-        //             "name": "wave",
-        //             "strength": 12,
-        //             "period": 30,
-        //             "rate": 4
-        //         },
-        //         {
-        //             "name": "zoom_in",
-        //             "zoom_amt": 0.08
-        //         }
-        //     ]
-        // }
     ],
     "version": 1
 }

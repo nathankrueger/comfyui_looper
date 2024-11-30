@@ -9,6 +9,7 @@
             "args": [
                 "-w", "sdxl",
                 "-i", "C:\\Users\\natek\\Downloads\\cell.png",
+                "-p", "3",
                 "-o", "evolution",
                 "-j", "data/evolution.json",
                 "-t", "mp4",
@@ -43,10 +44,11 @@
             "name": "animator.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "comfyui_looper/animator.py",
+            "justMyCode": false,
+            "program": "comfyui_looper/image_processing/animator.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "test_output4", "-o", "goodbad_shark_v2_slower.mp4", "-x", "max_dim:768", "-x", "frame_delay:160",
+                "-i", "evolution", "-o", "evolution.mp4", "-x", "max_dim:768", "-x", "frame_delay:160",
                 "-x", "bounce", "-x", "bounce_frame_skip:2", "-t", "mp4", "-x", "v_bitrate:4000k"
             ]
         },

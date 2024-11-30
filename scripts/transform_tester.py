@@ -1,16 +1,15 @@
 import sys
 import os
 import shutil
-from pathlib import Path
 import argparse
 import tqdm
 import torchvision.transforms as T
 
-ppath = str(os.path.realpath(Path(os.path.dirname(__file__)) / ".." / "comfyui_looper"))
-sys.path.append(ppath)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-import transforms
-import animator
+import comfyui_looper.image_processing.transforms as transforms
+import comfyui_looper.image_processing.animator as animator
 
 TRANSFORMS_TO_TEST = [
     {

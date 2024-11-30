@@ -1,3 +1,5 @@
+from os.path import abspath, dirname
+import sys
 from typing import Any
 from PIL import Image, ImageOps
 import numpy as np
@@ -5,7 +7,12 @@ import math
 import torch
 import cv2
 
-import utils.util as util
+try:
+    SCRIPT_DIR = dirname(abspath(__file__))
+    sys.path.append(dirname(dirname(SCRIPT_DIR)))
+    from comfyui_looper.utils import util
+except ModuleNotFoundError:
+    from utils.util import util
 
 MAGIC_SEQUENCE_PARAMS = {
     'n',
