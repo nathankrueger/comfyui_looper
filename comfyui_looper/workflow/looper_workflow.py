@@ -22,6 +22,7 @@ class WorkflowEngine:
     """
     Base class that can be overridden for different models
     """
+    
     NAME = None
 
     @classmethod
@@ -48,6 +49,7 @@ class WorkflowEngine:
         """
         Computes the next image based on the loopsettings, and the current image
         """
+
         # override me
         return None
 
