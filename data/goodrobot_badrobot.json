@@ -6,6 +6,7 @@
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
             "denoise_steps": 45,
+            "cfg": 8.0,
             "denoise_amt": "0.2 + (0.5/35)*n",
             "loras": [
                 [

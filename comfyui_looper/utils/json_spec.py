@@ -27,6 +27,7 @@ class LoopSettings:
     prompt: Optional[str] = None
     denoise_steps: Optional[int | str] = None
     denoise_amt: Optional[float | str] = None
+    cfg: Optional[float | str] = None
     seed: int = field(default_factory=default_seed)
     canny: list[float | None] = field(default_factory=empty_list_factory)
     loras: list[tuple[str, float] | None] = field(default_factory=empty_list_factory)
@@ -50,7 +51,8 @@ class Workflow:
 class SettingsManager:
     EXPR_VARIABLES = {
         'denoise_amt',
-        'denoise_steps'
+        'denoise_steps',
+        'cfg'
     }
 
     def __init__(self, workflow_json_path: str):

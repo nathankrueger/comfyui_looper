@@ -110,6 +110,7 @@ def looper_main(
 
             # add entry to the logfile
             log_file.write(f"{output_image_filename}:" + loopsettings_json + os.linesep)
+            log_file.flush()
 
     # save animation
     if animation_file is not None:

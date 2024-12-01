@@ -1,0 +1,37 @@
+{
+    "all_settings": [
+        {
+            // canny image starts getting weird...
+            "loop_iterations": 35,
+            "checkpoint": "sd3.5_large_turbo.safetensors",
+            "prompt": "a happy male cyborg, finely detailed, intricate patterns, circuit board, wire, digital, binary, hexadecimal, code, no text shown in the image",
+            "denoise_steps": 10,
+            "cfg": 1,
+            "denoise_amt": 0.7
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 1,
+            "prompt": "psychedelic, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed",
+            "denoise_amt": 0.83,
+            "denoise_steps": 10,
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 30,
+            "denoise_steps": 5,
+            "denoise_amt": 0.78
+        }
+    ],
+    "version": 1
+}

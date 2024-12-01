@@ -9,11 +9,31 @@
             "args": [
                 "-w", "sdxl",
                 "-i", "C:\\Users\\natek\\Downloads\\cell.png",
-                "-p", "3",
-                "-o", "evolution",
+                "-p", "2",
+                "-o", "evolution2",
                 "-j", "data/evolution.json",
                 "-t", "mp4",
                 "-a", "evolution.mp4",
+                "-x", "frame_delay:110",
+                "-x", "max_dim:768",
+                "-x", "v_bitrate:4000k",
+                "-x", "bounce", "-x", "bounce_frame_skip:2"
+            ]
+        },
+        {
+            "name": "main.py SD3.5",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "comfyui_looper/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-w", "sd3.5",
+                "-i", "C:\\Users\\natek\\Downloads\\IMG_2978.JPEG",
+                "-p", "1",
+                "-o", "output/sd3p5_test",
+                "-j", "data/goodrobot_badrobot_sd3p5.json",
+                "-t", "mp4",
+                "-a", "test.mp4",
                 "-x", "frame_delay:110",
                 "-x", "max_dim:768",
                 "-x", "v_bitrate:4000k",

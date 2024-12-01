@@ -8,11 +8,11 @@ import torch
 import cv2
 
 try:
-    from utils.util import util
+    from utils.util import MathParser, all_subclasses
 except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
-    from comfyui_looper.utils import util
+    from comfyui_looper.utils.util import MathParser, all_subclasses
 
 MAGIC_SEQUENCE_PARAMS = {
     'n',
@@ -458,7 +458,7 @@ def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int
         """
 
         if isinstance(transform_expr, str):
-            return util.MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
+            return MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
         else:
             return transform_expr
 
@@ -492,7 +492,7 @@ def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]]
     image = torch.from_numpy(image)[None,]
     return image
 
-TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in util.all_subclasses(Transform)}
+TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in all_subclasses(Transform)}
 
 def get_transform_help_string() -> str:
     result = 'Available transforms:\n'

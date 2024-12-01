@@ -53,14 +53,8 @@ class SDXLCheckpointManager:
 
     def reload_if_needed(self, ckpt: str) -> tuple:
         if ckpt != self.prev_ckpt_filename:
-            ckpt_model, ckpt_clip, ckpt_vae = self.ckptloader.load_checkpoint(
-                ckpt_name=ckpt
-            )
-
+            self.prev_ckpt_model, self.prev_ckpt_clip, self.prev_ckpt_vae = self.ckptloader.load_checkpoint(ckpt_name=ckpt)
             self.prev_ckpt_filename = ckpt
-            self.prev_ckpt_model = ckpt_model
-            self.prev_ckpt_clip = ckpt_clip
-            self.prev_ckpt_vae = ckpt_vae
         
         return self.prev_ckpt_model, self.prev_ckpt_clip, self.prev_ckpt_vae
 
@@ -106,6 +100,40 @@ class Flux1DModelManager:
             self.prev_clip2_filename = clip2
         
         return self.prev_unet, self.prev_clip, self.prev_vae
+
+class SD3p5ModelManager:
+    def __init__(self):
+        self.dual_clip_loader = DualCLIPLoader()
+        self.ckptloader = CheckpointLoaderSimple()
+
+        # input strings
+        self.prev_model_checkpoint_filename: str = None
+        self.prev_clip1_filename: str = None
+        self.prev_clip2_filename: str = None
+
+        # output model objects
+        self.prev_model = None
+        self.prev_clip = None
+        self.prev_vae = None
+
+    def reload_if_needed(self, ckpt: str, clip1: str, clip2: str) -> tuple:
+        # unet reload
+        if ckpt != self.prev_model_checkpoint_filename:
+            self.prev_model, _, self.prev_vae = self.ckptloader.load_checkpoint(ckpt_name=ckpt)
+            self.prev_model_checkpoint_filename = ckpt
+        
+        # clip reload
+        if clip1 != self.prev_clip1_filename or clip2 != self.prev_clip2_filename:
+            self.prev_clip, = self.dual_clip_loader.load_clip(
+                clip_name1=clip1,
+                clip_name2=clip2,
+                type="sd3"
+            )
+            self.prev_clip1_filename = clip1
+            self.prev_clip2_filename = clip2
+        
+        return self.prev_model, self.prev_clip, self.prev_vae
+
 
 class SDXLClipEncodeWrapper:
     def __init__(self):

@@ -7,55 +7,47 @@ from utils.util import resize_image_match_area
 # ComfyUI imports
 from utils.node_wrappers import (
     LoraManager,
-    SDXLCheckpointManager,
+    SD3p5ModelManager,
     ClipEncodeWrapper,
-    ControlNetManager,
 )
 from nodes import (
     VAEDecode,
     VAEEncode,
     KSampler,
-    ControlNetApply,
-    NODE_CLASS_MAPPINGS,
 )
 
 # constants
-SDXL_WIDTH=1024
-SDXL_LATENT_REDUCTION_FACTOR=8
+SD3p5_AREA=1024**2
+SD3p5_LATENT_REDUCTION_FACTOR=8
+SD3p5_CLIP1="t5xxl_fp8_e4m3fn.safetensors"  # TODO: these should be part of json spec
+SD3p5_CLIP2="clip_g.safetensors"
 NEGATIVE_TEXT='text, watermark, logo'
-CANNY_CONTROLNET='control-lora-canny-rank256.safetensors'
 
-class SDXLWorkflowEngine(WorkflowEngine):
-    NAME = "sdxl"
+class SD3p5WorkflowEngine(WorkflowEngine):
+    NAME = "sd3.5"
 
     def __init__(self):
-        self.canny_node = None
-        self.controlnetapply = None
         self.vaeencode = None
         self.ksampler = None
         self.vaedecode = None
         self.lora_mgr = None
         self.ckpt_mgr = None
         self.text_cond = None
-        self.control_net_mgr = None
 
     def resize_images_for_model(self, input_path: str, output_paths: list[str]):
         for output_path in output_paths:
-            resize_image_match_area(input_path, output_path, SDXL_WIDTH**2, SDXL_LATENT_REDUCTION_FACTOR)
+            resize_image_match_area(input_path, output_path, SD3p5_AREA, SD3p5_LATENT_REDUCTION_FACTOR)
 
     def setup(self):
         # comfy nodes
-        self.canny_node = NODE_CLASS_MAPPINGS["Canny"]()
-        self.controlnetapply = ControlNetApply()
         self.vaeencode = VAEEncode()
         self.ksampler = KSampler()
         self.vaedecode = VAEDecode()
 
         # wrappers
         self.lora_mgr = LoraManager()
-        self.ckpt_mgr = SDXLCheckpointManager()
+        self.ckpt_mgr = SD3p5ModelManager()
         self.text_cond = ClipEncodeWrapper()
-        self.control_net_mgr = ControlNetManager(CANNY_CONTROLNET)
 
     def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings):
         positive_text = loopsettings.prompt
@@ -64,11 +56,10 @@ class SDXLWorkflowEngine(WorkflowEngine):
         cfg = loopsettings.cfg
         lora_list = loopsettings.loras
         checkpoint = loopsettings.checkpoint
-        canny = loopsettings.canny
         seed = loopsettings.seed
 
         # load in new checkpoint if changed
-        ckpt_model, ckpt_clip, ckpt_vae = self.ckpt_mgr.reload_if_needed(checkpoint)
+        ckpt_model, ckpt_clip, ckpt_vae = self.ckpt_mgr.reload_if_needed(checkpoint, SD3p5_CLIP1, SD3p5_CLIP2)
 
         # only load in new loras as needd
         lora_model, lora_clip = self.lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
@@ -81,21 +72,6 @@ class SDXLWorkflowEngine(WorkflowEngine):
             pixels=image_tensor,
             vae=ckpt_vae
         )
-
-        # load in the canny if needed
-        if (controlnetloader_result := self.control_net_mgr.reload_if_needed(canny)) is not None:
-            canny_strength, canny_low_thresh, canny_high_thresh = canny  
-            canny_result, = self.canny_node.detect_edge(
-                low_threshold=canny_low_thresh,
-                high_threshold=canny_high_thresh,
-                image=image_tensor,
-            )
-            pos_cond, = self.controlnetapply.apply_controlnet(
-                strength=canny_strength,
-                conditioning=pos_cond,
-                control_net=controlnetloader_result,
-                image=canny_result,
-            )
 
         # latent sampler
         ksampler_result, = self.ksampler.sample(
