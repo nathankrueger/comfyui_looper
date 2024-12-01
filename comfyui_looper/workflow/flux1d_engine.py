@@ -17,17 +17,18 @@ from nodes import (
 )
 
 # constants
-FLUX1D_WIDTH=1024
+FLUX1D_AREA=1024**2
 FLUX1D_LATENT_REDUCTION_FACTOR=8
 FLUX_SCHEDULER="beta"
 FLUX_SAMPLER="euler"
 FLUX_VAE="ae.safetensors"
-FLUX_CLIP1="t5xxl_fp8_e4m3fn.safetensors"  # TODO: these should be part of json spec
-FLUX_CLIP2="clip_l.safetensors"
 FLUX_GUIDANCE=3.5
 
 class Flux1DWorkflowEngine(WorkflowEngine):
     NAME = "flux1d"
+    DEFAULT_SETTING_DICT = {
+        "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"]
+    }
 
     def __init__(self):
         self.vaeencode = None
@@ -44,7 +45,7 @@ class Flux1DWorkflowEngine(WorkflowEngine):
 
     def resize_images_for_model(self, input_path: str, output_paths: list[str]):
         for output_path in output_paths:
-            resize_image_match_area(input_path, output_path, FLUX1D_WIDTH**2, FLUX1D_LATENT_REDUCTION_FACTOR)
+            resize_image_match_area(input_path, output_path, FLUX1D_AREA, FLUX1D_LATENT_REDUCTION_FACTOR)
 
     def setup(self):
         # comfy nodes
@@ -68,10 +69,12 @@ class Flux1DWorkflowEngine(WorkflowEngine):
         denoise = loopsettings.denoise_amt
         lora_list = loopsettings.loras
         checkpoint = loopsettings.checkpoint
+        clip = loopsettings.clip
         seed = loopsettings.seed
 
         # load in new model if changed
-        unet_model, clip_model, vae_model = self.model_mgr.reload_if_needed(checkpoint, FLUX_VAE, FLUX_CLIP1, FLUX_CLIP2)
+        assert len(clip) == 2
+        unet_model, clip_model, vae_model = self.model_mgr.reload_if_needed(checkpoint, FLUX_VAE, clip[0], clip[1])
 
         # only load in new loras as needd
         lora_model, lora_clip = self.lora_mgr.reload_if_needed(lora_list, unet_model, clip_model)

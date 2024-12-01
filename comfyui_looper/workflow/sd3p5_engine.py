@@ -19,12 +19,15 @@ from nodes import (
 # constants
 SD3p5_AREA=1024**2
 SD3p5_LATENT_REDUCTION_FACTOR=8
-SD3p5_CLIP1="t5xxl_fp8_e4m3fn.safetensors"  # TODO: these should be part of json spec
-SD3p5_CLIP2="clip_g.safetensors"
 NEGATIVE_TEXT='text, watermark, logo'
 
 class SD3p5WorkflowEngine(WorkflowEngine):
     NAME = "sd3.5"
+    DEFAULT_SETTING_DICT = {
+        "checkpoint": "sd3.5_large.safetensors",
+        "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_g.safetensors"],
+        "cfg": 3.5
+    }
 
     def __init__(self):
         self.vaeencode = None
@@ -56,10 +59,12 @@ class SD3p5WorkflowEngine(WorkflowEngine):
         cfg = loopsettings.cfg
         lora_list = loopsettings.loras
         checkpoint = loopsettings.checkpoint
+        clip = loopsettings.clip
         seed = loopsettings.seed
 
         # load in new checkpoint if changed
-        ckpt_model, ckpt_clip, ckpt_vae = self.ckpt_mgr.reload_if_needed(checkpoint, SD3p5_CLIP1, SD3p5_CLIP2)
+        assert len(clip) == 2
+        ckpt_model, ckpt_clip, ckpt_vae = self.ckpt_mgr.reload_if_needed(checkpoint, clip[0], clip[1])
 
         # only load in new loras as needd
         lora_model, lora_clip = self.lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
@@ -79,7 +84,7 @@ class SD3p5WorkflowEngine(WorkflowEngine):
             steps=steps,
             cfg=cfg,
             sampler_name="euler",
-            scheduler="normal",
+            scheduler="beta",
             denoise=denoise,
             model=lora_model,
             positive=pos_cond,

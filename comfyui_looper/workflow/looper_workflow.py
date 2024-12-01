@@ -1,7 +1,8 @@
 import os
 import torch
 import tqdm
-from typing import IO
+from typing import IO, Any
+from dataclasses import fields
 from PIL.PngImagePlugin import PngInfo
 
 from image_processing.animator import make_animation
@@ -24,10 +25,22 @@ class WorkflowEngine:
     """
     
     NAME = None
+    DEFAULT_SETTING_DICT = {}
 
     @classmethod
     def get_name(cls):
         return cls.NAME
+    
+    @classmethod
+    def get_default_for_setting(cls, setting_name: str) -> Any:
+        """
+        Used to provide defaults
+        """
+
+        if setting_name in cls.DEFAULT_SETTING_DICT:
+            return cls.DEFAULT_SETTING_DICT[setting_name]
+        else:
+            return None
     
     def resize_images_for_model(self, input_path: str, output_paths: list[str]):
         """
@@ -84,6 +97,14 @@ def looper_main(
                 loopsettings.seed = seed
             sm.update_seed(iter, seed)
             prev_seed = seed
+
+            # set defaults as needed
+            for setting in fields(loopsettings):
+                setting_name = setting.name
+                setting_val = loopsettings.__getattribute__(setting_name)
+                if setting_val is None or (isinstance(setting_val, list) and len(setting_val) == 0):
+                    if (setting_val_default := engine.get_default_for_setting(setting_name)) is not None:
+                        loopsettings.__setattr__(setting_name, setting_val_default)
 
             # load in image & resize it
             image_tensor = load_image_with_transforms(

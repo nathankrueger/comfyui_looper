@@ -1,7 +1,7 @@
 from workflow.looper_workflow import WorkflowEngine
 from workflow.flux1d_engine import Flux1DWorkflowEngine
 from workflow.sdxl_engine import SDXLWorkflowEngine
-from workflow.sd3p5_workflow import SD3p5WorkflowEngine
+from workflow.sd3p5_engine import SD3p5WorkflowEngine
 
 WORKFLOW_ENGINES = {
     Flux1DWorkflowEngine,

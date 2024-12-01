@@ -20,13 +20,17 @@ from nodes import (
 )
 
 # constants
-SDXL_WIDTH=1024
+SDXL_AREA=1024**2
 SDXL_LATENT_REDUCTION_FACTOR=8
 NEGATIVE_TEXT='text, watermark, logo'
 CANNY_CONTROLNET='control-lora-canny-rank256.safetensors'
 
 class SDXLWorkflowEngine(WorkflowEngine):
     NAME = "sdxl"
+    DEFAULT_SETTING_DICT = {
+        "checkpoint": "sdXL_v10VAEFix.safetensors",
+        "cfg": 8.0
+    }
 
     def __init__(self):
         self.canny_node = None
@@ -41,7 +45,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
 
     def resize_images_for_model(self, input_path: str, output_paths: list[str]):
         for output_path in output_paths:
-            resize_image_match_area(input_path, output_path, SDXL_WIDTH**2, SDXL_LATENT_REDUCTION_FACTOR)
+            resize_image_match_area(input_path, output_path, SDXL_AREA, SDXL_LATENT_REDUCTION_FACTOR)
 
     def setup(self):
         # comfy nodes
