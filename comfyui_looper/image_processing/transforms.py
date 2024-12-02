@@ -451,6 +451,108 @@ class WaveDistortionTransformation(Transform):
         result = ImageOps.deform(img, WaveDistortionTransformation.WaveDeformer(positive=positive, period=period, strength=strength))
         return result
 
+class PerspectiveTransformation(Transform):
+    NAME = 'perspective'
+    REQUIRED_PARAMS = {'strength', 'shrink_edge'}
+
+
+    def transform(self, img: Image) -> Image:
+        image_width, image_height = img.size
+        strength = int(self.params['strength'])
+        shrink_edge = self.params['shrink_edge']
+        image = np.asarray(img)
+
+        src_pts = np.float32(
+            [
+                # top left
+                [0,0], 
+
+                # bottom left
+                [0,image_height],
+
+                # top right
+                [image_width, 0],
+
+                # bottom right
+                [image_width, image_height]
+            ]
+        )
+
+        match shrink_edge:
+            case 'top':
+                dest_pts = np.float32(
+                    [
+                        # top left
+                        [strength,0],
+
+                        # bottom left
+                        [0,image_height],
+
+                        # top right
+                        [image_width-(strength+1), 0],
+
+                        # bottom right
+                        [image_width, image_height]
+                    ]
+                )
+            case 'bottom':
+                dest_pts = np.float32(
+                    [
+                        # top left
+                        [0,0],
+
+                        # bottom left
+                        [strength,image_height],
+
+                        # top right
+                        [image_width, 0],
+
+                        # bottom right
+                        [image_width-(strength+1), image_height]
+                    ]
+                )
+            case 'left':
+                dest_pts = np.float32(
+                    [
+                        # top left
+                        [0,strength],
+
+                        # bottom left
+                        [0,image_height-(strength+1)],
+
+                        # top right
+                        [image_width, 0],
+
+                        # bottom right
+                        [image_width, image_height]
+                    ]
+                )
+            case 'right':
+                dest_pts = np.float32(
+                    [
+                        # top left
+                        [0,0],
+
+                        # bottom left
+                        [0,image_height],
+
+                        # top right
+                        [image_width, strength],
+
+                        # bottom right
+                        [image_width, image_height-(strength+1)]
+                    ]
+                )
+            case _:
+                raise Exception(f"Illegal value for shrink_edge: {shrink_edge}")
+
+        matrix = cv2.getPerspectiveTransform(src_pts, dest_pts)
+        result = cv2.warpPerspective(image, matrix, (image_width, image_height))
+
+        # resize back to initial size
+        resized_result = Image.fromarray(result).resize((image_width, image_height))
+        return resized_result
+
 def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int, total_iter: int):
         """
         n --> total iteration sequence number

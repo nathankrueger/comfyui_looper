@@ -2,34 +2,12 @@ import sys
 import os
 import shutil
 import math
+import ast
+import operator as op
 from datetime import datetime
-from typing import Sequence, Mapping, Any, Union
 from PIL import Image, ImageOps
 import numpy as np
 import torch
-
-def get_value_at_index(obj: Union[Sequence, Mapping], index: int) -> Any:
-    """Returns the value at the given index of a sequence or mapping.
-
-    If the object is a sequence (like list or string), returns the value at the given index.
-    If the object is a mapping (like a dictionary), returns the value at the index-th key.
-
-    Some return a dictionary, in these cases, we look for the "results" key
-
-    Args:
-        obj (Union[Sequence, Mapping]): The object to retrieve the value from.
-        index (int): The index of the value to retrieve.
-
-    Returns:
-        Any: The value at the given index.
-
-    Raises:
-        IndexError: If the index is out of bounds for the object and the object is not a mapping.
-    """
-    try:
-        return obj[index]
-    except KeyError:
-        return obj["result"][index]
 
 def find_path(name: str, path: str = None) -> str:
     """
@@ -152,10 +130,6 @@ def get_torch_device_vram_used_gb() -> float:
     vram_used = torch.cuda.memory_allocated(device) / (1024 ** 3)
     return vram_used
 
-import math
-import ast
-import operator as op
-
 # adapted from solution: https://stackoverflow.com/questions/43836866/safely-evaluate-simple-string-equation
 class MathParser:
     """ Basic parser with local variable and math functions 
@@ -172,22 +146,22 @@ class MathParser:
        data['theta'] =0.0
        assert parser.parse('r*cos(theta)') == 3.4
     """
-        
+    
     _operators2method = {
-        ast.Add: op.add, 
-        ast.Sub: op.sub, 
-        ast.BitXor: op.xor, 
-        ast.Or:  op.or_, 
-        ast.And: op.and_, 
-        ast.Mod:  op.mod,
+        ast.Add: op.add,
+        ast.Sub: op.sub,
+        ast.BitXor: op.xor,
+        ast.Or: op.or_,
+        ast.And: op.and_,
+        ast.Mod: op.mod,
         ast.Mult: op.mul,
-        ast.Div:  op.truediv,
-        ast.Pow:  op.pow,
-        ast.FloorDiv: op.floordiv,              
-        ast.USub: op.neg, 
+        ast.Div: op.truediv,
+        ast.Pow: op.pow,
+        ast.FloorDiv: op.floordiv,
+        ast.USub: op.neg,
         ast.UAdd: lambda a:a  
     }
-    
+
     def __init__(self, vars, math=True):
         self._vars = vars
         if not math:
@@ -202,11 +176,12 @@ class MathParser:
     @staticmethod
     def _alt_name(name):
         if name.startswith("_"):
-            raise NameError(f"{name!r}") 
+            raise NameError(f"{name!r}")
         try:
-            return  getattr(math, name)
+            return getattr(math, name)
         except AttributeError:
-            raise NameError(f"{name!r}") 
+            #raise NameError(f"{name!r}") 
+            return name
 
     @staticmethod
     def _no_alt_name(name):
@@ -218,18 +193,18 @@ class MathParser:
         if isinstance(node, ast.Num): # <number>
             return node.n
         if isinstance(node, ast.Name):
-            return self._Name(node.id) 
-        if isinstance(node, ast.BinOp):            
+            return self._Name(node.id)
+        if isinstance(node, ast.BinOp):
             method = self._operators2method[type(node.op)]                      
-            return method( self.eval_(node.left), self.eval_(node.right) )            
-        if isinstance(node, ast.UnaryOp):             
-            method = self._operators2method[type(node.op)]  
+            return method( self.eval_(node.left), self.eval_(node.right) )
+        if isinstance(node, ast.UnaryOp):
+            method = self._operators2method[type(node.op)]
             return method( self.eval_(node.operand) )
         if isinstance(node, ast.Attribute):
             return getattr(self.eval_(node.value), node.attr)
 
-        if isinstance(node, ast.Call):            
-            return self.eval_(node.func)( 
+        if isinstance(node, ast.Call):
+            return self.eval_(node.func)(
                       *(self.eval_(a) for a in node.args),
                       **{k.arg:self.eval_(k.value) for k in node.keywords}
                      )
@@ -238,10 +213,10 @@ class MathParser:
 
     def parse(self, expr):
         return self.eval_(ast.parse(expr, mode='eval'))
-    
+
     def __call__(self, expr):
         return self.parse(expr)
-    
+
 def parse_params(params_list: list[str]) -> dict[str, str]:
     params = {}
     if params_list is not None:

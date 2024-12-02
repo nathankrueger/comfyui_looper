@@ -1,0 +1,41 @@
+{
+    "all_settings": [
+        {
+            // boom!
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": [
+                {
+                    "name": "perspective",
+                    "strength": 35,
+                    "shrink_edge": "bottom"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.08
+                }
+            ]
+        },
+        {
+            // boom cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 39
+        }
+    ],
+    "version": 1
+}

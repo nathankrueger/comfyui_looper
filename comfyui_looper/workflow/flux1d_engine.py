@@ -27,7 +27,8 @@ FLUX_GUIDANCE=3.5
 class Flux1DWorkflowEngine(WorkflowEngine):
     NAME = "flux1d"
     DEFAULT_SETTING_DICT = {
-        "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"]
+        "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"],
+        "denoise_steps": 20
     }
 
     def __init__(self):

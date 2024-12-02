@@ -1,0 +1,101 @@
+{
+    "all_settings": [
+        {
+            // canny image starts getting weird...
+            "loop_iterations": 35,
+            "prompt": "petey man, lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
+            "denoise_steps": 45,
+            "cfg": 8.0,
+            "denoise_amt": "0.2 + (0.5/35)*n",
+            "loras": [
+                [
+                    "peteyv2.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "canny": [
+                0.6,
+                0.01,
+                0.6
+            ]
+        },
+        {
+            // fisheye effect, robot gets angry!
+            "loop_iterations": 40,
+            "prompt": "petey, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "denoise_amt": 0.55,
+            "loras": [
+                [
+                    "peteyv2.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "canny": [],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // terminator
+            "loop_iterations": 1,
+            "denoise_amt": 0.75,
+            "prompt": "petey, terminator, t2, arnold schwarzenegger, guns, ak-47, skull, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "loras": [
+                [
+                    "peteyv2.safetensors",
+                    1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
+            "transforms": []
+        },
+        {
+            // terminator cont'd
+            "loop_iterations": 79,
+            "denoise_amt": "0.6 + 0.5*sin(0.4*n)"
+        }
+    ],
+    "version": 1
+}

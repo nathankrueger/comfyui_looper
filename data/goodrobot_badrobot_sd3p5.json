@@ -3,18 +3,17 @@
         {
             // canny image starts getting weird...
             "loop_iterations": 35,
-            "checkpoint": "sd3.5_large.safetensors",
-            "prompt": "a happy male cyborg, finely detailed, intricate patterns, circuit board, wire, digital, binary, hexadecimal, code, no text shown in the image",
-            "denoise_steps": 25,
-            "cfg": 3.5,
-            "denoise_amt": 0.75
+            "checkpoint": "sd3.5_large_turbo.safetensors",
+            "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, happy, smiling, manly, brawny",
+            "denoise_steps": 8,
+            "cfg": 4,
+            "denoise_amt": "0.4 + (0.5/35)*n"
         },
         {
             // fisheye effect, robot gets angry!
-            "loop_iterations": 1,
-            "prompt": "psychedelic, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed",
-            "denoise_amt": 0.83,
-            "denoise_steps": 10,
+            "loop_iterations": 40,
+            "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed",
+            "denoise_amt": 0.55,
             "transforms": [
                 {
                     "name": "fisheye",
@@ -27,10 +26,155 @@
             ]
         },
         {
-            // fisheye effect, robot gets angry!
+            // terminator
+            "loop_iterations": 1,
+            "denoise_amt": 0.75,
+            "prompt": "terminator, t2, arnold schwarzenegger, guns, ak-47, skull, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
+            "transforms": []
+        },
+        {
+            // terminator cont'd
+            "loop_iterations": 79,
+            "denoise_amt": "0.6 + 0.5*sin(0.4*n)"
+        },
+        {
+            // psychedelic madness takes over (rotate positive)
+            "loop_iterations": 40,
+            "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, sharp teeth, scary, evil, motherboard",
+            "denoise_amt": 0.6,
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": 1.5
+                }
+            ]
+        },
+        {
+            // psychedelic madness takes over (rotate negative)
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": -1.5
+                }
+            ]
+        },
+        {
+            // nebula / vader
+            "loop_iterations": 80,
+            "prompt": "darth vader, sith, lord, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
+            // h.r. giger alien
+            "loop_iterations": 80,
+            "prompt": "dmt, xenomorph, H.R. Giger, mouth, teeth, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula, high contrast",
+            "denoise_amt": "0.4 + 0.25*sin(0.2*n)",
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.03
+                }
+            ]
+        },
+        {
+            // city
+            "loop_iterations": 50,
+            "prompt": "city, skyline, tower, skyscraper, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
+            "denoise_amt": 0.55,
+            "transforms": [
+                {
+                    "name": "squeeze_tall",
+                    "squeeze_amt": 0.025
+                }
+            ]
+        },
+        {
+            // ai brain (raise denoise amount briefly)
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "brain connected to motherboard, digital, circuit, detailed, 4k, photorealistic, future, ai",
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
+                    "squeeze_amt": 0.025
+                }
+            ]
+        },
+        {
+            // ai brain cont'd
+            "denoise_amt": 0.6,
+            "loop_iterations": 49
+        },
+        {
+            // boom!
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
+        },
+        {
+            // boom cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 39
+        },
+        {
+            // back to the ocean
+            "denoise_amt": 0.7,
+            "loop_iterations": 1,
+            "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, jellyfish, digital, electricity, eel, circuit, 4k, dmt",
+            "transforms": [
+                {
+                    "name": "wave",
+                    "strength": 12,
+                    "period": 30,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // ocean cont'd!
+            "denoise_amt": 0.6,
+            "loop_iterations": 69
+        },
+        {
+            // shark!
+            "denoise_amt": 0.6,
             "loop_iterations": 30,
-            "denoise_steps": 5,
-            "denoise_amt": 0.78
+            "prompt": "great white shark, hammerhead shark, ocean, coral reef, dmt, lsd, colors, beautiful, fish, digital, electricity, eel, circuit, 4k, dmt",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.1
+                },
+                {
+                    "name": "wave",
+                    "strength": 12,
+                    "period": 30,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.08
+                }
+            ]
         }
     ],
     "version": 1

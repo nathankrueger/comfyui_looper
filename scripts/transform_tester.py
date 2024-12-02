@@ -17,20 +17,20 @@ import comfyui_looper.image_processing.transforms as transforms
 import comfyui_looper.image_processing.animator as animator
 
 TRANSFORMS_TO_TEST = [
-    {
-        "name": "fisheye",
-        "strength": 0.1
-    },
-    {
-        "name": "wave",
-        "strength": 7,
-        "period": 40,
-        "rate": 4
-    },
-    {
-        "name": "zoom_in",
-        "zoom_amt": 0.06
-    }
+    # {
+    #     "name": "fisheye",
+    #     "strength": 0.1
+    # },
+    # {
+    #     "name": "wave",
+    #     "strength": 7,
+    #     "period": 40,
+    #     "rate": 4
+    # },
+    # {
+    #     "name": "zoom_in",
+    #     "zoom_amt": 0.06
+    # }
     # {
     #     'name': 'wave',
     #     'strength': 7,
@@ -49,7 +49,16 @@ TRANSFORMS_TO_TEST = [
     #     'name': 'paste_img',
     #     'img_path': 'C:/Users/natek/Downloads/IMG_1127.jpeg',
     #     'opacity': 0.3
-    # }
+    # },
+    {
+        "name": "perspective",
+        "strength": 15,
+        "shrink_edge": "cos(pi)"
+    },
+    {
+        "name": "zoom_in",
+        "zoom_amt": 0.03
+    }
 ]
 
 def get_filename_for_idx(idx: int, output_dir: str) -> str:

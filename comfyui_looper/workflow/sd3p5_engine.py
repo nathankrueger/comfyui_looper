@@ -26,7 +26,8 @@ class SD3p5WorkflowEngine(WorkflowEngine):
     DEFAULT_SETTING_DICT = {
         "checkpoint": "sd3.5_large.safetensors",
         "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_g.safetensors"],
-        "cfg": 3.5
+        "cfg": 3.5,
+        "denoise_steps": 20
     }
 
     def __init__(self):

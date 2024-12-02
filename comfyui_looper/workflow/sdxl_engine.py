@@ -29,7 +29,8 @@ class SDXLWorkflowEngine(WorkflowEngine):
     NAME = "sdxl"
     DEFAULT_SETTING_DICT = {
         "checkpoint": "sdXL_v10VAEFix.safetensors",
-        "cfg": 8.0
+        "cfg": 8.0,
+        "denoise_steps": 20
     }
 
     def __init__(self):
