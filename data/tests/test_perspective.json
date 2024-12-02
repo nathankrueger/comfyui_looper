@@ -4,7 +4,7 @@
             // boom!
             "denoise_amt": 0.7,
             "loop_iterations": 1,
-            "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
+            "prompt": "dinosaur, scary, teeth, lsd, dmt, visionary art, gnarly",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -20,6 +20,14 @@
                 ]
             ],
             "transforms": [
+                // {
+                //     "name": "fisheye",
+                //     "strength": 0.21
+                // },
+                // {
+                //     "name": "zoom_in",
+                //     "zoom_amt": 0.09
+                // },
                 {
                     "name": "perspective",
                     "strength": 35,
