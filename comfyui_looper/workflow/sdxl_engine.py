@@ -8,8 +8,8 @@ from utils.util import resize_image_match_area
 from utils.node_wrappers import (
     LoraManager,
     SDXLCheckpointManager,
-    ClipEncodeWrapper,
     ControlNetManager,
+    ConDeltaManager,
 )
 from nodes import (
     VAEDecode,
@@ -59,14 +59,15 @@ class SDXLWorkflowEngine(WorkflowEngine):
         # wrappers
         self.lora_mgr = LoraManager()
         self.ckpt_mgr = SDXLCheckpointManager()
-        self.text_cond = ClipEncodeWrapper()
         self.control_net_mgr = ControlNetManager(CANNY_CONTROLNET)
+        self.con_delta_mgr = ConDeltaManager()
 
     def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings):
         positive_text = loopsettings.prompt
         steps = loopsettings.denoise_steps
         denoise = loopsettings.denoise_amt
         cfg = loopsettings.cfg
+        con_delta = loopsettings.con_delta
         lora_list = loopsettings.loras
         checkpoint = loopsettings.checkpoint
         canny = loopsettings.canny
@@ -78,8 +79,13 @@ class SDXLWorkflowEngine(WorkflowEngine):
         # only load in new loras as needd
         lora_model, lora_clip = self.lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
 
-        # conditioning
-        pos_cond, neg_cond = self.text_cond.encode(positive_text, NEGATIVE_TEXT, lora_clip)
+        # conditioning w/ con_delta
+        pos_cond, neg_cond = self.con_delta_mgr.encode(
+            clip=lora_clip,
+            pos_text=positive_text,
+            neg_text=NEGATIVE_TEXT,
+            con_delta=con_delta
+        )
 
         # VAE encode
         vaeencode_result, = self.vaeencode.encode(

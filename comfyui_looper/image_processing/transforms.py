@@ -555,12 +555,16 @@ class PerspectiveTransformation(Transform):
 
 def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int, total_iter: int):
         """
-        n --> total iteration sequence number
-        offset --> current LoopSettings sequence number
+        n       --> total iteration sequence number
+        offset  --> current LoopSettings sequence number
+        total_n --> length of entire workflow
         """
 
         if isinstance(transform_expr, str):
-            return MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
+            try:
+                return MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
+            except:
+                return transform_expr
         else:
             return transform_expr
 

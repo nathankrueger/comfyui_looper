@@ -189,3 +189,31 @@ class ControlNetManager:
 
         return self.controlnet_model
 
+class ConDeltaManager:
+    def __init__(self):
+        self.cond_subtract_node = NODE_CLASS_MAPPINGS["ConditioningSubtract"]()
+        self.cond_apply_node = NODE_CLASS_MAPPINGS["ConditioningAddConDelta"]()
+        self.delta_text_node_a = CLIPTextEncode()
+        self.delta_text_node_b = CLIPTextEncode()
+        self.clip_enconder = ClipEncodeWrapper()
+
+    def encode(self, clip, pos_text: str, neg_text: str, con_delta):
+        pos_cond, neg_cond = self.clip_enconder.encode(pos_text=pos_text, neg_text=neg_text, clip=clip)
+        
+        if len(con_delta) == 3:
+            strength: float = con_delta["strength"]
+            pos_delta_text: str = con_delta["pos"]
+            neg_delta_text: str = con_delta["neg"]
+            cond_a, = self.delta_text_node_a.encode(clip=clip, text=pos_delta_text)
+            cond_b, = self.delta_text_node_b.encode(clip=clip, text=neg_delta_text)
+            delta_con, = self.cond_subtract_node.subtract(
+                conditioning_a=cond_a,
+                conditioning_b=cond_b
+            )
+            pos_cond, = self.cond_apply_node.addDelta(
+                conditioning_delta_strength=strength,
+                conditioning_base=pos_cond,
+                conditioning_delta=delta_con,
+            )
+
+        return pos_cond, neg_cond

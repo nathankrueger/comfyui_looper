@@ -10,6 +10,13 @@ from utils.util import MathParser
 
 CURRENT_WORKFLOW_VERSION = 1
 
+class JSONFormatException(Exception):
+    pass
+
+EMPTY_DICT = {'null':'null'}
+def empty_dict_factory() -> dict:
+    return dict(EMPTY_DICT)
+
 EMPTY_LIST = [None]
 def empty_list_factory() -> list:
     return list(EMPTY_LIST)
@@ -28,6 +35,7 @@ class LoopSettings:
     denoise_steps: Optional[int | str] = None
     denoise_amt: Optional[float | str] = None
     clip: list[str | None] = field(default_factory=empty_list_factory)
+    con_delta: dict = field(default_factory=empty_dict_factory)
     cfg: Optional[float | str] = None
     seed: int = field(default_factory=default_seed)
     canny: list[float | None] = field(default_factory=empty_list_factory)
@@ -53,7 +61,8 @@ class SettingsManager:
     EXPR_VARIABLES = {
         'denoise_amt',
         'denoise_steps',
-        'cfg'
+        'cfg',
+        'con_delta',
     }
 
     def __init__(self, workflow_json_path: str):
@@ -95,12 +104,34 @@ class SettingsManager:
                         ckpt_found |= os.path.exists(path)
                 assert ckpt_found
 
+        # con delta
+        for ls in self.workflow.all_settings:
+            match len(ls.con_delta):
+                case 0:
+                    continue
+                case 3:
+                    assert "pos" in ls.con_delta
+                    assert "neg" in ls.con_delta
+                    assert "strength" in ls.con_delta
+                    assert isinstance(ls.con_delta["pos"], str)
+                    assert isinstance(ls.con_delta["neg"], str)
+                    assert type(ls.con_delta["strength"]) in {str, int, float}
+                case _:
+                    raise JSONFormatException(f"Invalid con_delta specified: {ls.con_delta}")
+
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed
 
     @staticmethod
     def should_infer_setting(setting_val: Any) -> bool:
-        return setting_val is None or (isinstance(setting_val, list) and setting_val == EMPTY_LIST)
+        if setting_val is None:
+            return True
+        elif (isinstance(setting_val, list) and setting_val == EMPTY_LIST):
+            return True
+        elif (isinstance(setting_val, dict) and setting_val == EMPTY_DICT):
+            return True
+        else:
+            return False
 
     def get_loopsettings_for_iter(self, iter: int) -> tuple[int, LoopSettings]:
         if iter in self.iter_to_setting_map:
@@ -124,14 +155,25 @@ class SettingsManager:
 
     def eval_expr(self, iter: int, setting_name: str, expr: str, loopsetting: LoopSettings) -> float:
         """
-        n --> total iteration sequence number
-        offset --> current LoopSettings sequence number
+        n       --> total iteration sequence number
+        offset  --> current LoopSettings sequence number
+        total_n --> length of entire workflow
         """
 
-        if setting_name in SettingsManager.EXPR_VARIABLES and isinstance(expr, str):
-            return MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
-        else:
-            return expr
+        if setting_name in SettingsManager.EXPR_VARIABLES:
+            if isinstance(expr, str):
+                return MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
+            elif isinstance(expr, dict):
+                result = dict()
+                for k, v in expr.items():
+                    if isinstance(v, str):
+                        try:
+                            v = MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(v)
+                        except:
+                            pass
+                    result[k] = v
+                return result
+        return expr
 
     def get_setting_for_iter(self, setting_name: str, iter: int) -> Any:
         setting_idx, loopsetting = self.get_loopsettings_for_iter(iter)
@@ -142,7 +184,7 @@ class SettingsManager:
             while setting_idx >= 0:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
                 prev_setting_val = prev_loopsetting.__getattribute__(setting_name)
-                if prev_setting_val is not None and prev_setting_val != EMPTY_LIST:
+                if prev_setting_val is not None and (prev_setting_val != EMPTY_LIST and prev_setting_val != EMPTY_DICT):
                     return self.eval_expr(iter, setting_name, prev_setting_val, prev_loopsetting)
                 setting_idx -= 1
             return [] if setting_val == EMPTY_LIST else None

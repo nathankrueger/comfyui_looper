@@ -1,0 +1,34 @@
+{
+    "all_settings": [
+        {
+            "loop_iterations": 20,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "sierra, dog, lsd, dmt, trees, forest, patterns, visionary art, psyai",
+            "denoise_steps": 30,
+            "denoise_amt": "0.65",
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "sierra.safetensors",
+                    1.0
+                ]
+            ],
+            "con_delta": {
+                "pos": "nice, friendly, happy, smiling",
+                "neg": "angry, scary, evil, sharp teeth, rage, blood, murder",
+                "strength": "-1"
+            }
+        },
+        {
+            "con_delta": {
+                "pos": "nice, friendly, happy, smiling",
+                "neg": "angry, scary, evil, sharp teeth, rage, blood, murder",
+                "strength": "1.2"
+            }
+        }
+    ],
+    "version": 1
+}

@@ -1,47 +1,40 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 2,
+            "loop_iterations": 30,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
-            "denoise_steps": 3,
-            "denoise_amt": 0.5,
+            "prompt": "dog, lsd, dmt, trees, forest, patterns, visionary art, psyai",
+            "denoise_steps": 30,
+            "denoise_amt": "0.5 - 0.0125*n",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.7
-                ],
                 [
                     "SDXL-PsyAI-v4.safetensors",
                     1.0
+                ],
+                [
+                    "sierra.safetensors",
+                    1.0
                 ]
-            ],
-            "canny": [
-                0.5,
-                0.01,
-                0.6
             ],
             "transforms": [
                 {
                     "name": "paste_img",
-                    "img_path": "C:/Users/natek/Downloads/IMG_1127.jpeg",
-                    "opacity": 0.3
+                    "img_path": "C:/Users/natek/Downloads/IMG_4026.jpeg",
+                    "opacity": "0.0125*n"
                 }
             ]
         },
         {
-            "loop_iterations": 2,
-
-            // disable canny
-            "canny": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            // disable transforms
-            "transforms": []
+            "denoise_steps": 1,
+            "denoise_amt": 0.0,
+            "transforms": [
+                {
+                    "name": "paste_img",
+                    "img_path": "C:/Users/natek/Downloads/IMG_4026.jpeg",
+                    "opacity": 1.0
+                }
+            ]            
         }
-
     ],
     "version": 1
 }
