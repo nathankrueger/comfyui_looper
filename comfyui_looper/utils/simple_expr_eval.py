@@ -61,6 +61,7 @@ class SimpleExprEval:
 
         # math
         "floor": math.floor,
+        "ceil": math.ceil,
         "cos": math.cos,
         "sin": math.sin,
         "tan": math.tan,
@@ -102,10 +103,10 @@ class SimpleExprEval:
             self.permitted_functions.update(permitted_fns)
 
         # stack var
-        self.stack_vars: dict [str, Any] = {}
+        self.loop_vars: dict [str, Any] = {}
 
         # state vars
-        self.has_returned = False
+        self.returned = False
         self.break_stack: list[bool] = []
 
     def __call__(self, expr: str):
@@ -113,50 +114,18 @@ class SimpleExprEval:
     
     def reset_locals(self):
         self.local_vars = dict(self.init_locals_state)
-    
-    def add_implict_mult_token(self, expr: str) -> str:
-        """
-        Renders expression suitable for 'eval_expr' by inserting implicit multiply
-            e.g.  
-                '9x'       --> '9*x'
-                '3(7 + n)  --> '3*(7 + n)'
-        """
-
-        if len(self.local_vars) > 0:
-            # match for all declared variables
-            name_or = "|".join(self.local_vars.keys())
-
-            # 35y --> 35*y
-            result = re.sub(rf"(\d+)({name_or})", r"\1*\2", expr)
-
-            # ab --> a*b
-            result = re.sub(rf"({name_or})({name_or})", r"\1*\2", result)
-            
-            # 2(5 + 6) --> 2*(5 + 6), z(8 + 1) --> z*(8 + 1)
-            result = re.sub(rf"({name_or}|[0-9]+)\(", r"\1*(", result)
-        else:
-            # 5(8 - 9) --> 5*(8 - 9)
-            result = re.sub (r"([0-9]+)\(", r"\1*(", expr)
-        
-        # repeat as needed
-        if result == expr:
-            return result
-        else:
-            return self.add_implict_mult_token(result)
         
     def _eval_expression(self, expr: str) -> str:
-        self.has_returned = False
+        self.returned = False
         self.break_stack = []
-        elaborated_expr = self.add_implict_mult_token(expr)
-        elaborated_expr = textwrap.dedent(elaborated_expr).strip()
-        return self._eval_recursive(ast.parse(elaborated_expr, mode=self.mode))
+        return self._eval_recursive(ast.parse(textwrap.dedent(expr).strip(), mode=self.mode))
     
     def _eval_recursive(self, ast_node: ast.expr):
         # bottom out recursion
         if ast_node is None:
             return None
 
-        if self.has_returned:
+        if self.returned:
             return ast_node
         
         # handle each node as appropriate
@@ -164,7 +133,7 @@ class SimpleExprEval:
             case ast.Module:
                 for expr in ast_node.body:
                     result = self._eval_recursive(expr)
-                    if self.has_returned:
+                    if self.returned:
                         break
                 return self._eval_recursive(result)
             case ast.Expression:
@@ -175,13 +144,13 @@ class SimpleExprEval:
                 result = None
                 self.break_stack.append(False)
                 for val in self._eval_recursive(ast_node.iter):
-                    self.stack_vars[ast_node.target.id] = val
+                    self.loop_vars[ast_node.target.id] = val
                     for expr in ast_node.body:
                         result = self._eval_recursive(expr)
-                        if self.has_returned or self.break_stack[-1]:
+                        if self.returned or self.break_stack[-1]:
                             break
                     else:
-                        del self.stack_vars[ast_node.target.id]
+                        del self.loop_vars[ast_node.target.id]
                         continue
                     break
                 self.break_stack = self.break_stack[:-1]
@@ -192,7 +161,7 @@ class SimpleExprEval:
                 while self._eval_recursive(ast_node.test):
                     for expr in ast_node.body:
                         result = self._eval_recursive(expr)
-                        if self.has_returned or self.break_stack[-1]:
+                        if self.returned or self.break_stack[-1]:
                             break
                     else:
                         continue
@@ -200,7 +169,7 @@ class SimpleExprEval:
                 return self._eval_recursive(result)
             case ast.Return:
                 result = self._eval_recur_(ast_node.value)
-                self.has_returned = True
+                self.returned = True
                 return result
             case ast.Break:
                 self.break_stack[-1] = True
@@ -209,12 +178,12 @@ class SimpleExprEval:
                 if self._eval_recursive(ast_node.test):
                     for expr in ast_node.body:
                         result = self._eval_recursive(expr)
-                        if self.has_returned:
+                        if self.returned:
                             break
                 else:
                     for expr in ast_node.orelse:
                         result = self._eval_recursive(expr)
-                        if self.has_returned:
+                        if self.returned:
                             break
                 return self._eval_recursive(result)
             case ast.Match:
@@ -223,7 +192,7 @@ class SimpleExprEval:
                     if isinstance(case.pattern, ast.MatchAs) or (self._eval_recursive(case) == subject_val):
                         for expr in case.body:
                             result = self._eval_recursive(expr)
-                            if self.has_returned:
+                            if self.returned:
                                 break
                     else:
                             continue
@@ -256,7 +225,7 @@ class SimpleExprEval:
                 assert len(ast_node.targets) == 1
                 value = self.eval_recur_(ast_node.value)
                 target = ast_node.targets[0].id
-                self.stack_vars[target] = value
+                self.loop_vars[target] = value
                 return None
             case ast.Call:
                 func_name = SimpleExprEval.get_function_name(ast_node.func)
@@ -276,8 +245,8 @@ class SimpleExprEval:
             case ast.Name:
                 if ast_node.id in self.local_vars:
                     return self.local_vars[ast_node.id]
-                elif ast_node.id in self.stack_vars:
-                    return self.stack_vars[ast_node.id]
+                elif ast_node.id in self.loop_vars:
+                    return self.loop_vars[ast_node.id]
             case ast.keyword:
                 return (ast_node.arg, self._eval_recursive(ast_node.value))
             case ast.Attribute:
