@@ -128,6 +128,11 @@ class SettingsManager:
         for ls in self.workflow.all_settings:
             ls.validate()
 
+        # by prepopulating all elaborated loopsettings, we are evaluating
+        # all expressions up-front, avoiding costly issues deep into a run.
+        for i in range(self.get_total_iterations()):
+            self.get_elaborated_loopsettings_for_iter(i)
+
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed
 

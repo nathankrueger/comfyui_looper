@@ -82,7 +82,7 @@
             "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula, galaxy",
             "neg_prompt": "boobs, woman, smiling, horns",
             "cfg": "7 + relu(3*sin(n))",
-            "denoise_amt": 0.6,
+            "denoise_amt": "0.6 + relu(0.05*sin(0.125*n))",
             "loras": [
                 [
                     "Space_Nebula_Style_SDXL.safetensors",
