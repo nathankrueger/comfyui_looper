@@ -77,6 +77,7 @@ class SimpleExprEval:
         "log": math.log,
         "log10": math.log10,
         "log2": math.log2,
+        "relu": lambda x: x if x > 0 else 0,
     }
 
     DEFAULT_VARIABLES = {
