@@ -5,9 +5,15 @@ import operator
 import textwrap
 from typing import Callable, Any
 
+class UnsupportedFunctionException(Exception):
+    pass
+
+class NameNotFoundException(Exception):
+    pass
+
 # inspired by: https://stackoverflow.com/questions/43836866/safely-evaluate-simple-string-equation
 class SimpleExprEval:
-    AST_NODE_TO_OPERATOR = {
+    NODE_TO_OP = {
         # math / binary
         ast.Add: operator.add,
         ast.Sub: operator.sub,
@@ -68,6 +74,9 @@ class SimpleExprEval:
         "tanh": math.tanh,
         "sinh": math.sinh,
         "cosh": math.cosh,
+        "log": math.log,
+        "log10": math.log10,
+        "log2": math.log2,
     }
 
     DEFAULT_VARIABLES = {
@@ -140,6 +149,34 @@ class SimpleExprEval:
                 return self._eval_recursive(ast_node.body)
             case ast.Expr:
                 return self._eval_recursive(ast_node.value)
+            case ast.If:
+                if self._eval_recursive(ast_node.test):
+                    for expr in ast_node.body:
+                        result = self._eval_recursive(expr)
+                        if self.returned:
+                            break
+                else:
+                    for expr in ast_node.orelse:
+                        result = self._eval_recursive(expr)
+                        if self.returned:
+                            break
+                return self._eval_recursive(result)
+            case ast.Match:
+                subject_val = self._eval_recursive(ast_node.subject)
+                for case in ast_node.cases:
+                    if isinstance(case.pattern, ast.MatchAs) or (self._eval_recursive(case) == subject_val):
+                        for expr in case.body:
+                            result = self._eval_recursive(expr)
+                            if self.returned:
+                                break
+                    else:
+                            continue
+                    break
+                return self._eval_recursive(result)
+            case ast.match_case:
+                return self._eval_recursive(ast_node.pattern)
+            case ast.MatchValue:
+                return self._eval_recursive(ast_node.value)
             case ast.For:
                 result = None
                 self.break_stack.append(False)
@@ -174,59 +211,25 @@ class SimpleExprEval:
             case ast.Break:
                 self.break_stack[-1] = True
                 return None
-            case ast.If:
-                if self._eval_recursive(ast_node.test):
-                    for expr in ast_node.body:
-                        result = self._eval_recursive(expr)
-                        if self.returned:
-                            break
-                else:
-                    for expr in ast_node.orelse:
-                        result = self._eval_recursive(expr)
-                        if self.returned:
-                            break
-                return self._eval_recursive(result)
-            case ast.Match:
-                subject_val = self._eval_recursive(ast_node.subject)
-                for case in ast_node.cases:
-                    if isinstance(case.pattern, ast.MatchAs) or (self._eval_recursive(case) == subject_val):
-                        for expr in case.body:
-                            result = self._eval_recursive(expr)
-                            if self.returned:
-                                break
-                    else:
-                            continue
-                    break
-                return self._eval_recursive(result)
-            case ast.match_case:
-                return self._eval_recursive(ast_node.pattern)
-            case ast.MatchValue:
-                return self._eval_recursive(ast_node.value)
-            case ast.BinOp:
-                op = SimpleExprEval.AST_NODE_TO_OPERATOR[type(ast_node.op)]
-                return op(self._eval_recursive(ast_node.left), self._eval_recursive(ast_node.right))
             case ast.UnaryOp:
-                op = SimpleExprEval.AST_NODE_TO_OPERATOR[type(ast_node.op)]
+                op = SimpleExprEval.NODE_TO_OP[type(ast_node.op)]
                 return op(self._eval_recursive(ast_node.operand))
-            case ast.Compare:
-                match (op := SimpleExprEval.AST_NODE_TO_OPERATOR[type(ast_node.ops[0])]):
-                    case operator.contains:
-                        return op(self._eval_recursive(ast_node.comparators[0]), self._eval_recursive(ast_node.left))
-                    case _:
-                        return op(self._eval_recursive(ast_node.left), self._eval_recursive(ast_node.comparators[0]))
+            case ast.BinOp:
+                op = SimpleExprEval.NODE_TO_OP[type(ast_node.op)]
+                return op(self._eval_recursive(ast_node.left), self._eval_recursive(ast_node.right))
             case ast.BoolOp:
-                op = SimpleExprEval.AST_NODE_TO_OPERATOR[type(ast_node.op)]
+                op = SimpleExprEval.NODE_TO_OP[type(ast_node.op)]
                 assert len(ast_node.values) >= 2
                 result = op(self._eval_recursive(ast_node.values[0]), self._eval_recursive(ast_node.values[1]))
                 for i in range (len(ast_node.values) - 2):
                     result = op(result, self._eval_recursive(ast_node.values[i + 2]))
                 return result
-            case ast.Assign:
-                assert len(ast_node.targets) == 1
-                value = self.eval_recur_(ast_node.value)
-                target = ast_node.targets[0].id
-                self.loop_vars[target] = value
-                return None
+            case ast.Compare:
+                match (op := SimpleExprEval.NODE_TO_OP[type(ast_node.ops[0])]):
+                    case operator.contains:
+                        return op(self._eval_recursive(ast_node.comparators[0]), self._eval_recursive(ast_node.left))
+                    case _:
+                        return op(self._eval_recursive(ast_node.left), self._eval_recursive(ast_node.comparators[0]))
             case ast.Call:
                 func_name = SimpleExprEval.get_function_name(ast_node.func)
                 if func_name in self.permitted_functions:
@@ -237,28 +240,40 @@ class SimpleExprEval:
                         kwargs[name] = val
                     result = self.permitted_functions[func_name](*args, **kwargs)
                     return result
+                else:
+                    raise UnsupportedFunctionException(f"Function call not permitted: {func_name}")
+            case ast.Assign:
+                # tuple not supported
+                assert len(ast_node.targets) == 1
+                value = self.eval_recur_(ast_node.value)
+                target = ast_node.targets[0].id
+                self.loop_vars[target] = value
+                return None
             case ast.Assert:
                 assert self._eval_recursive(ast_node.test)
                 return None
             case ast.Constant:
                 return ast_node.value
             case ast.Name:
-                if ast_node.id in self.local_vars:
-                    return self.local_vars[ast_node.id]
-                elif ast_node.id in self.loop_vars:
-                    return self.loop_vars[ast_node.id]
+                var_name = ast_node.id
+                if var_name in self.local_vars:
+                    return self.local_vars[var_name]
+                elif var_name in self.loop_vars:
+                    return self.loop_vars[var_name]
+                else:
+                    raise NameNotFoundException(f"Attempted to access undefined variable: {var_name}")
             case ast.keyword:
                 return (ast_node.arg, self._eval_recursive(ast_node.value))
             case ast.Attribute:
                 return getattr(self._eval_recursive(ast_node.value), ast_node.attr)
             case ast.List:
                 return [self._eval_recursive(list_item) for list_item in ast_node.elts]
-            case ast.Slice:
-                upper = self._eval_recursive(ast_node, upper)
-                lower = self._eval_recursive(ast_node, lower)
-                step  = self._eval_recursive(ast_node, step)
-                return slice(lower, upper, step)
             case ast.Subscript:
-                return operator.getitem(self._eval_recursive(ast_node, value), self._eval_recursive(ast_node.slice))
+                return operator.getitem(self._eval_recursive(ast_node.value), self._eval_recursive(ast_node.slice))
+            case ast.Slice:
+                lower = self._eval_recursive(ast_node.lower)
+                upper = self._eval_recursive(ast_node.upper)
+                step  = self._eval_recursive(ast_node.step)
+                return slice(lower, upper, step)
 
-        raise NotImplementedError(f"Illegal operation attempted: {type(ast_node)}")
+        raise NotImplementedError(f"Unsupported operation attempted: {type(ast_node)}")
