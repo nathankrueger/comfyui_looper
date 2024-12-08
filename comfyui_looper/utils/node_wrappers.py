@@ -9,6 +9,8 @@ from nodes import (
     NODE_CLASS_MAPPINGS,
 )
 
+from utils.json_spec import ConDelta
+
 class LoraManager:
     def __init__(self):
         self.prev_hash = None
@@ -189,31 +191,52 @@ class ControlNetManager:
 
         return self.controlnet_model
 
-class ConDeltaManager:
+class ConDeltaNodeWrapper:
     def __init__(self):
         self.cond_subtract_node = NODE_CLASS_MAPPINGS["ConditioningSubtract"]()
         self.cond_apply_node = NODE_CLASS_MAPPINGS["ConditioningAddConDelta"]()
         self.delta_text_node_a = CLIPTextEncode()
         self.delta_text_node_b = CLIPTextEncode()
-        self.clip_enconder = ClipEncodeWrapper()
 
-    def encode(self, clip, pos_text: str, neg_text: str, con_delta):
+class ConDeltaManager:
+    def __init__(self):
+        self.clip_enconder = ClipEncodeWrapper()
+        self.cd_node_wrappers: list[ConDeltaNodeWrapper] = []
+        self.prev_num_con_deltas: int = -1
+
+    def encode(self, clip, pos_text: str, neg_text: str, con_deltas: list[ConDelta]):
         pos_cond, neg_cond = self.clip_enconder.encode(pos_text=pos_text, neg_text=neg_text, clip=clip)
         
-        if con_delta is not None and len(con_delta) == 3:
-            strength: float = con_delta["strength"]
-            pos_delta_text: str = con_delta["pos"]
-            neg_delta_text: str = con_delta["neg"]
-            cond_a, = self.delta_text_node_a.encode(clip=clip, text=pos_delta_text)
-            cond_b, = self.delta_text_node_b.encode(clip=clip, text=neg_delta_text)
-            delta_con, = self.cond_subtract_node.subtract(
-                conditioning_a=cond_a,
-                conditioning_b=cond_b
-            )
-            pos_cond, = self.cond_apply_node.addDelta(
-                conditioning_delta_strength=strength,
-                conditioning_base=pos_cond,
-                conditioning_delta=delta_con,
-            )
+        if len(con_deltas) != self.prev_num_con_deltas:
+            self.prev_num_con_deltas = len(con_deltas)
+            self.cd_node_wrappers.clear()
+
+            for cd in con_deltas:
+                cdnw = ConDeltaNodeWrapper()
+                cond_a, = cdnw.delta_text_node_a.encode(clip=clip, text=cd.pos)
+                cond_b, = cdnw.delta_text_node_b.encode(clip=clip, text=cd.neg)
+                delta_con, = cdnw.cond_subtract_node.subtract(
+                    conditioning_a=cond_a,
+                    conditioning_b=cond_b
+                )
+                pos_cond, = cdnw.cond_apply_node.addDelta(
+                    conditioning_delta_strength=cd.strength,
+                    conditioning_base=pos_cond,
+                    conditioning_delta=delta_con,
+                )
+                self.cd_node_wrappers.append(cdnw)
+        else:
+            for cdnw, cd in zip(self.cd_node_wrappers, con_deltas):
+                cond_a, = cdnw.delta_text_node_a.encode(clip=clip, text=cd.pos)
+                cond_b, = cdnw.delta_text_node_b.encode(clip=clip, text=cd.neg)
+                delta_con, = cdnw.cond_subtract_node.subtract(
+                    conditioning_a=cond_a,
+                    conditioning_b=cond_b
+                )
+                pos_cond, = cdnw.cond_apply_node.addDelta(
+                    conditioning_delta_strength=cd.strength,
+                    conditioning_base=pos_cond,
+                    conditioning_delta=delta_con,
+                )
 
         return pos_cond, neg_cond

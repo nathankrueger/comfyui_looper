@@ -2,8 +2,6 @@ import sys
 import os
 import shutil
 import math
-import ast
-import operator as op
 from datetime import datetime
 from PIL import Image, ImageOps
 import numpy as np

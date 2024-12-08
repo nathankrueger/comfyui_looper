@@ -15,7 +15,10 @@ def get_loop_settings():
         neg_prompt='ugly',
         denoise_steps=30,
         denoise_amt=0.5,
-        con_delta={"pos": "bright", "neg": "dark", "strength": 5.0},
+        con_deltas=[
+            ConDelta(pos="bright", neg="dark", strength=5.0),
+            ConDelta(pos="friendly", neg="mean", strength=-1.0),
+        ],
         loras=[('lora_a.safetensors', 1.0), ('lora_b.safetensors', .212354)],
         transforms=[{'name':'zoom_in', 'zoom_amt':0.985}]
     )
@@ -47,21 +50,28 @@ def test_settings_manager():
                 seed=123,
                 loop_iterations=1,
                 canny=[1.0,1.0,1.0],
-                con_delta={"pos": "bright", "neg": "dark", "strength": 5.0},
+                con_deltas=[
+                    ConDelta(pos="bright", neg="dark", strength=5.0),
+                    ConDelta(pos="friendly", neg="mean", strength=-1.0),
+                ],
             ),
             # 1
             LoopSettings(
                 transforms=[{'name':'zoom_in','zoom_amt':0.5}],
+                con_deltas=[
+                    ConDelta(pos="rich", neg="poor", strength=2.5)
+                ],
                 loras=[('foo', 0.5)],
             ),
             # 2
             LoopSettings(
                 seed=456,
                 canny=[],
-                con_delta={},
             ),
             # 3
-            LoopSettings(),
+            LoopSettings(
+                con_deltas=[],
+            ),
             # 4
             LoopSettings(
                 transforms=[],
@@ -77,17 +87,22 @@ def test_settings_manager():
         sm = SettingsManager(temp_file.name)
 
         # con_delta
-        assert w.all_settings[0].con_delta == {"pos": "bright", "neg": "dark", "strength": 5.0}
-        assert sm.get_setting_for_iter('con_delta', 0) == {"pos": "bright", "neg": "dark", "strength": 5.0}
-        assert w.all_settings[1].con_delta == EMPTY_DICT
-        assert sm.get_setting_for_iter('con_delta', 1) == {"pos": "bright", "neg": "dark", "strength": 5.0}
+        assert w.all_settings[0].con_deltas == [ConDelta(pos="bright", neg="dark", strength=5.0), ConDelta(pos="friendly", neg="mean", strength=-1.0)]
+        assert sm.get_setting_for_iter('con_deltas', 0) == [ConDelta(pos="bright", neg="dark", strength=5.0), ConDelta(pos="friendly", neg="mean", strength=-1.0)]
+        assert w.all_settings[1].con_deltas == [ConDelta(pos="rich", neg="poor", strength=2.5)]
+        assert sm.get_setting_for_iter('con_deltas', 1) == [ConDelta(pos="rich", neg="poor", strength=2.5)]
+
         # actual value from JSON
-        assert w.all_settings[2].con_delta == {}
+        assert w.all_settings[2].con_deltas == EMPTY_LIST
         # infered value we want
-        assert sm.get_setting_for_iter('con_delta', 2) == {}
-        for i in range(3,10):
-            assert w.all_settings[i].con_delta == EMPTY_DICT
-            assert sm.get_setting_for_iter('con_delta', i) == {}
+        assert sm.get_setting_for_iter('con_deltas', 2) == [ConDelta(pos="rich", neg="poor", strength=2.5)]
+
+        assert w.all_settings[3].con_deltas == []
+        assert sm.get_setting_for_iter('con_deltas', 3) == []
+
+        for i in range(4,10):
+            assert w.all_settings[i].con_deltas == EMPTY_LIST
+            assert sm.get_setting_for_iter('con_deltas', i) == []
 
         # canny
         assert w.all_settings[0].canny == [1.0,1.0,1.0]

@@ -26,6 +26,13 @@ def default_seed() -> int:
 
 @dataclass_json
 @dataclass
+class ConDelta:
+    pos: str
+    neg: str
+    strength: float | str
+
+@dataclass_json
+@dataclass
 class LoopSettings:
     loop_iterations: int = 1
 
@@ -36,7 +43,7 @@ class LoopSettings:
     denoise_steps: Optional[int | str] = None
     denoise_amt: Optional[float | str] = None
     clip: list[str | None] = field(default_factory=empty_list_factory)
-    con_delta: dict = field(default_factory=empty_dict_factory)
+    con_deltas: list[ConDelta | None]  = field(default_factory=empty_list_factory)
     cfg: Optional[float | str] = None
     seed: int = field(default_factory=default_seed)
     canny: list[float | None] = field(default_factory=empty_list_factory)
@@ -59,11 +66,11 @@ class Workflow:
         return cnt
 
 class SettingsManager:
-    EXPR_VARIABLES = {
+    EXPR_LS_VARIABLES = {
         'denoise_amt',
         'denoise_steps',
+        'con_deltas',
         'cfg',
-        'con_delta',
     }
 
     def __init__(self, workflow_json_path: str):
@@ -107,20 +114,11 @@ class SettingsManager:
 
         # con delta
         for ls in self.workflow.all_settings:
-            if ls.con_delta == EMPTY_DICT:
+            if ls.con_deltas == EMPTY_LIST:
                 continue
-            match len(ls.con_delta):
-                case 0:
-                    continue
-                case 3:
-                    assert "pos" in ls.con_delta
-                    assert "neg" in ls.con_delta
-                    assert "strength" in ls.con_delta
-                    assert isinstance(ls.con_delta["pos"], str)
-                    assert isinstance(ls.con_delta["neg"], str)
-                    assert type(ls.con_delta["strength"]) in {str, int, float}
-                case _:
-                    raise JSONFormatException(f"Invalid con_delta specified: {ls.con_delta}")
+            for cd in ls.con_deltas:
+                assert len(cd.neg) > 0
+                assert len(cd.pos) > 0
 
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed
@@ -156,29 +154,36 @@ class SettingsManager:
     def get_total_iterations(self) -> int:
         return self.total_iterations
 
-    def eval_expr(self, iter: int, setting_name: str, expr: str, loopsetting: LoopSettings) -> float:
+    def eval_expressions(self, iter: int, setting_name: str, setting_val: Any, loopsetting: LoopSettings) -> float:
         """
         n       --> total iteration sequence number
         offset  --> current LoopSettings sequence number
         total_n --> length of entire workflow
         """
 
-        if setting_name in SettingsManager.EXPR_VARIABLES:
-            if isinstance(expr, str):
-                return SimpleExprEval(local_vars={'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
-            elif isinstance(expr, dict):
-                result = dict()
-                for k, v in expr.items():
-                    if isinstance(v, str):
-                        try:
-                            v = SimpleExprEval(local_vars={'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(v)
-                        except:
-                            pass
-                    result[k] = v
+        if setting_name in SettingsManager.EXPR_LS_VARIABLES:
+            iter_vars = {'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()}
+            if isinstance(setting_val, str):
+                return SimpleExprEval(local_vars=iter_vars)(setting_val)
+            elif isinstance(setting_val, list):
+                result = []
+                for item in setting_val:
+                    if isinstance(item, ConDelta) and isinstance(item.strength, str):
+                        strength_eval = SimpleExprEval(local_vars=iter_vars)(item.strength)
+                        cd_eval = ConDelta(pos=item.pos, neg=item.neg, strength=strength_eval)
+                        result.append(cd_eval)
+                    else:
+                        result.append(item)
                 return result
-        return expr
+
+        # pass through
+        return setting_val
 
     def get_setting_for_iter(self, setting_name: str, iter: int) -> Any:
+        """
+        Search backwards for the last valid setting from a previous LoopSettings
+        """
+
         setting_idx, loopsetting = self.get_loopsettings_for_iter(iter)
         setting_val = loopsetting.__getattribute__(setting_name)
 
@@ -188,13 +193,22 @@ class SettingsManager:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
                 prev_setting_val = prev_loopsetting.__getattribute__(setting_name)
                 if prev_setting_val is not None and (prev_setting_val != EMPTY_LIST and prev_setting_val != EMPTY_DICT):
-                    return self.eval_expr(iter, setting_name, prev_setting_val, prev_loopsetting)
+                    return self.eval_expressions(iter, setting_name, prev_setting_val, prev_loopsetting)
                 setting_idx -= 1
-            return [] if setting_val == EMPTY_LIST else None
+            if setting_val == EMPTY_LIST:
+                return []
+            elif setting_val == EMPTY_DICT:
+                return {}
+            else:
+                return None
         else:
-            return self.eval_expr(iter, setting_name, setting_val, loopsetting)
+            return self.eval_expressions(iter, setting_name, setting_val, loopsetting)
 
     def get_elaborated_loopsettings_for_iter(self, iter:int) -> LoopSettings:
+        """
+        Used by workflows which use a fully populated LoopSettings as their input
+        """
+
         _, loopsetting = self.get_loopsettings_for_iter(iter)
         result = LoopSettings()
         for dc_field in fields(loopsetting):

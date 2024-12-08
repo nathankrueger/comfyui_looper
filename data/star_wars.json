@@ -47,14 +47,16 @@
             "transforms": [
                 {
                     "name": "squeeze_wide",
-                    "squeeze_amt": 0.025
+                    "squeeze_amt": 0.01
                 }
             ],
-            "con_delta": {
-                "pos": "good, altruistic, friendly, happy",
-                "neg": "evil, demon, anger, rage, death, skeleton",
-                "strength": "0.5 + 0.3*sin(0.2*n)"
-            }
+            "con_deltas": [
+                {
+                    "pos": "good, altruistic, friendly, happy",
+                    "neg": "evil, demon, anger, rage, death, skeleton",
+                    "strength": "0.5 + 0.3*sin(0.2*n)"
+                }
+            ]
         },
         {
             // kashyk
@@ -67,16 +69,16 @@
                     "squeeze_amt": 0.015
                 }
             ],
-            "con_delta": {}
+            "con_deltas": []
         },
         {
             // hoth
             "loop_iterations": 50,
-            "prompt": "hoth, dmt, star wars, ice, antartica, lsd, planet, at-at, stormtrooper, photorealistic",
+            "prompt": "hoth, dmt, star wars, lsd, at-at, stormtrooper, photorealistic",
             "transforms": [
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.09
+                    "zoom_amt": 0.03
                 }
             ]
         },
@@ -84,7 +86,7 @@
             // c-3po
             "loop_iterations": 1,
             "denoise_amt": 0.78,
-            "prompt": "C-3PO, droid, android, digital, circuits, star wars, lsd, photorealistic",
+            "prompt": "C-3PO, droid, digital, circuits, star wars, lsd, photorealistic",
             "transforms": [
                 {
                     "name": "zoom_in",

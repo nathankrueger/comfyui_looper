@@ -104,7 +104,7 @@ class SimpleExprEval:
             self.local_vars.update(local_vars)
 
         # cache initial state of local_vars
-        self.init_locals_state: dict[str, Any] = dict(local_vars)
+        self.init_locals_state: dict[str, Any] = dict(local_vars) if local_vars is not None else {}
 
         # permitted functions
         self.permitted_functions: dict[str, Callable] = dict(SimpleExprEval.DEFAULT_PERMITTED_FUNCTIONS)

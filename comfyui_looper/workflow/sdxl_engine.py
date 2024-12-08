@@ -69,7 +69,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
         steps = loopsettings.denoise_steps
         denoise = loopsettings.denoise_amt
         cfg = loopsettings.cfg
-        con_delta = loopsettings.con_delta
+        con_deltas = loopsettings.con_deltas
         lora_list = loopsettings.loras
         checkpoint = loopsettings.checkpoint
         canny = loopsettings.canny
@@ -86,7 +86,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
             clip=lora_clip,
             pos_text=positive_text,
             neg_text=negative_text,
-            con_delta=con_delta
+            con_deltas=con_deltas
         )
 
         # VAE encode

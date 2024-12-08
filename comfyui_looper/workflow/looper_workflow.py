@@ -130,7 +130,7 @@ def looper_main(
             )
 
             # add entry to the logfile
-            log_file.write(f"{output_image_filename}:" + loopsettings_json + os.linesep)
+            log_file.write(f"{output_image_filename}:" + os.linesep + loopsettings_json + os.linesep)
             log_file.flush()
 
     # save animation
