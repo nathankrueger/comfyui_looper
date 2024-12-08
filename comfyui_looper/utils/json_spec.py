@@ -6,7 +6,7 @@ from dataclasses_json import dataclass_json
 
 import folder_paths
 from image_processing.transforms import Transform
-from utils.util import MathParser
+from utils.simple_expr_eval import SimpleExprEval
 
 CURRENT_WORKFLOW_VERSION = 1
 
@@ -32,6 +32,7 @@ class LoopSettings:
     # all of these have empty defaults -- they will grab the value from the previous LoopSettings, if available
     checkpoint: Optional[str] = None
     prompt: Optional[str] = None
+    neg_prompt: Optional[str] = None
     denoise_steps: Optional[int | str] = None
     denoise_amt: Optional[float | str] = None
     clip: list[str | None] = field(default_factory=empty_list_factory)
@@ -106,6 +107,8 @@ class SettingsManager:
 
         # con delta
         for ls in self.workflow.all_settings:
+            if ls.con_delta == EMPTY_DICT:
+                continue
             match len(ls.con_delta):
                 case 0:
                     continue
@@ -162,13 +165,13 @@ class SettingsManager:
 
         if setting_name in SettingsManager.EXPR_VARIABLES:
             if isinstance(expr, str):
-                return MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
+                return SimpleExprEval(local_vars={'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(expr)
             elif isinstance(expr, dict):
                 result = dict()
                 for k, v in expr.items():
                     if isinstance(v, str):
                         try:
-                            v = MathParser({'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(v)
+                            v = SimpleExprEval(local_vars={'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()})(v)
                         except:
                             pass
                     result[k] = v

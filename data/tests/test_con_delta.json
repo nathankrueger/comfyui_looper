@@ -1,34 +1,48 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 20,
+            "loop_iterations": 50,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "sierra, dog, lsd, dmt, trees, forest, patterns, visionary art, psyai",
-            "denoise_steps": 30,
-            "denoise_amt": "0.65",
+            "prompt": "normal lighting, 4k, in focus, daytime, darth vader, circuit traces, digital, circuits, motherboard, cpu, robot, cyborg, lsd, dmt, patterns, psyai",
+            "neg_prompt": "dark, dimly lit, blackness",
+            "denoise_steps": 20,
+            "cfg": 8,
+            "denoise_amt": "0.5 + .005*n",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
                     1.0
                 ],
                 [
-                    "sierra.safetensors",
+                    "detailer_v5.safetensors",
                     1.0
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.8
                 ]
             ],
             "con_delta": {
-                "pos": "nice, friendly, happy, smiling",
-                "neg": "angry, scary, evil, sharp teeth, rage, blood, murder",
-                "strength": "-1"
-            }
-        },
-        {
-            "con_delta": {
-                "pos": "nice, friendly, happy, smiling",
-                "neg": "angry, scary, evil, sharp teeth, rage, blood, murder",
-                "strength": "1.2"
-            }
+                // "pos": "nice, happy, friendly, altruistic",
+                // "neg": "mean, angry, scary, evil, sharp teeth, rage",
+                // "pos": "psychedelic, dmt, lsd, visionary, trippy, crazy",
+                // "neg": "bland, blank, simple, flat, sober",
+                "pos": "good, altruistic, friendly, happy, poor, analog",
+                "neg": "evil, demon, anger, rage, death, skeleton, bright, rich, digital",
+                "strength": "sin(0.5*n)"
+            },
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ]
         }
+
     ],
     "version": 1
 }

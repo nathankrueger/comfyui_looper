@@ -30,7 +30,8 @@ class SDXLWorkflowEngine(WorkflowEngine):
     DEFAULT_SETTING_DICT = {
         "checkpoint": "sdXL_v10VAEFix.safetensors",
         "cfg": 8.0,
-        "denoise_steps": 20
+        "denoise_steps": 20,
+        "neg_prompt": NEGATIVE_TEXT
     }
 
     def __init__(self):
@@ -64,6 +65,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
 
     def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings):
         positive_text = loopsettings.prompt
+        negative_text = loopsettings.neg_prompt
         steps = loopsettings.denoise_steps
         denoise = loopsettings.denoise_amt
         cfg = loopsettings.cfg
@@ -83,7 +85,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
         pos_cond, neg_cond = self.con_delta_mgr.encode(
             clip=lora_clip,
             pos_text=positive_text,
-            neg_text=NEGATIVE_TEXT,
+            neg_text=negative_text,
             con_delta=con_delta
         )
 

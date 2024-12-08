@@ -27,7 +27,8 @@ class SD3p5WorkflowEngine(WorkflowEngine):
         "checkpoint": "sd3.5_large.safetensors",
         "clip": ["t5xxl_fp8_e4m3fn.safetensors", "clip_g.safetensors"],
         "cfg": 3.5,
-        "denoise_steps": 20
+        "denoise_steps": 20,
+        "neg_prompt": NEGATIVE_TEXT
     }
 
     def __init__(self):
@@ -55,6 +56,7 @@ class SD3p5WorkflowEngine(WorkflowEngine):
 
     def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings):
         positive_text = loopsettings.prompt
+        negative_text = loopsettings.neg_prompt
         steps = loopsettings.denoise_steps
         denoise = loopsettings.denoise_amt
         cfg = loopsettings.cfg
@@ -71,7 +73,7 @@ class SD3p5WorkflowEngine(WorkflowEngine):
         lora_model, lora_clip = self.lora_mgr.reload_if_needed(lora_list, ckpt_model, ckpt_clip)
 
         # conditioning
-        pos_cond, neg_cond = self.text_cond.encode(positive_text, NEGATIVE_TEXT, lora_clip)
+        pos_cond, neg_cond = self.text_cond.encode(positive_text, negative_text, lora_clip)
 
         # VAE encode
         vaeencode_result, = self.vaeencode.encode(

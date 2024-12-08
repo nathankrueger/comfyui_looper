@@ -12,6 +12,7 @@ def get_loop_settings():
         loop_iterations=20,
         checkpoint='foo.safetensors',
         prompt='a beautfiul photo, one with commas',
+        neg_prompt='ugly',
         denoise_steps=30,
         denoise_amt=0.5,
         con_delta={"pos": "bright", "neg": "dark", "strength": 5.0},

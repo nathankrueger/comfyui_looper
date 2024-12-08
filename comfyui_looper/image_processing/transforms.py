@@ -8,11 +8,13 @@ import torch
 import cv2
 
 try:
-    from utils.util import MathParser, all_subclasses
+    from utils.util import all_subclasses
+    from utils.simple_expr_eval import SimpleExprEval
 except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
-    from comfyui_looper.utils.util import MathParser, all_subclasses
+    from comfyui_looper.utils.util import all_subclasses
+    from comfyui_looper.utils.simple_expr_eval import SimpleExprEval
 
 MAGIC_SEQUENCE_PARAMS = {
     'n',
@@ -562,7 +564,7 @@ def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int
 
         if isinstance(transform_expr, str):
             try:
-                return MathParser({'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
+                return SimpleExprEval(local_vars={'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
             except:
                 return transform_expr
         else:
