@@ -25,6 +25,7 @@ MAGIC_SEQUENCE_PARAMS = {
 class Transform:
     NAME = None
     REQUIRED_PARAMS = None
+    EVAL_PARAMS = set()
 
     def __init__(self, params: dict[str, Any]):
         self.params = params
@@ -37,9 +38,17 @@ class Transform:
     def get_required_params(cls) -> set[str]:
         return cls.REQUIRED_PARAMS
     
+    @classmethod
+    def get_eval_params(cls) -> set[str]:
+        return cls.EVAL_PARAMS
+    
     def transform(self, img: Image) -> Image:
         # override me
         return img
+    
+    @staticmethod
+    def get_transform(name: str):
+        return TRANSFORM_LIBRARY[name]
     
     @staticmethod
     def apply_transformations(img: Image, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> Image:
@@ -79,6 +88,7 @@ class Transform:
 class ZoomInTransform(Transform):
     NAME = 'zoom_in'
     REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -99,6 +109,7 @@ class ZoomInTransform(Transform):
 class ZoomInLeftTransform(Transform):
     NAME = 'zoom_in_left'
     REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -118,6 +129,7 @@ class ZoomInLeftTransform(Transform):
 class ZoomInRightTransform(Transform):
     NAME = 'zoom_in_right'
     REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -137,6 +149,7 @@ class ZoomInRightTransform(Transform):
 class ZoomInUpTransform(Transform):
     NAME = 'zoom_in_up'
     REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -156,6 +169,7 @@ class ZoomInUpTransform(Transform):
 class ZoomInDownTransform(Transform):
     NAME = 'zoom_in_down'
     REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -175,6 +189,7 @@ class ZoomInDownTransform(Transform):
 class SqueezeWideTransform(Transform):
     NAME = 'squeeze_wide'
     REQUIRED_PARAMS = {'squeeze_amt'}
+    EVAL_PARAMS = {'squeeze_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -194,6 +209,7 @@ class SqueezeWideTransform(Transform):
 class SqueezeTallTransform(Transform):
     NAME = 'squeeze_tall'
     REQUIRED_PARAMS = {'squeeze_amt'}
+    EVAL_PARAMS = {'squeeze_amt'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -213,6 +229,7 @@ class SqueezeTallTransform(Transform):
 class FisheyeTransform(Transform):
     NAME = 'fisheye'
     REQUIRED_PARAMS = {'strength'}
+    EVAL_PARAMS = {'strength'}
 
     def transform(self, img: Image) -> Image:
         width, height = img.size
@@ -238,10 +255,11 @@ class FisheyeTransform(Transform):
         fisheye_img = cv2.remap(np.array(img), x_new.astype(np.float32), y_new.astype(np.float32), cv2.INTER_LINEAR)
         return Image.fromarray(fisheye_img)
 
-# algo stolen from https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders
+# algorithm taken from https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders
 class RotateTransform(Transform):
     NAME = 'rotate'
     REQUIRED_PARAMS = {'angle'}
+    EVAL_PARAMS = {'angle'}
 
     def rotate(self, image: Image, angle: float):
         """
@@ -389,6 +407,7 @@ class RotateTransform(Transform):
 class PasteImageTransform(Transform):
     NAME = 'paste_img'
     REQUIRED_PARAMS = {'img_path', 'opacity'}
+    EVAL_PARAMS = {'opacity'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -404,6 +423,7 @@ class PasteImageTransform(Transform):
 class WaveDistortionTransformation(Transform):
     NAME = 'wave'
     REQUIRED_PARAMS = {'period', 'strength', 'rate'}
+    EVAL_PARAMS = {'period', 'strength', 'rate'}
 
     # Adapted from: https://www.pythoninformer.com/python-libraries/pillow/imageops-deforming/
     class WaveDeformer:
@@ -456,7 +476,7 @@ class WaveDistortionTransformation(Transform):
 class PerspectiveTransformation(Transform):
     NAME = 'perspective'
     REQUIRED_PARAMS = {'strength', 'shrink_edge'}
-
+    EVAL_PARAMS = {'strength', 'shrink_edge'}
 
     def transform(self, img: Image) -> Image:
         image_width, image_height = img.size
@@ -563,10 +583,7 @@ def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int
         """
 
         if isinstance(transform_expr, str):
-            try:
-                return SimpleExprEval(local_vars={'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
-            except:
-                return transform_expr
+            return SimpleExprEval(local_vars={'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
         else:
             return transform_expr
 
@@ -576,17 +593,20 @@ def get_elaborated_transform_values(transforms: list[dict[str, Any]], iter: int,
         for tdict in transforms:
             elab_tdict = dict()
             for key, val in tdict.items():
-                elab_tdict[key] = elaborate_transform_expr(val, iter, offset, total_iter) if key != 'name' else val
+                if key in TRANSFORM_LIBRARY[tdict['name']].get_eval_params():
+                    elab_tdict[key] = elaborate_transform_expr(val, iter, offset, total_iter)
+                else:
+                    elab_tdict[key] = val
             elaborated_transforms.append(elab_tdict)
-    
     return elaborated_transforms
 
-def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> torch.Tensor:
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> tuple[torch.Tensor, list[dict[str, Any]]]:
     i = Image.open(image_path)
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
 
-    if transforms is not None:
+    elaborated_transforms = transforms
+    if len(transforms) > 0:
         elaborated_transforms = get_elaborated_transform_values(transforms=transforms, iter=iter, offset=offset, total_iter=total_iter)
         image = Transform.apply_transformations(
             img=image,
@@ -598,7 +618,7 @@ def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]]
 
     image = np.array(image).astype(np.float32) / 255.0
     image = torch.from_numpy(image)[None,]
-    return image
+    return image, elaborated_transforms
 
 TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in all_subclasses(Transform)}
 

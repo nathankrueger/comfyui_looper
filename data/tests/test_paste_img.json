@@ -25,6 +25,7 @@
             ]
         },
         {
+            "loop_iterations": 1,
             "denoise_steps": 1,
             "denoise_amt": 0.0,
             "transforms": [

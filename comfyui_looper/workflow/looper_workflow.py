@@ -107,7 +107,7 @@ def looper_main(
                         loopsettings.__setattr__(setting_name, setting_val_default)
 
             # load in image & resize it
-            image_tensor = load_image_with_transforms(
+            image_tensor, loopsettings.transforms = load_image_with_transforms(
                 image_path=loop_img_path,
                 transforms=transforms,
                 iter=iter,

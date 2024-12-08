@@ -41,13 +41,13 @@
         {
             // jabba
             "loop_iterations": 50,
-            "prompt": "jabba the hutt, red, murder, mouth open full of long sharp teeth, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
+            "prompt": "jabba the hutt, mouth open full of long sharp teeth, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
             "neg_prompt": "blurry, dark",
             "denoise_amt": 0.6,
             "transforms": [
                 {
                     "name": "squeeze_wide",
-                    "squeeze_amt": 0.01
+                    "squeeze_amt": 0.005
                 }
             ],
             "con_deltas": [
@@ -67,7 +67,12 @@
                 {
                     "name": "squeeze_tall",
                     "squeeze_amt": 0.015
-                }
+                },
+                {
+                    "name": "perspective",
+                    "strength": 20,
+                    "shrink_edge": "right"
+                },
             ],
             "con_deltas": []
         },

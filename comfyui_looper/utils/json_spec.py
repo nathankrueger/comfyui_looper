@@ -42,9 +42,9 @@ class LoopSettings:
     neg_prompt: Optional[str] = None
     denoise_steps: Optional[int | str] = None
     denoise_amt: Optional[float | str] = None
+    cfg: Optional[float | str] = None
     clip: list[str | None] = field(default_factory=empty_list_factory)
     con_deltas: list[ConDelta | None]  = field(default_factory=empty_list_factory)
-    cfg: Optional[float | str] = None
     seed: int = field(default_factory=default_seed)
     canny: list[float | None] = field(default_factory=empty_list_factory)
     loras: list[tuple[str, float] | None] = field(default_factory=empty_list_factory)

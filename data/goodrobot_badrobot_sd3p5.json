@@ -51,6 +51,7 @@
         },
         {
             // psychedelic madness takes over (rotate negative)
+            "loop_iterations": 40,
             "transforms": [
                 {
                     "name": "rotate",
