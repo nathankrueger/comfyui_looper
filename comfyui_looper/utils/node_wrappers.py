@@ -200,7 +200,7 @@ class ConDeltaManager:
     def encode(self, clip, pos_text: str, neg_text: str, con_delta):
         pos_cond, neg_cond = self.clip_enconder.encode(pos_text=pos_text, neg_text=neg_text, clip=clip)
         
-        if con_delta is not None:
+        if con_delta is not None and len(con_delta) == 3:
             strength: float = con_delta["strength"]
             pos_delta_text: str = con_delta["pos"]
             neg_delta_text: str = con_delta["neg"]
