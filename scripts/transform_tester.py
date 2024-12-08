@@ -50,14 +50,27 @@ TRANSFORMS_TO_TEST = [
     #     'img_path': 'C:/Users/natek/Downloads/IMG_1127.jpeg',
     #     'opacity': 0.3
     # },
+    # {
+    #     "name": "perspective",
+    #     "strength": 15,
+    #     "shrink_edge": "cos(pi)"
+    # },
+    # {
+    #     "name": "zoom_in",
+    #     "zoom_amt": 0.03
+    # }
+    {
+        "name": "squeeze_tall",
+        "squeeze_amt": 0.015
+    },
     {
         "name": "perspective",
-        "strength": 15,
-        "shrink_edge": "cos(pi)"
+        "strength": 20,
+        "shrink_edge": "left"
     },
     {
         "name": "zoom_in",
-        "zoom_amt": 0.03
+        "zoom_amt": 0.035
     }
 ]
 
@@ -79,7 +92,7 @@ if __name__ == '__main__':
     for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
         next_img_path = get_filename_for_idx(idx+1, args.output_folder)
-        torch_tensor = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, 0, args.loops)
+        torch_tensor, _ = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, 0, args.loops)
 
         torch_tensor = torch_tensor.squeeze(0)
         torch_tensor = torch_tensor.permute(2, 0, 1)

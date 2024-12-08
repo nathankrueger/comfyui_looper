@@ -10,13 +10,13 @@
                 "-w", "sdxl",
                 "-i", "C:\\Users\\natek\\Downloads\\tatooine.png",
                 "-p", "2",
-                "-o", "output/star_wars1",
+                "-o", "output/star_wars2",
                 "-j", "data/star_wars.json",
                 "-t", "mp4",
                 "-a", "starwars.mp4",
                 "-x", "frame_delay:110",
                 "-x", "max_dim:768",
-                "-x", "v_bitrate:4000k",
+                "-x", "v_bitrate:5000k",
                 "-x", "bounce", "-x", "bounce_frame_skip:2"
             ]
         },

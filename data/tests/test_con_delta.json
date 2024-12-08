@@ -1,13 +1,13 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 30,
+            "loop_iterations": 5,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula",
             "neg_prompt": "boobs, woman, smiling, horns",
-            "denoise_steps": 30,
+            "denoise_steps": 20,
             "cfg": "7 + relu(3*sin(n))",
-            "denoise_amt": 0.6,
+            "denoise_amt": "0.75 if (n - offset) == 0 else (0.55 + 0.3*sin(0.3*n))",
             "loras": [
                 [
                     "Space_Nebula_Style_SDXL.safetensors",
@@ -71,6 +71,11 @@
                 {
                     "name": "fisheye",
                     "strength": -0.05
+                },
+                {
+                    "name": "perspective",
+                    "strength": 20,
+                    "shrink_edge": "right"
                 }
                 // ,
                 // {
@@ -79,12 +84,14 @@
                 // }
             ]
         }
+        ,
+        // inferred (many)
+        {
+            "loop_iterations": 5,
+            //"denoise_amt": 0.9,
+            "neg_prompt": ""
+        }
         // ,
-        // // inferred (many)
-        // {
-        //     "loop_iterations": 1,
-        //     "denoise_amt": 0.9
-        // },
         // // empty (0)
         // {
         //     "loop_iterations": 1,

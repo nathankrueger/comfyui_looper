@@ -32,6 +32,10 @@ class ConDelta:
     neg: str
     strength: float | str
 
+    def validate(self):
+        assert len(self.neg) > 0
+        assert len(self.pos) > 0
+
 @dataclass_json
 @dataclass
 class LoopSettings:
@@ -53,6 +57,36 @@ class LoopSettings:
 
     def __post_init__(self):
         self.offset = None
+
+    def validate(self):
+        # transforms
+        transform_params = [tdict for tdict in self.transforms if tdict is not None]
+        Transform.validate_transformation_params(transform_params)
+
+        # canny
+        assert self.canny == EMPTY_LIST or len(self.canny) == 3 or len(self.canny) == 0
+
+        # lora
+        if self.loras != EMPTY_LIST:
+            for lora in self.loras:
+                lorafile = lora[0]
+                lorastrength = lora[1]
+                assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], lorafile))
+                assert isinstance(lorastrength, (float, int))
+
+        # model files
+        if self.checkpoint is not None:
+            ckpt_found = False
+            for folder_query in {"checkpoints", "diffusion_models"}:
+                for specific_folder in folder_paths.get_folder_paths(folder_query):
+                    path = os.path.join(specific_folder, self.checkpoint)
+                    ckpt_found |= os.path.exists(path)
+            assert ckpt_found
+
+        # con delta
+        if self.con_deltas != EMPTY_LIST:
+            for cd in self.con_deltas:
+                cd.validate()
 
 @dataclass_json
 @dataclass
@@ -91,37 +125,8 @@ class SettingsManager:
         self.total_iterations: int = self.workflow.get_total_iterations()
 
     def validate(self):
-        # transforms
-        transform_params = [tdict for loopsettings in self.workflow.all_settings for tdict in loopsettings.transforms if tdict is not None]
-        Transform.validate_transformation_params(transform_params)
-
-        # canny
         for ls in self.workflow.all_settings:
-            assert ls.canny == EMPTY_LIST or len(ls.canny) == 3 or len(ls.canny) == 0
-
-        # lora & model files
-        for ls in self.workflow.all_settings:
-            if ls.loras != EMPTY_LIST:
-                for lora in ls.loras:
-                    lorafile = lora[0]
-                    lorastrength = lora[1]
-                    assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], lorafile))
-                    assert isinstance(lorastrength, (float, int))
-            if ls.checkpoint is not None:
-                ckpt_found = False
-                for folder_query in {"checkpoints", "diffusion_models"}:
-                    for specific_folder in folder_paths.get_folder_paths(folder_query):
-                        path = os.path.join(specific_folder, ls.checkpoint)
-                        ckpt_found |= os.path.exists(path)
-                assert ckpt_found
-
-        # con delta
-        for ls in self.workflow.all_settings:
-            if ls.con_deltas == EMPTY_LIST:
-                continue
-            for cd in ls.con_deltas:
-                assert len(cd.neg) > 0
-                assert len(cd.pos) > 0
+            ls.validate()
 
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed

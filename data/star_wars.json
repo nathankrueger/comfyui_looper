@@ -5,7 +5,7 @@
             "loop_iterations": 50,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, sharp, detailed, photorealistic, digital, dmt, tatooine, star wars, space, 4k, psychedelic",
-            "neg_prompt": "blurry",
+            "neg_prompt": "blurry, overexposed",
             "denoise_steps": 40,
             "denoise_amt": "0.55 + (0.5/80)*n",
             "loras": [
@@ -44,6 +44,24 @@
             "neg_prompt": "overexposed",
             "denoise_amt": 0.6,
             "cfg": "8 + relu(3*sin(n))",
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    0.5
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "star wars style.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
             "transforms": [
                 {
                     "name": "squeeze_wide",
@@ -113,9 +131,9 @@
         {
             // kashyyyk
             "loop_iterations": 50,
-            "prompt": "wookie, chewbacca, kashyyyk, forest, pyschedelic, dmt, lsd, psyai",
-            "neg_prompt": "",
-            "denoise_amt": 0.55,
+            "prompt": "wookie, patterns, dmt chewbacca, kashyyyk, forest, pyschedelic, dmt, lsd, psyai",
+            "neg_prompt": "dark",
+            "denoise_amt": "0.72 if offset == 1 else 0.62",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -138,14 +156,18 @@
                 {
                     "name": "perspective",
                     "strength": 20,
-                    "shrink_edge": "right"
+                    "shrink_edge": "left"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.035
                 }
             ],
             "con_deltas": []
         },
         {
             // hoth
-            "loop_iterations": 50,
+            "loop_iterations": 70,
             "prompt": "hoth, dmt, large mountains, star wars, lsd, at-at, stormtroopers, photorealistic",
             "neg_prompt": "blank, empty",
             "loras": [
@@ -175,8 +197,8 @@
         },
         {
             // c-3po
-            "loop_iterations": 1,
-            "denoise_amt": 0.78,
+            "loop_iterations": 50,
+            "denoise_amt": "0.78 if (n - offset) == 0 else 0.6",
             "prompt": "C-3PO, cloud city, digital, circuits, star wars, lsd, photorealistic, detailed, patterns, motherboard",
             "transforms": [
                 {
@@ -186,14 +208,9 @@
             ]
         },
         {
-            // c-3po (cont'd)
-            "loop_iterations": 49,
-            "denoise_amt": 0.6
-        },
-        {
             // r2d2
-            "loop_iterations": 1,
-            "denoise_amt": 0.78,
+            "loop_iterations": 50,
+            "denoise_amt": "0.78 if (n - offset) == 0 else 0.6",
             "prompt": "R2-D2, digital, circuits, star wars, lsd, photorealistic, detailed, patterns, motherboard",
             "transforms": [
                 {
@@ -208,14 +225,9 @@
             ]
         },
         {
-            // r2d2 (cont'd)
-            "loop_iterations": 49,
-            "denoise_amt": 0.65
-        },
-        {
             // deathstar
-            "loop_iterations": 1,
-            "denoise_amt": 0.75,
+            "loop_iterations": 50,
+            "denoise_amt": "0.75 if (n - offset) == 0 else (0.55 + 0.3*sin(0.3*n))",
             "prompt": "death star in space, lasers, colors, bright, nebula, dmt, lsd, digital, electricity, circuit, 4k, detailed",
             "loras": [
                 [
@@ -238,36 +250,21 @@
             "transforms": []
         },
         {
-            // deathstar cont'd
-            "loop_iterations": 59,
-            "denoise_amt": "0.55 + 0.3*sin(0.3*n)"
-        },
-        {
-            // star destroyer / xwings (rotate positive)
-            "loop_iterations": 50,
+            // star destroyer / xwings (rotate positive, then negative)
+            "loop_iterations": 100,
             "prompt": "star destroyer, rebel alliance, x-wing, tie-fighter, lsd, dmt, trip, detailed, 4k, photorealistic, motherboard, space, nebula, laser beam",
             "denoise_amt": 0.6,
             "transforms": [
                 {
                     "name": "rotate",
-                    "angle": 1.0
-                }
-            ]
-        },
-        {
-            // star destroyer / xwings (rotate negative)
-            "loop_iterations": 50,
-            "transforms": [
-                {
-                    "name": "rotate",
-                    "angle": -1.0
+                    "angle": "1.0 if (n - offset) <= 50 else -1.0"
                 }
             ]
         },
         {
             // boba fett
-            "loop_iterations": 1,
-            "denoise_amt": 0.70,
+            "loop_iterations": 60,
+            "denoise_amt": "0.70 if (n - offset) == 0 else 0.6",
             "prompt": "boba fett, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula, star wars",
             "transforms": [
                 {
@@ -275,11 +272,6 @@
                     "zoom_amt": 0.03
                 }
             ]
-        },
-        {
-            // boba fett (cont'd)
-            "loop_iterations": 59,
-            "denoise_amt": 0.6
         }
     ],
     "version": 1
