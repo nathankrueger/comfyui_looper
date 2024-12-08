@@ -20,3 +20,4 @@ def test_expr_evaluation():
     assert SimpleExprEval(local_vars={'x': math.pi})("list(str(ceil(5.1)))") == ["6"]
     assert SimpleExprEval(local_vars={'x': -1})("relu(x)") == 0
     assert SimpleExprEval(local_vars={'x': 6.5})("relu(x)") == 6.5
+    assert SimpleExprEval(local_vars={'n': 1})("8 if n == 1 else 2") == 8

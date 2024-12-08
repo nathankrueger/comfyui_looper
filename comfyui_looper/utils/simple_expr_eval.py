@@ -164,6 +164,11 @@ class SimpleExprEval:
                         if self.returned:
                             break
                 return self._eval_recursive(result)
+            case ast.IfExp:
+                if self._eval_recursive(ast_node.test):
+                    return self._eval_recursive(ast_node.body)
+                else:
+                    return self._eval_recursive(ast_node.orelse)
             case ast.Match:
                 subject_val = self._eval_recursive(ast_node.subject)
                 for case in ast_node.cases:
@@ -173,7 +178,7 @@ class SimpleExprEval:
                             if self.returned:
                                 break
                     else:
-                            continue
+                        continue
                     break
                 return self._eval_recursive(result)
             case ast.match_case:
@@ -278,5 +283,7 @@ class SimpleExprEval:
                 upper = self._eval_recursive(ast_node.upper)
                 step  = self._eval_recursive(ast_node.step)
                 return slice(lower, upper, step)
+            case ast.Import | ast.ImportFrom:
+                raise NotImplementedError("Imports are prohibited.")
 
         raise NotImplementedError(f"Unsupported operation attempted: {type(ast_node)}")
