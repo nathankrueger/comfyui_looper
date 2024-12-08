@@ -1,52 +1,76 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 1,
+            "loop_iterations": 30,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "dmt, psyai, lsd, darth vader, star wars, digital, wires, motherboard, circuits, colorful",
-            "neg_prompt": "dark, dimly lit, blackness",
-            "denoise_steps": 20,
-            "cfg": 8,
-            "denoise_amt": 0.55,
+            "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula",
+            "neg_prompt": "boobs, woman, smiling, horns",
+            "denoise_steps": 30,
+            "cfg": "7 + relu(3*sin(n))",
+            "denoise_amt": 0.6,
             "loras": [
                 [
                     "Space_Nebula_Style_SDXL.safetensors",
-                    0.45
+                    0.5
                 ],
                 [
                     "SDXL-PsyAI-v4.safetensors",
                     1.0
                 ],
-                // [
-                //     "detailer_v5.safetensors",
-                //     1.0
-                // ],
+                [
+                    "detailer_v5.safetensors",
+                    1.2
+                ],
                 [
                     "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
+                    1.2
+                ],
+                [
+                    "star wars style.safetensors",
+                    0.6
                 ]
             ],
-            // 2 con delta
+            // many con delta
             "con_deltas": [
-                {
-                    // "pos": "nice, happy, friendly, altruistic",
-                    // "neg": "mean, angry, scary, evil, sharp teeth, rage",
-                    // "pos": "good",
-                    // "neg": "evil",
-                    "pos": "jedi",
-                    "neg": "sith",
-                    "strength": "log(n+.0000001)"
-                },
-                {
-                    "pos": "nice, happy, friendly, altruistic",
-                    "neg": "mean, angry, scary, evil, sharp teeth, rage",
-                    "strength": -0.8
-                }
+                // {
+                //     "pos": "jedi",
+                //     "neg": "sith",
+                //     "strength": -0.5
+                // }
+                //,
+                // {
+                //     "pos": "nice, happy, friendly, altruistic",
+                //     "neg": "mean, angry, scary, evil, sharp teeth, rage",
+                //     "strength": -0.3
+                // }
+                // ,
+                // {
+                //     "pos": "portrait, middle of frame, one subject",
+                //     "neg": "landscape, small subject, crowd, expansive scene",
+                //     "strength": -1.1
+                // }
+                // ,
+                // {
+                //     "pos": "psychedelic, patterns, colors",
+                //     "neg": "flat, blank, simple, gray",
+                //     "strength": 1
+                // },
+                // {
+                //     "pos": "fine detail, intricate, crisp image, sharp, 4k, 8k",
+                //     "neg": "blurry, out of focus, polaroid",
+                //     "strength": 1
+                // }
+                //,
+                // {
+                //     "pos": "digital",
+                //     "neg": "organic",
+                //     "strength": 1
+                // }
             ],
             "transforms": [
                 {
                     "name": "fisheye",
-                    "strength": -0.15
+                    "strength": -0.05
                 }
                 // ,
                 // {
@@ -54,30 +78,31 @@
                 //     "zoom_amt": 0.05
                 // }
             ]
-        },
-        // inferred (2)
-        {
-            "loop_iterations": 1,
-            "denoise_amt": 0.9
-        },
-        // empty (0)
-        {
-            "loop_iterations": 1,
-            "con_deltas": [],
-            "denoise_amt": 0.9
-        },
-        // 1 con delta
-        {
-            "loop_iterations": 1,
-            "con_deltas": [
-                {
-                    "pos": "jedi",
-                    "neg": "sith",
-                    "strength": -0.8
-                }
-            ],
-            "denoise_amt": 0.9
         }
+        // ,
+        // // inferred (many)
+        // {
+        //     "loop_iterations": 1,
+        //     "denoise_amt": 0.9
+        // },
+        // // empty (0)
+        // {
+        //     "loop_iterations": 1,
+        //     "con_deltas": [],
+        //     "denoise_amt": 0.9
+        // },
+        // // 1 con delta
+        // {
+        //     "loop_iterations": 1,
+        //     "con_deltas": [
+        //         {
+        //             "pos": "jedi",
+        //             "neg": "sith",
+        //             "strength": -0.8
+        //         }
+        //     ],
+        //     "denoise_amt": 0.9
+        // }
     ],
     "version": 1
 }

@@ -20,11 +20,10 @@
                 [
                     "star wars style.safetensors",
                     0.7
-                ]
-                ,
+                ],
                 [
                     "detailer_v5.safetensors",
-                    0.5
+                    1.0
                 ]
             ],
             "transforms": [
@@ -44,6 +43,7 @@
             "prompt": "jabba the hutt, mouth open full of long sharp teeth, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
             "neg_prompt": "blurry, dark",
             "denoise_amt": 0.6,
+            "cfg": "8 + relu(5*sin(n))",
             "transforms": [
                 {
                     "name": "squeeze_wide",
@@ -54,15 +54,72 @@
                 {
                     "pos": "good, altruistic, friendly, happy",
                     "neg": "evil, demon, anger, rage, death, skeleton",
-                    "strength": "0.5 + 0.3*sin(0.2*n)"
+                    "strength": "0.3 + 0.3*sin(0.2*n)"
                 }
             ]
         },
         {
-            // kashyk
+            // vader
+            "loop_iterations": 80,
+            "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula, galaxy",
+            "neg_prompt": "boobs, woman, smiling, horns",
+            "denoise_steps": 30,
+            "cfg": "7 + relu(3*sin(n))",
+            "denoise_amt": 0.6,
+            "loras": [
+                [
+                    "Space_Nebula_Style_SDXL.safetensors",
+                    0.5
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.2
+                ],
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.2
+                ],
+                [
+                    "star wars style.safetensors",
+                    0.6
+                ]
+            ],
+            "con_deltas": [
+                // {
+                //     "pos": "jedi",
+                //     "neg": "sith",
+                //     "strength": -0.5
+                // },
+                // {
+                //     "pos": "nice, happy, friendly, altruistic",
+                //     "neg": "mean, angry, scary, evil, sharp teeth, rage",
+                //     "strength": -0.3
+                // }
+            ]
+        },
+        {
+            // kashyyyk
             "loop_iterations": 50,
-            "prompt": "wookie, chewbacca, kashyk, forest, trippy, dmt, lsd, psyai",
+            "prompt": "wookie, chewbacca, kashyyyk, forest, pyschedelic, dmt, lsd, psyai",
             "denoise_amt": 0.55,
+            "loras": [
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.1
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ],
+                [
+                    "star wars style.safetensors",
+                    0.6
+                ]
+            ],
             "transforms": [
                 {
                     "name": "squeeze_tall",
@@ -72,14 +129,33 @@
                     "name": "perspective",
                     "strength": 20,
                     "shrink_edge": "right"
-                },
+                }
             ],
             "con_deltas": []
         },
         {
             // hoth
             "loop_iterations": 50,
-            "prompt": "hoth, dmt, star wars, lsd, at-at, stormtrooper, photorealistic",
+            "prompt": "hoth, dmt, large mountains, star wars, lsd, at-at, stormtroopers, photorealistic",
+            "neg_prompt": "blank, empty",
+            "loras": [
+                [
+                    "Dark_Futuristic_Circuit_Boards.safetensors",
+                    1.0
+                ],
+                [
+                    "SDXL-PsyAI-v4.safetensors",
+                    1.0
+                ],
+                [
+                    "star wars style.safetensors",
+                    0.7
+                ],
+                [
+                    "detailer_v5.safetensors",
+                    1.0
+                ]
+            ],
             "transforms": [
                 {
                     "name": "zoom_in",
@@ -91,7 +167,7 @@
             // c-3po
             "loop_iterations": 1,
             "denoise_amt": 0.78,
-            "prompt": "C-3PO, droid, digital, circuits, star wars, lsd, photorealistic",
+            "prompt": "C-3PO, cloud city, digital, circuits, star wars, lsd, photorealistic, detailed, patterns, motherboard",
             "transforms": [
                 {
                     "name": "zoom_in",
@@ -108,7 +184,7 @@
             // r2d2
             "loop_iterations": 1,
             "denoise_amt": 0.78,
-            "prompt": "R2D2, droid, android, digital, circuits, motherboard, star wars, lsd, photorealistic",
+            "prompt": "R2-D2, digital, circuits, star wars, lsd, photorealistic, detailed, patterns, motherboard",
             "transforms": [
                 {
                     "name": "perspective",

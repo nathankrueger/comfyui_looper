@@ -102,8 +102,11 @@ class SettingsManager:
         # lora & model files
         for ls in self.workflow.all_settings:
             if ls.loras != EMPTY_LIST:
-                for lorafile in ls.loras:
-                    assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], lorafile[0]))
+                for lora in ls.loras:
+                    lorafile = lora[0]
+                    lorastrength = lora[1]
+                    assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], lorafile))
+                    assert isinstance(lorastrength, (float, int))
             if ls.checkpoint is not None:
                 ckpt_found = False
                 for folder_query in {"checkpoints", "diffusion_models"}:
