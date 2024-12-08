@@ -88,8 +88,8 @@
             "program": "comfyui_looper/image_processing/animator.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "output/test_con_delta", "-o", "output/test_con_delta/test_con_delta.mp4", "-x", "max_dim:768", "-x", "frame_delay:160",
-                "-x", "bounce", "-x", "bounce_frame_skip:0", "-t", "mp4", "-x", "v_bitrate:4000k"
+                "-i", "output/star_wars2/pass_0", "-o", "output/star_wars2/pass_0/starwarsv5_slow.mp4", "-x", "max_dim:1024", "-x", "frame_delay:140",
+                "-x", "bounce", "-x", "bounce_frame_skip:1", "-t", "mp4", "-x", "v_bitrate:6000k"
             ]
         },
         {

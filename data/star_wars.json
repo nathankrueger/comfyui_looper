@@ -40,7 +40,7 @@
         {
             // jabba
             "loop_iterations": 50,
-            "prompt": "jabba the hutt, mouth open full of long sharp teeth, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
+            "prompt": "jabba the hutt, mouth open, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
             "neg_prompt": "overexposed",
             "denoise_amt": 0.6,
             "cfg": "8 + relu(3*sin(n))",
@@ -78,7 +78,7 @@
         },
         {
             // vader
-            "loop_iterations": 80,
+            "loop_iterations": 90,
             "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula, galaxy",
             "neg_prompt": "boobs, woman, smiling, horns",
             "cfg": "7 + relu(3*sin(n))",
@@ -108,11 +108,11 @@
             "transforms": [
                 {
                     "name": "fisheye",
-                    "strength": 0.21
+                    "strength": 0.1
                 },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.09
+                    "zoom_amt": 0.05
                 }
             ],
             "con_deltas": [
@@ -133,7 +133,7 @@
             "loop_iterations": 50,
             "prompt": "wookie, patterns, dmt chewbacca, kashyyyk, forest, pyschedelic, dmt, lsd, psyai",
             "neg_prompt": "dark",
-            "denoise_amt": "0.72 if offset == 1 else 0.62",
+            "denoise_amt": "0.72 if (n - offset) == 0 else 0.62",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -155,7 +155,7 @@
                 },
                 {
                     "name": "perspective",
-                    "strength": 20,
+                    "strength": 10,
                     "shrink_edge": "left"
                 },
                 {
@@ -167,8 +167,8 @@
         },
         {
             // hoth
-            "loop_iterations": 70,
-            "prompt": "hoth, dmt, large mountains, star wars, lsd, at-at, stormtroopers, photorealistic",
+            "loop_iterations": 80,
+            "prompt": "hoth, dmt, large mountains, landscape, star wars, lsd, at-at, stormtroopers, photorealistic",
             "neg_prompt": "blank, empty",
             "loras": [
                 [
@@ -225,6 +225,22 @@
             ]
         },
         {
+            // cloud city
+            "loop_iterations": 70,
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
+            "prompt": "Cloud city, digital, circuits, star wars, lsd, photorealistic, detailed, patterns, motherboard",
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
+                    "squeeze_amt": "0.005 if (n - offset) < 35 else 0"
+                },
+                {
+                    "name": "squeeze_tall",
+                    "squeeze_amt": "0.005 if (n - offset) >= 35 else 0"
+                }
+            ]
+        },
+        {
             // deathstar
             "loop_iterations": 50,
             "denoise_amt": "0.75 if (n - offset) == 0 else (0.55 + 0.3*sin(0.3*n))",
@@ -263,7 +279,7 @@
         },
         {
             // boba fett
-            "loop_iterations": 60,
+            "loop_iterations": 75,
             "denoise_amt": "0.70 if (n - offset) == 0 else 0.6",
             "prompt": "boba fett, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula, star wars",
             "transforms": [

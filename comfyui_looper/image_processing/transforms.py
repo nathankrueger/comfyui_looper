@@ -93,6 +93,8 @@ class ZoomInTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         zoom_amt: float = self.params['zoom_amt']
+        if zoom_amt == 0.0:
+            return img
 
         mod_width = int((1.0 - zoom_amt) * float(init_width))
         mod_height = int((1.0 - zoom_amt) * float(init_height))
@@ -114,6 +116,8 @@ class ZoomInLeftTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         zoom_amt: float = self.params['zoom_amt']
+        if zoom_amt == 0.0:
+            return img
 
         mod_width = int((1.0 - zoom_amt) * float(init_width))
 
@@ -134,6 +138,8 @@ class ZoomInRightTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         zoom_amt: float = self.params['zoom_amt']
+        if zoom_amt == 0.0:
+            return img
 
         mod_width = int((1.0 - zoom_amt) * float(init_width))
 
@@ -154,6 +160,8 @@ class ZoomInUpTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         zoom_amt: float = self.params['zoom_amt']
+        if zoom_amt == 0.0:
+            return img
 
         mod_height = int((1.0 - zoom_amt) * float(init_height))
 
@@ -174,6 +182,8 @@ class ZoomInDownTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         zoom_amt: float = self.params['zoom_amt']
+        if zoom_amt == 0.0:
+            return img
 
         mod_height = int((1.0 - zoom_amt) * float(init_height))
 
@@ -194,6 +204,8 @@ class SqueezeWideTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         squeeze_amt: float = self.params['squeeze_amt']
+        if squeeze_amt == 0.0:
+            return img
 
         mod_width = int((1.0 - squeeze_amt) * float(init_width))
 
@@ -214,6 +226,8 @@ class SqueezeTallTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         squeeze_amt: float = self.params['squeeze_amt']
+        if squeeze_amt == 0.0:
+            return img
 
         mod_height = int((1.0 - squeeze_amt) * float(init_height))
 
@@ -234,6 +248,8 @@ class FisheyeTransform(Transform):
     def transform(self, img: Image) -> Image:
         width, height = img.size
         strength: float = self.params['strength']
+        if strength == 0.0:
+            return img
 
         center_x, center_y = width // 2, height // 2
 
@@ -390,6 +406,9 @@ class RotateTransform(Transform):
     def transform(self, img: Image) -> Image:
         image_width, image_height = img.size
         rotate_angle = self.params['angle']
+        if rotate_angle == 0.0:
+            return img
+
         image_rotated = self.rotate(img, rotate_angle)
         image_rotated_cropped = self.crop_around_center(
             image_rotated,
@@ -465,6 +484,8 @@ class WaveDistortionTransformation(Transform):
         strength = int(self.params['strength'])
         period = int(self.params['period'])
         rate = int(self.params['rate'])
+        if strength == 0.0:
+            return img
 
         # alternating pattern
         modval = (n / rate) % rate
@@ -482,8 +503,10 @@ class PerspectiveTransformation(Transform):
         image_width, image_height = img.size
         strength = int(self.params['strength'])
         shrink_edge = self.params['shrink_edge']
-        image = np.asarray(img)
+        if strength == 0.0:
+            return img
 
+        image = np.asarray(img)
         src_pts = np.float32(
             [
                 # top left

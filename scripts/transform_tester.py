@@ -61,7 +61,7 @@ TRANSFORMS_TO_TEST = [
     # }
     {
         "name": "squeeze_tall",
-        "squeeze_amt": 0.015
+        "squeeze_amt": 0.0
     },
     {
         "name": "perspective",
