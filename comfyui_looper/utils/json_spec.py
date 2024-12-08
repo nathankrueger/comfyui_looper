@@ -3,6 +3,7 @@ import random
 from typing import Any, Optional
 from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
+from copy import deepcopy
 
 import folder_paths
 from image_processing.transforms import Transform
@@ -80,7 +81,6 @@ class SettingsManager:
 
         assert self.workflow.version == CURRENT_WORKFLOW_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
-        self.prev_setting_map: dict[str, Any] = {}
         
         # set offsets
         running_offset = 0
@@ -196,6 +196,9 @@ class SettingsManager:
                 prev_loopsetting = self.workflow.all_settings[setting_idx]
                 prev_setting_val = prev_loopsetting.__getattribute__(setting_name)
                 if prev_setting_val is not None and (prev_setting_val != EMPTY_LIST and prev_setting_val != EMPTY_DICT):
+                    # use the correct offset for the current loopsetting
+                    prev_loopsetting = deepcopy(prev_loopsetting)
+                    prev_loopsetting.offset = loopsetting.offset
                     return self.eval_expressions(iter, setting_name, prev_setting_val, prev_loopsetting)
                 setting_idx -= 1
             if setting_val == EMPTY_LIST:
@@ -214,8 +217,15 @@ class SettingsManager:
 
         _, loopsetting = self.get_loopsettings_for_iter(iter)
         result = LoopSettings()
+        
+        # assign the non-dataclass fields
+        result.offset = loopsetting.offset
+
+        # grab dataclass fields
         for dc_field in fields(loopsetting):
             result.__setattr__(dc_field.name, self.get_setting_for_iter(dc_field.name, iter))
+
+        # minor detail, but from the perspective of a given image or compute iteration this is 1
         result.loop_iterations = 1
 
         return result
