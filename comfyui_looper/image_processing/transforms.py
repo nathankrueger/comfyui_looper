@@ -476,7 +476,7 @@ class WaveDistortionTransformation(Transform):
 class PerspectiveTransformation(Transform):
     NAME = 'perspective'
     REQUIRED_PARAMS = {'strength', 'shrink_edge'}
-    EVAL_PARAMS = {'strength', 'shrink_edge'}
+    EVAL_PARAMS = {'strength'}
 
     def transform(self, img: Image) -> Image:
         image_width, image_height = img.size

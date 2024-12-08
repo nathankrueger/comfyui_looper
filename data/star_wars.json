@@ -41,9 +41,9 @@
             // jabba
             "loop_iterations": 50,
             "prompt": "jabba the hutt, mouth open full of long sharp teeth, 4k, dmt, trippy, 4k, detailed, digital, evil, rage",
-            "neg_prompt": "blurry, dark",
+            "neg_prompt": "overexposed",
             "denoise_amt": 0.6,
-            "cfg": "8 + relu(5*sin(n))",
+            "cfg": "8 + relu(3*sin(n))",
             "transforms": [
                 {
                     "name": "squeeze_wide",
@@ -63,7 +63,6 @@
             "loop_iterations": 80,
             "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula, galaxy",
             "neg_prompt": "boobs, woman, smiling, horns",
-            "denoise_steps": 30,
             "cfg": "7 + relu(3*sin(n))",
             "denoise_amt": 0.6,
             "loras": [
@@ -88,6 +87,16 @@
                     0.6
                 ]
             ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.21
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.09
+                }
+            ],
             "con_deltas": [
                 // {
                 //     "pos": "jedi",
@@ -105,6 +114,7 @@
             // kashyyyk
             "loop_iterations": 50,
             "prompt": "wookie, chewbacca, kashyyyk, forest, pyschedelic, dmt, lsd, psyai",
+            "neg_prompt": "",
             "denoise_amt": 0.55,
             "loras": [
                 [
