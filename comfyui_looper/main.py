@@ -11,7 +11,6 @@ from utils.util import (
     get_loop_img_filename,
     parse_params
 )
-from folder_paths import get_input_directory
 
 # handle args which are otherwise consumed by comfyui
 LOOPER_ARGS = sys.argv[1:]
@@ -20,7 +19,7 @@ sys.argv = [sys.argv[0]]
 
 # constants
 LOG_BASENAME='looper_log.log'
-LOOP_IMG='looper.png'
+LOOP_IMG='output/looper.png'
 
 def get_output_folder(output_folder_arg: str, total_reps: int, current_rep: int) -> str:
     if total_reps > 1:
@@ -43,7 +42,7 @@ if __name__ == "__main__":
 
     for rep in range(args.passes):
         output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
-        loopback_filename = str(Path(get_input_directory()) / LOOP_IMG)
+        loopback_filename = "looper.png"
         starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
         
         # ensure the output folder exists
@@ -53,11 +52,11 @@ if __name__ == "__main__":
         log_filename = get_log_filename(LOG_BASENAME)
         with open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8') as log_file:
             workflow_engine = create_workflow(args.workflow_type)
-            workflow_engine.resize_images_for_model(args.input_img, [loopback_filename, starting_point_filename])
+            workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
 
             looper_main(
                 engine=workflow_engine,
-                loop_img_path=loopback_filename,
+                loop_img_path=LOOP_IMG,
                 output_folder=output_folder,
                 json_file=args.json_file,
                 animation_file=args.animation_filename,
