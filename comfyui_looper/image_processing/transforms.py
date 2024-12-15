@@ -195,7 +195,69 @@ class ZoomInDownTransform(Transform):
         cropped = img.crop((left, top, right, bottom))
         result = cropped.resize((init_width, init_height))
         return result
+
+class FoldVerticalTransform(Transform):
+    NAME = 'fold_vertical'
+    REQUIRED_PARAMS = {'fold_amt'}
+    EVAL_PARAMS = {'fold_amt'}
+
+    def transform(self, img: Image) -> Image:
+        init_width, init_height = img.size
+        img_middle = init_width // 2
+        fold_amt: int = int(self.params['fold_amt'] // 2)
+
+        # crop into two pieces, removing some in the middle
+        top = 0
+        bottom = init_height
+
+        left = 0
+        right = img_middle - fold_amt
+        l_image = img.crop((left, top, right, bottom))
+
+        left = img_middle + fold_amt
+        right = init_width
+        r_image = img.crop((left, top, right, bottom))
+
+        # attach images together
+        combined_img = Image.new('RGB', (init_width - (2 * fold_amt), init_height))
+        combined_img.paste(im=l_image, box=(0, 0))
+        combined_img.paste(im=r_image, box=(img_middle - fold_amt, 0))
+
+        # resize to normal size
+        result = combined_img.resize((init_width, init_height))
+        return result
     
+class FoldHorizontalTransform(Transform):
+    NAME = 'fold_horizontal'
+    REQUIRED_PARAMS = {'fold_amt'}
+    EVAL_PARAMS = {'fold_amt'}
+
+    def transform(self, img: Image) -> Image:
+        init_width, init_height = img.size
+        img_middle = init_height // 2
+        fold_amt: int = int(self.params['fold_amt'] // 2)
+
+        # crop into two pieces, removing some in the middle
+        left = 0
+        right = init_width
+
+        top = 0
+        bottom = img_middle - fold_amt
+        top_image = img.crop((left, top, right, bottom))
+
+        top = img_middle + fold_amt
+        bottom = init_height
+        bot_image = img.crop((left, top, right, bottom))
+
+        # attach images together
+        combined_img = Image.new('RGB', (init_width, init_height - (2 * fold_amt)))
+        combined_img.paste(im=top_image, box=(0, 0))
+        combined_img.paste(im=bot_image, box=(0, img_middle - fold_amt))
+
+        # resize to normal size
+        result = combined_img.resize((init_width, init_height))
+        return result
+
 class SqueezeWideTransform(Transform):
     NAME = 'squeeze_wide'
     REQUIRED_PARAMS = {'squeeze_amt'}
