@@ -1,7 +1,7 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 5,
+            "loop_iterations": 10,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "darth vader wearing his helmet, circuits, evil red eyes, long razor sharp teeth, demon, dmt, psyai, star wars, motherboard, nebula",
             "neg_prompt": "boobs, woman, smiling, horns",
@@ -38,11 +38,11 @@
                 //     "strength": -0.5
                 // }
                 //,
-                // {
-                //     "pos": "nice, happy, friendly, altruistic",
-                //     "neg": "mean, angry, scary, evil, sharp teeth, rage",
-                //     "strength": -0.3
-                // }
+                {
+                    "pos": "nice, happy, friendly, altruistic",
+                    "neg": "mean, angry, scary, evil, sharp teeth, rage",
+                    "strength": -0.3
+                }
                 // ,
                 // {
                 //     "pos": "portrait, middle of frame, one subject",

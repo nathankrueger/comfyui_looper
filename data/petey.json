@@ -8,28 +8,28 @@
             "cfg": 8.0,
             "denoise_amt": "0.2 + (0.5/35)*n",
             "loras": [
-                [
-                    "peteyv2.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "peteyv2.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
-            "canny": [
-                0.6,
-                0.01,
-                0.6
-            ]
+            "canny": {
+                "low_thresh": 0.01,
+                "high_thresh": 0.6,
+                "strength": 0.6
+            }
         },
         {
             // fisheye effect, robot gets angry!
@@ -37,22 +37,22 @@
             "prompt": "petey, lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
             "denoise_amt": 0.55,
             "loras": [
-                [
-                    "peteyv2.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "peteyv2.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "canny": [],
             "transforms": [
@@ -72,22 +72,22 @@
             "denoise_amt": 0.75,
             "prompt": "petey, terminator, t2, arnold schwarzenegger, guns, ak-47, skull, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
             "loras": [
-                [
-                    "peteyv2.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "peteyv2.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": []
         },

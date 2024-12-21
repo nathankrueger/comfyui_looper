@@ -9,7 +9,7 @@ from nodes import (
     NODE_CLASS_MAPPINGS,
 )
 
-from utils.json_spec import ConDelta
+from utils.json_spec import ConDelta, LoraFilter
 
 class LoraManager:
     def __init__(self):
@@ -18,23 +18,23 @@ class LoraManager:
         self.prev_model = None
         self.prev_clip = None
 
-    def reload_if_needed(self, lora_list: list[tuple[str, float]], model, clip) -> tuple:
+    def reload_if_needed(self, lora_list: list[LoraFilter], model, clip) -> tuple:
         """
         Check the state of the input lora_dict against the current
         hash, if changes are detected, load in new weights, otherwise
         do nothing.
         """
 
-        current_hash = hash(str(lora_list))
+        current_hash = hash(tuple(lora_list))
         if current_hash != self.prev_hash:
             curr_model = model
             curr_clip = clip
     
-            for lora_name, lora_strength in lora_list:
+            for lorafilter in lora_list:
                 curr_model, curr_clip = self.loraloader.load_lora(
-                    lora_name=lora_name,
-                    strength_model=lora_strength,
-                    strength_clip=lora_strength,
+                    lora_name=lorafilter.lora_path,
+                    strength_model=lorafilter.lora_strength,
+                    strength_clip=lorafilter.lora_strength,
                     model=curr_model,
                     clip=curr_clip,
                 )
@@ -183,7 +183,7 @@ class ControlNetManager:
         self.controlnet_model_file = controlnet_model_file
 
     def reload_if_needed(self, canny_param):
-        if canny_param is not None and len(canny_param) == 3:
+        if canny_param is not None:
             if self.controlnet_model is None:
                 self.controlnet_model = self.node.load_controlnet(self.controlnet_model_file)[0]
         else:

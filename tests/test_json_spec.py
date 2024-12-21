@@ -19,7 +19,7 @@ def get_loop_settings():
             ConDelta(pos="bright", neg="dark", strength=5.0),
             ConDelta(pos="friendly", neg="mean", strength=-1.0),
         ],
-        loras=[('lora_a.safetensors', 1.0), ('lora_b.safetensors', .212354)],
+        loras=[LoraFilter('lora_a.safetensors', 1.0), LoraFilter('lora_b.safetensors', .212354)],
         transforms=[{'name':'zoom_in', 'zoom_amt':0.985}]
     )
 
@@ -39,8 +39,8 @@ def test_serdes_workflow():
     test_json = test_workflow.to_json(indent=4)
     test_clone = Workflow.schema().loads(test_json)
     assert test_workflow == test_clone
-    # with open('test.json', 'w', encoding='utf-8') as f:
-    #     f.write(test_json)
+    with open('test.json', 'w', encoding='utf-8') as f:
+        f.write(test_json)
 
 def test_settings_manager():
     w = Workflow(
@@ -49,7 +49,7 @@ def test_settings_manager():
             LoopSettings(
                 seed=123,
                 loop_iterations=1,
-                canny=[1.0,1.0,1.0],
+                canny=Canny(0.0, 0.5, 0.75),
                 con_deltas=[
                     ConDelta(pos="bright", neg="dark", strength=5.0),
                     ConDelta(pos="friendly", neg="mean", strength=-1.0),
@@ -61,12 +61,12 @@ def test_settings_manager():
                 con_deltas=[
                     ConDelta(pos="rich", neg="poor", strength=2.5)
                 ],
-                loras=[('foo', 0.5)],
+                loras=[LoraFilter('foo', 0.5)],
             ),
             # 2
             LoopSettings(
                 seed=456,
-                canny=[],
+                canny=None,
             ),
             # 3
             LoopSettings(
@@ -105,19 +105,19 @@ def test_settings_manager():
             assert sm.get_setting_for_iter('con_deltas', i) == []
 
         # canny
-        assert w.all_settings[0].canny == [1.0,1.0,1.0]
-        assert sm.get_setting_for_iter('canny', 0) == [1.0,1.0,1.0]
-        assert w.all_settings[1].canny == EMPTY_LIST
-        assert sm.get_setting_for_iter('canny', 1) == [1.0,1.0,1.0]
-        assert w.all_settings[2].canny == []
-        assert sm.get_setting_for_iter('canny', 2) == []
-        assert w.all_settings[3].canny == EMPTY_LIST
-        assert sm.get_setting_for_iter('canny', 3) == []
-        assert w.all_settings[4].canny == EMPTY_LIST
-        assert sm.get_setting_for_iter('canny', 4) == []
+        assert w.all_settings[0].canny == Canny(0.0, 0.5, 0.75)
+        assert sm.get_setting_for_iter('canny', 0) == Canny(0.0, 0.5, 0.75)
+        assert w.all_settings[1].canny == EMPTY_OBJECT
+        assert sm.get_setting_for_iter('canny', 1) == Canny(0.0, 0.5, 0.75)
+        assert w.all_settings[2].canny == None
+        assert sm.get_setting_for_iter('canny', 2) == None
+        assert w.all_settings[3].canny == EMPTY_OBJECT
+        assert sm.get_setting_for_iter('canny', 3) == None
+        assert w.all_settings[4].canny == EMPTY_OBJECT
+        assert sm.get_setting_for_iter('canny', 4) == None
         for i in range(5,10):
-            assert w.all_settings[i].canny == EMPTY_LIST
-            assert sm.get_setting_for_iter('canny', i) == []
+            assert w.all_settings[i].canny == EMPTY_OBJECT
+            assert sm.get_setting_for_iter('canny', i) == None
 
         # seed
         assert sm.get_setting_for_iter('seed', 0) != sm.get_setting_for_iter('seed', 1)
@@ -141,12 +141,12 @@ def test_settings_manager():
         # loras
         assert w.all_settings[0].loras == EMPTY_LIST
         assert sm.get_setting_for_iter('loras', 0) == []
-        assert w.all_settings[1].loras == [('foo', 0.5)]
-        assert sm.get_setting_for_iter('loras', 1) == [('foo', 0.5)]
+        assert w.all_settings[1].loras == [LoraFilter('foo', 0.5)]
+        assert sm.get_setting_for_iter('loras', 1) == [LoraFilter('foo', 0.5)]
         assert w.all_settings[2].loras == EMPTY_LIST
-        assert sm.get_setting_for_iter('loras', 2) == [('foo', 0.5)]
+        assert sm.get_setting_for_iter('loras', 2) == [LoraFilter('foo', 0.5)]
         assert w.all_settings[3].loras == EMPTY_LIST
-        assert sm.get_setting_for_iter('loras', 3) == [('foo', 0.5)]
+        assert sm.get_setting_for_iter('loras', 3) == [LoraFilter('foo', 0.5)]
         assert w.all_settings[4].loras == []
         assert sm.get_setting_for_iter('loras', 4) == []
         for i in range(5,10):

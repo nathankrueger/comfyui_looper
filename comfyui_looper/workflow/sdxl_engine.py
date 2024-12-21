@@ -97,14 +97,13 @@ class SDXLWorkflowEngine(WorkflowEngine):
 
         # load in the canny if needed
         if (controlnetloader_result := self.control_net_mgr.reload_if_needed(canny)) is not None:
-            canny_strength, canny_low_thresh, canny_high_thresh = canny  
             canny_result, = self.canny_node.detect_edge(
-                low_threshold=canny_low_thresh,
-                high_threshold=canny_high_thresh,
+                low_threshold=canny.low_thresh,
+                high_threshold=canny.high_thresh,
                 image=image_tensor,
             )
             pos_cond, = self.controlnetapply.apply_controlnet(
-                strength=canny_strength,
+                strength=canny.strength,
                 conditioning=pos_cond,
                 control_net=controlnetloader_result,
                 image=canny_result,

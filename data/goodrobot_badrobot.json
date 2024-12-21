@@ -9,24 +9,24 @@
             "cfg": 8.0,
             "denoise_amt": "0.2 + (0.5/35)*n",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
-            "canny": [
-                0.6,
-                0.01,
-                0.6
-            ]
+            "canny": {
+                "low_thresh": 0.01,
+                "high_thresh": 0.6,
+                "strength": 0.6
+            }
         },
         {
             // fisheye effect, robot gets angry!
@@ -34,20 +34,20 @@
             "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
             "denoise_amt": 0.55,
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
-            "canny": [],
+            "canny": null,
             "transforms": [
                 {
                     "name": "fisheye",
@@ -65,18 +65,18 @@
             "denoise_amt": 0.75,
             "prompt": "terminator, t2, arnold schwarzenegger, guns, ak-47, skull, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": []
         },
@@ -91,18 +91,18 @@
             "prompt": "lsd, dmt, trip, vader, skeleton, detailed, 4k, photorealistic, sharp teeth, scary, evil, motherboard",
             "denoise_amt": 0.6,
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.8
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.8
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -126,22 +126,22 @@
             "loop_iterations": 80,
             "prompt": "darth vader, sith, lord, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.8
-                ],
-                [
-                    "Space_Nebula_Style_SDXL.safetensors",
-                    0.43
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.8
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.8
+                },
+                {
+                    "lora_path": "Space_Nebula_Style_SDXL.safetensors",
+                    "lora_strength": 0.43
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.8
+                }
             ],
             "transforms": [
                 {
@@ -156,18 +156,18 @@
             "prompt": "dmt, xenomorph, H.R. Giger, mouth, teeth, motherboard, digital, lsd, detailed, 4k, photorealistic, future, space, nebula, high contrast",
             "denoise_amt": "0.4 + 0.25*sin(0.2*n)",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "Xenomorph.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.8
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Xenomorph.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.8
+                }
             ],
             "transforms": [
                 {
@@ -182,18 +182,18 @@
             "prompt": "city, skyline, tower, skyscraper, dmt, motherboard, digital, lsd, detailed, 4k, photorealistic, future",
             "denoise_amt": 0.55,
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.8
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.8
+                }
             ],
             "transforms": [
                 {
@@ -208,18 +208,18 @@
             "loop_iterations": 1,
             "prompt": "brain connected to motherboard, digital, circuit, detailed, 4k, photorealistic, future, ai",
             "loras": [
-                [
-                    "Electrical_Wires_Style_SDXL.safetensors",
-                    1.0
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Electrical_Wires_Style_SDXL.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -239,18 +239,18 @@
             "loop_iterations": 1,
             "prompt": "explosion, thermonclear bomb, nuke, atomic bomb, galaxy, universe, planets, entropy, colors, disaster, death, poison, 4k, dmt",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ],
-                [
-                    "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -274,18 +274,18 @@
             "loop_iterations": 1,
             "prompt": "ocean, coral reef, dmt, lsd, colors, beautiful, fish, jellyfish, digital, electricity, eel, circuit, 4k, dmt",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {

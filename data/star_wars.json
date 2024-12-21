@@ -9,22 +9,22 @@
             "denoise_steps": 40,
             "denoise_amt": "0.55 + (0.5/80)*n",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -45,22 +45,22 @@
             "denoise_amt": 0.6,
             "cfg": "8 + relu(3*sin(n))",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.5
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.5
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -84,26 +84,26 @@
             "cfg": "7 + relu(3*sin(n))",
             "denoise_amt": "0.6 + relu(0.05*sin(0.125*n))",
             "loras": [
-                [
-                    "Space_Nebula_Style_SDXL.safetensors",
-                    0.5
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.2
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.2
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.6
-                ]
+                {
+                    "lora_path": "Space_Nebula_Style_SDXL.safetensors",
+                    "lora_strength": 0.5
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.2
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.2
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.6
+                }
             ],
             "transforms": [
                 {
@@ -135,18 +135,18 @@
             "neg_prompt": "dark",
             "denoise_amt": "0.72 if (n - offset) == 0 else 0.62",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.1
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.6
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.6
+                }
             ],
             "transforms": [
                 {
@@ -171,22 +171,22 @@
             "prompt": "hoth, dmt, large mountains, landscape, star wars, lsd, at-at, stormtroopers, photorealistic",
             "neg_prompt": "blank, empty",
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.7
-                ],
-                [
-                    "detailer_v5.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {
@@ -246,22 +246,22 @@
             "denoise_amt": "0.75 if (n - offset) == 0 else (0.55 + 0.3*sin(0.3*n))",
             "prompt": "death star in space, lasers, colors, bright, nebula, dmt, lsd, digital, electricity, circuit, 4k, detailed",
             "loras": [
-                [
-                    "Space_Nebula_Style_SDXL.safetensors",
-                    0.43
-                ],
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    1.0
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "star wars style.safetensors",
-                    0.75
-                ]
+                {
+                    "lora_path": "Space_Nebula_Style_SDXL.safetensors",
+                    "lora_strength": 0.43
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "star wars style.safetensors",
+                    "lora_strength": 0.75
+                }
             ],
             "transforms": []
         },

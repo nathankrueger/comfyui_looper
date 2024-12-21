@@ -1,10 +1,9 @@
 {
     "all_settings": [
         {
-            // boom!
-            "denoise_amt": 0.7,
-            "loop_iterations": 1,
-            "prompt": "dinosaur, scary, teeth, lsd, dmt, visionary art, gnarly",
+            "denoise_amt": "0.7 if n == 0 else 0.6",
+            "loop_iterations": 40,
+            "prompt": "robot, scary, teeth, lsd, dmt, visionary art, gnarly",
             "loras": [
                 [
                     "SDXL-PsyAI-v4.safetensors",
@@ -13,36 +12,18 @@
                 [
                     "detailer_v5.safetensors",
                     1.0
-                ],
-                [
-                    "Explosion Artstyle - Trigger is Explosion Artstyle.safetensors",
-                    1.0
                 ]
             ],
             "transforms": [
-                // {
-                //     "name": "fisheye",
-                //     "strength": 0.21
-                // },
-                // {
-                //     "name": "zoom_in",
-                //     "zoom_amt": 0.09
-                // },
                 {
-                    "name": "perspective",
-                    "strength": 35,
-                    "shrink_edge": "bottom"
+                    "name": "fold_vertical",
+                    "fold_amt": "50 * sin(n)"
                 },
                 {
-                    "name": "zoom_in",
-                    "zoom_amt": 0.08
+                    "name": "fold_horizontal",
+                    "fold_amt": "50 * cos(n)"
                 }
             ]
-        },
-        {
-            // boom cont'd!
-            "denoise_amt": 0.6,
-            "loop_iterations": 39
         }
     ],
     "version": 1

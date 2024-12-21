@@ -59,18 +59,22 @@ TRANSFORMS_TO_TEST = [
     #     "name": "zoom_in",
     #     "zoom_amt": 0.03
     # }
+    # {
+    #     "name": "squeeze_tall",
+    #     "squeeze_amt": 0.0
+    # },
+    # {
+    #     "name": "perspective",
+    #     "strength": 20,
+    #     "shrink_edge": "left"
+    # },
+    # {
+    #     "name": "zoom_in",
+    #     "zoom_amt": 0.035
+    # }
     {
-        "name": "squeeze_tall",
-        "squeeze_amt": 0.0
-    },
-    {
-        "name": "perspective",
-        "strength": 20,
-        "shrink_edge": "left"
-    },
-    {
-        "name": "zoom_in",
-        "zoom_amt": 0.035
+        "name": "fold_horizontal",
+        "fold_amt": "20"
     }
 ]
 

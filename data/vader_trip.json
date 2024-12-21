@@ -7,20 +7,20 @@
             "denoise_steps": 30,
             "denoise_amt": 0.5,
             "loras": [
-                [
-                    "Dark_Futuristic_Circuit_Boards.safetensors",
-                    0.7
-                ],
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
-            // "canny": [
-            //     0.5,
-            //     0.01,
-            //     0.6
-            // ]
+            // "canny": {
+            //     "low_thresh": 0.01,
+            //     "high_thresh": 0.5,
+            //     "strength": 0.6
+            // }
             "transforms": [
                 {
                     "name": "rotate",
@@ -41,14 +41,14 @@
         //     "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
         //     "denoise_amt": 0.6,
         //     "loras": [
-        //         [
-        //             "Dark_Futuristic_Circuit_Boards.safetensors",
-        //             0.7
-        //         ],
-        //         [
-        //             "SDXL-PsyAI-v4.safetensors",
-        //             1.0
-        //         ]
+        //         {
+        //             "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+        //             "lora_strength": 0.7
+        //         },
+        //         {
+        //             "lora_path": "SDXL-PsyAI-v4.safetensors",
+        //             "lora_strength": 1.0
+        //         }
         //     ],
         //     "transforms": [
         //         {
@@ -66,14 +66,14 @@
         //     "prompt": "lsd, cyborg, motherboard, circuitry, evil, angry, teeth, fury, rage, patterns, robot, ai, detailed, 4k, photorealistic",
         //     "denoise_amt": 0.5,
         //     "loras": [
-        //         [
-        //             "Dark_Futuristic_Circuit_Boards.safetensors",
-        //             0.3
-        //         ],
-        //         [
-        //             "SDXL-PsyAI-v4.safetensors",
-        //             1.0
-        //         ]
+        //         {
+        //             "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+        //             "lora_strength": 0.3
+        //         },
+        //         {
+        //             "lora_path": "SDXL-PsyAI-v4.safetensors",
+        //             "lora_strength": 1.0
+        //         }
         //     ],
         //     "transforms": [
         //         {
@@ -92,14 +92,14 @@
         //     "denoise_steps": 30,
         //     "denoise_amt": 0.6,
         //     "loras": [
-        //         [
-        //             "Dark_Futuristic_Circuit_Boards.safetensors",
-        //             0.4
-        //         ],
-        //         [
-        //             "SDXL-PsyAI-v4.safetensors",
-        //             1.0
-        //         ]
+        //         {
+        //             "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+        //             "lora_strength": 0.4
+        //         },
+        //         {
+        //             "lora_path": "SDXL-PsyAI-v4.safetensors",
+        //             "lora_strength": 1.0
+        //         }
         //     ],
         //     "transforms": [
         //         {
