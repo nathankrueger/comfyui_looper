@@ -217,11 +217,11 @@ class SettingsManager:
                         cd_eval = ConDelta(pos=item.pos, neg=item.neg, strength=strength_eval)
                         result.append(cd_eval)
                     elif isinstance(item, Canny):
-                        for attr in ['low_thresh', 'high_thresh', 'strength']:
-                            attr_val = item.__getattribute__(attr)
+                        for canny_field in fields(item):
+                            attr_val = item.__getattribute__(canny_field.name)
                             if isinstance(attr_val, str):
                                 eval_result = SimpleExprEval(local_vars=iter_vars)(attr_val)
-                                item.__setattr__(attr, eval_result)
+                                item.__setattr__(canny_field.name, eval_result)
                         result.append(item)
                     elif isinstance(item, LoraFilter) and isinstance(item.lora_strength, str):
                         strength_eval = SimpleExprEval(local_vars=iter_vars)(item.lora_strength)

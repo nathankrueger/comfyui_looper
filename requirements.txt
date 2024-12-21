@@ -1,5 +1,6 @@
 pytest
 moviepy
+pydub
 pillow
 opencv-python
 dataclasses-json
