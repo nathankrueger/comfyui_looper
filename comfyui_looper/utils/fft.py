@@ -15,6 +15,10 @@ class WaveFile:
     samples: NDArray
     sample_rate: int
 
+    def __post_init__(self):
+        _, powvals = signal.welch(self.samples, fs=self.sample_rate, nperseg = (self.sample_rate // 2) // 10)
+        self.max_pow_val = np.max(powvals)
+
     def get_samples(self, start_percentage: float, end_percentage: float) -> NDArray:
         assert end_percentage > start_percentage
         assert start_percentage >= 0.0
@@ -83,9 +87,6 @@ class WaveFile:
         return wf
 
     def get_power_in_freq_ranges(self, start_percentage: float, end_percentage: float, freq_ranges: list[tuple[int, int]]) -> tuple[float, ...]:
-        _, powvals = signal.welch(self.samples, fs=self.sample_rate, nperseg = (self.sample_rate // 2) // 10)
-        max_val = np.max(powvals)
-
         samples_trimmed = self.get_samples(start_percentage, end_percentage)
         _, powvals = signal.welch(samples_trimmed, fs=self.sample_rate, nperseg = (self.sample_rate // 2) // 10)
         result: list[float] = []
@@ -101,7 +102,7 @@ class WaveFile:
         # TODO: don't keep recalculating the overall max, figure out a better solution as
         # the 'welch' algorithm on all samples has different max value vs. the trimmed samples, so this doesn't
         # accurately normalize to 100.0
-        result = (result / max_val) * 100.0
+        result = (result / self.max_pow_val) * 100.0
 
         return tuple(result)
 
