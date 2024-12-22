@@ -116,7 +116,7 @@ class SDXLWorkflowEngine(WorkflowEngine):
             cfg=cfg,
             sampler_name="euler",
             scheduler="normal",
-            denoise=denoise,
+            denoise=round(denoise, 2),
             model=lora_model,
             positive=pos_cond,
             negative=neg_cond,

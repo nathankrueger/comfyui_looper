@@ -76,7 +76,7 @@ def looper_main(
     animation_params: dict[str, str],
     log_file: IO[str]
 ):
-    sm = SettingsManager(json_file)
+    sm = SettingsManager(json_file, animation_params)
     sm.validate()
 
     with torch.inference_mode():
@@ -130,7 +130,7 @@ def looper_main(
             )
 
             # add entry to the logfile
-            log_file.write(f"{output_image_filename}:" + os.linesep + loopsettings_json + os.linesep)
+            log_file.write(f"{output_image_filename}:\n{loopsettings_json}\n\n")
             log_file.flush()
 
     # save animation

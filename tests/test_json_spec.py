@@ -84,7 +84,7 @@ def test_settings_manager():
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, encoding="utf-8")
         temp_file.write(w.to_json(indent=4))
         temp_file.flush()
-        sm = SettingsManager(temp_file.name)
+        sm = SettingsManager(temp_file.name, animation_params={})
 
         # con_delta
         assert w.all_settings[0].con_deltas == [ConDelta(pos="bright", neg="dark", strength=5.0), ConDelta(pos="friendly", neg="mean", strength=-1.0)]

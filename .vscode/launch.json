@@ -29,15 +29,15 @@
             "args": [
                 "-w", "sdxl",
                 "-i", "C:\\Users\\natek\\Downloads\\IMG_0186.JPG",
-                "-p", "1",
-                "-o", "output/test_con_delta",
-                "-j", "data/tests/test_con_delta.json",
+                "-o", "output/test_expr",
+                "-j", "data/tests/test_expr.json",
                 "-t", "mp4",
-                "-a", "test_con_delta.mp4",
+                //"--log_elaborated_settings", "elab_settings.log",
+                "-a", "test_expr.mp4",
                 "-x", "frame_delay:110",
                 "-x", "max_dim:768",
                 "-x", "v_bitrate:4000k",
-                "-x", "bounce", "-x", "bounce_frame_skip:1"
+                "-x", "mp3_file:emotinium_ii.mp3"
             ]
         },
         {
@@ -88,8 +88,9 @@
             "program": "comfyui_looper/image_processing/animator.py",
             "console": "integratedTerminal",
             "args": [
-                "-i", "output/star_wars2/pass_0", "-o", "output/star_wars2/pass_0/starwarsv5_slow.mp4", "-x", "max_dim:1024", "-x", "frame_delay:140",
-                "-x", "bounce", "-x", "bounce_frame_skip:1", "-t", "mp4", "-x", "v_bitrate:6000k"
+                "-i", "output/test_expr", "-o", "output/test_expr/test_expr.mp4", "-x", "max_dim:1024", "-x", "frame_delay:110",
+                 "-t", "mp4", "-x", "v_bitrate:6000k", "-x", "mp3_file:emotinium_ii.mp3"
+                 //"-x", "bounce", "-x", "bounce_frame_skip:1",
             ]
         },
         {

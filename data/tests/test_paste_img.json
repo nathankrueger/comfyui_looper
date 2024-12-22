@@ -7,14 +7,14 @@
             "denoise_steps": 30,
             "denoise_amt": "0.5 - 0.0125*n",
             "loras": [
-                [
-                    "SDXL-PsyAI-v4.safetensors",
-                    1.0
-                ],
-                [
-                    "sierra.safetensors",
-                    1.0
-                ]
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "sierra.safetensors",
+                    "lora_strength": 1.0
+                }
             ],
             "transforms": [
                 {

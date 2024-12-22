@@ -2,9 +2,10 @@ from os.path import abspath, dirname
 import sys
 from typing import Any
 import argparse
-from moviepy import ImageSequenceClip
+from moviepy import ImageSequenceClip, AudioFileClip
 import glob
 from PIL import Image, ImageOps
+from PIL.ImageFile import ImageFile
 
 try:
     from utils.util import parse_params
@@ -14,11 +15,25 @@ except ModuleNotFoundError:
     from comfyui_looper.utils.util import parse_params
 
 IMG_TYPE = '.png'
-DEFAULT_GIF_FRAME_DELAY_MS = 250
+DEFAULT_FRAME_DELAY_MS = 250
 DEFAULT_MAX_DIM = 768
-DEFAULT_VIDEO_BITRATE = '3000k'
+DEFAULT_VIDEO_BITRATE = '4000k'
 
-def get_image_paths(input_folder: str, params: dict[str, Any] = None) -> list[str]:
+def get_animation_param_value(param_name: str, animation_params: dict[str, str]) -> Any | None:
+    if param_name in animation_params:
+        return animation_params[param_name]
+
+    match param_name:
+        case 'max_dim':
+            return DEFAULT_MAX_DIM
+        case 'frame_delay':
+            return DEFAULT_FRAME_DELAY_MS
+        case 'v_bitrate':
+            return DEFAULT_VIDEO_BITRATE
+        case _:
+            return None
+
+def get_image_paths(input_folder: str, params: dict[str, str] = None) -> list[str]:
     # find all images
     frame_paths = [img_path for img_path in glob.glob(f'{input_folder}/*{IMG_TYPE}')]
 
@@ -33,7 +48,7 @@ def get_image_paths(input_folder: str, params: dict[str, Any] = None) -> list[st
     
     return frame_paths
 
-def get_frames(input_folder: str, max_dim: int, params: dict[str, Any] = None) -> list[Image]:
+def get_frames(input_folder: str, max_dim: int, params: dict[str, str] = None) -> list[ImageFile]:
     frame_paths = get_image_paths(input_folder=input_folder, params=params)
     frames = [ImageOps.exif_transpose(Image.open(img_path)) for img_path in frame_paths]
 
@@ -43,17 +58,13 @@ def get_frames(input_folder: str, max_dim: int, params: dict[str, Any] = None) -
     
     return frames
 
-def make_gif(input_folder: str, gif_output: str, params: dict[str, Any] = None):
-    max_dim = DEFAULT_MAX_DIM
-    if 'max_dim' in params:
-        max_dim = int(params['max_dim'])
+def make_gif(input_folder: str, gif_output: str, params: dict[str, str] = None):
+    # parse params
+    max_dim = int(get_animation_param_value('max_dim', params))
+    frame_delay = int(get_animation_param_value('frame_delay', params))
 
     # find all images
     frames = get_frames(input_folder=input_folder, max_dim=max_dim, params=params)
-
-    frame_delay = DEFAULT_GIF_FRAME_DELAY_MS
-    if 'frame_delay' in params:
-        frame_delay = int(params['frame_delay'])
 
     # convert colors see: https://github.com/python-pillow/Pillow/issues/6832
     frames = [frame.convert('RGBA') for frame in frames]
@@ -63,7 +74,7 @@ def make_gif(input_folder: str, gif_output: str, params: dict[str, Any] = None):
     frame_one = frames[0]
     frame_one.save(
         gif_output,
-        format="gif",
+        format='gif',
         append_images=frames,
         save_all=True,
         duration=frame_delay,
@@ -72,24 +83,26 @@ def make_gif(input_folder: str, gif_output: str, params: dict[str, Any] = None):
         optimize=False
     )
 
-def make_mp4(input_folder: str, mp4_output: str, params: dict[str, Any] = None):
+def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None):
+    # parse params
+    v_bitrate = get_animation_param_value('v_bitrate', params)
+    frame_delay = int(get_animation_param_value('frame_delay', params))
+    fps = int(float(1) / float(frame_delay / 1000.0))
+
     # find all images
     frames = get_image_paths(input_folder=input_folder, params=params)
 
-    frame_delay = DEFAULT_GIF_FRAME_DELAY_MS
-    if 'frame_delay' in params:
-        frame_delay = int(params['frame_delay'])
-    fps = int(float(1) / float(frame_delay / 1000.0))
+    # create the video clip
+    video_clip = ImageSequenceClip(frames, fps=fps)
 
-    v_bitrate = DEFAULT_VIDEO_BITRATE
-    if 'v_bitrate' in params:
-        v_bitrate = params['v_bitrate']
-    
-    # Create the video clip
-    clip = ImageSequenceClip(frames, fps=fps)
-    
-    # Write the video file
-    clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
+    # add sound to it if requested
+    if 'mp3_file' in params:
+        audio_clip = AudioFileClip(params['mp3_file'])
+        audio_clip = audio_clip.subclipped(0, video_clip.duration)
+        video_clip = video_clip.with_audio(audio_clip)
+
+    # write the video file
+    video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
 
 def make_animation(type: str, input_folder: str, output_animation: str, params: dict[str, Any] = None):
     if type == 'gif':

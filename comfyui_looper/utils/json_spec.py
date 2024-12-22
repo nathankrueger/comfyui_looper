@@ -7,7 +7,9 @@ from copy import deepcopy
 
 import folder_paths
 from image_processing.transforms import Transform
+from image_processing.animator import get_animation_param_value
 from utils.simple_expr_eval import SimpleExprEval
+from utils.fft import WaveFile
 
 CURRENT_WORKFLOW_VERSION = 1
 
@@ -139,7 +141,7 @@ class SettingsManager:
         'cfg',
     }
 
-    def __init__(self, workflow_json_path: str):
+    def __init__(self, workflow_json_path: str, animation_params: dict[str, str]):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
             json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
             self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
@@ -154,6 +156,14 @@ class SettingsManager:
             running_offset += ls.loop_iterations
 
         self.total_iterations: int = self.workflow.get_total_iterations()
+        self.animation_params = animation_params
+
+        # audio handling
+        if 'mp3_file' in self.animation_params:
+            animation_length = self.get_total_iterations() * (float(get_animation_param_value('frame_delay', self.animation_params)) / 1000.0)
+            self.wavefile = WaveFile.get_wavefile(self.animation_params['mp3_file'], animation_length)
+        else:
+            self.wavefile = None
 
     def validate(self):
         for ls in self.workflow.all_settings:
@@ -163,6 +173,15 @@ class SettingsManager:
         # all expressions up-front, avoiding costly issues deep into a run.
         for i in range(self.get_total_iterations()):
             self.get_elaborated_loopsettings_for_iter(i)
+
+    def log_elaborated_settings(self, log_path: str):
+        ls_texts = []
+        for i in range(self.get_total_iterations()):
+            ls = self.get_elaborated_loopsettings_for_iter(i)
+            ls_texts.append(f'Iteration: {i:04}\n' + ls.to_json(indent=4))
+        
+        with open(log_path, 'w') as lf:
+            lf.write('\n\n'.join(ls_texts))
 
     def update_seed(self, iter: int, seed: int):
         self.get_loopsettings_for_iter(iter)[1].seed = seed
@@ -205,26 +224,37 @@ class SettingsManager:
         total_n --> length of entire workflow
         """
 
+        def get_power_at_freq_range(low_f: int, high_f: int):
+            if self.wavefile is not None:
+                start_percent = (iter / self.total_iterations) * 100.0
+                end_percent = ((iter + 1) / self.total_iterations) * 100.0
+                pow_at_frange = self.wavefile.get_power_in_freq_ranges(start_percent, end_percent, [(low_f, high_f)])[0]
+                return pow_at_frange
+            else:
+                print("Warning no audio file specified, nothing to do for 'get_power_at_freq_range()'")
+                return 0
+
         if setting_name in SettingsManager.EXPR_LS_VARIABLES:
             iter_vars = {'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()}
+            expr_eval = SimpleExprEval(local_vars=iter_vars, permitted_fns={"get_power_at_freq_range": get_power_at_freq_range})
             if isinstance(setting_val, str):
-                return SimpleExprEval(local_vars=iter_vars)(setting_val)
+                return expr_eval(setting_val)
             elif isinstance(setting_val, list):
                 result = []
                 for item in setting_val:
                     if isinstance(item, ConDelta) and isinstance(item.strength, str):
-                        strength_eval = SimpleExprEval(local_vars=iter_vars)(item.strength)
+                        strength_eval = expr_eval(item.strength)
                         cd_eval = ConDelta(pos=item.pos, neg=item.neg, strength=strength_eval)
                         result.append(cd_eval)
                     elif isinstance(item, Canny):
                         for canny_field in fields(item):
                             attr_val = item.__getattribute__(canny_field.name)
                             if isinstance(attr_val, str):
-                                eval_result = SimpleExprEval(local_vars=iter_vars)(attr_val)
+                                eval_result = expr_eval(attr_val)
                                 item.__setattr__(canny_field.name, eval_result)
                         result.append(item)
                     elif isinstance(item, LoraFilter) and isinstance(item.lora_strength, str):
-                        strength_eval = SimpleExprEval(local_vars=iter_vars)(item.lora_strength)
+                        strength_eval = expr_eval(item.lora_strength)
                         lora_eval = LoraFilter(lora_path=item.lora_path, lora_strength=strength_eval)
                         result.append(lora_eval)
                     else:
