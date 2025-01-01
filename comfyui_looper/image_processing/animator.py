@@ -1,23 +1,38 @@
 from os.path import abspath, dirname
 import sys
+import re
+import tempfile
 from typing import Any
 import argparse
 from moviepy import ImageSequenceClip, AudioFileClip
 import glob
 from PIL import Image, ImageOps
 from PIL.ImageFile import ImageFile
+from tqdm import tqdm
+from pathlib import Path
+import matplotlib.pyplot as plt
 
 try:
     from utils.util import parse_params
+    from utils.fft import WaveFile
 except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
     from comfyui_looper.utils.util import parse_params
+    from comfyui_looper.utils.fft import WaveFile
 
 IMG_TYPE = '.png'
 DEFAULT_FRAME_DELAY_MS = 250
 DEFAULT_MAX_DIM = 768
 DEFAULT_VIDEO_BITRATE = '4000k'
+
+def parse_tuples(s: str) -> list[tuple[int, int]]:
+    result = []
+    if s.startswith('[') and s.endswith(']'):
+        pattern = r"\(([^,]+),([^,]+)\)"
+        matches = re.findall(pattern, s)
+        result = [tuple([int(match[0].strip()), int(match[1].strip())]) for match in matches]
+    return result
 
 def get_animation_param_value(param_name: str, animation_params: dict[str, str]) -> Any | None:
     if param_name in animation_params:
@@ -104,6 +119,32 @@ def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None):
     # write the video file
     video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
 
+def make_fft_animation(mp4_output: str, params: dict[str, str] = None):
+    assert 'mp3_file' in params
+    assert 'len_seconds' in params
+    assert 'freq_ranges' in params
+
+    total_seconds = float(get_animation_param_value('len_seconds', params))
+    frame_delay = int(get_animation_param_value('frame_delay', params))
+    freq_range_tuples = parse_tuples(params['freq_ranges'])
+    total_frames = int(total_seconds / (frame_delay / 1000.0))
+    wf: WaveFile = WaveFile.get_wavefile(params['mp3_file'], total_seconds)
+
+    try:
+        temp_directory = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        for i in tqdm(range(total_frames)):
+            start_percent = (i / total_frames) * 100.0
+            end_percent = ((i + 1) / total_frames) * 100.0
+            pow_at_frange = wf.get_power_in_freq_ranges(start_percent, end_percent, freq_range_tuples)
+            plt.cla()
+            plt.stem(list(pow_at_frange))
+            plt.ylim(0, 500.0)
+            plt.savefig(str(Path(temp_directory.name) / f'img{i}.png'))
+        make_mp4(input_folder=temp_directory.name, mp4_output=mp4_output, params=params)
+            
+    finally:
+        temp_directory.cleanup()
+
 def make_animation(type: str, input_folder: str, output_animation: str, params: dict[str, Any] = None):
     if type == 'gif':
         make_gif(
@@ -117,12 +158,17 @@ def make_animation(type: str, input_folder: str, output_animation: str, params: 
             mp4_output=output_animation,
             params=params
         )
+    elif type == 'fft_test':
+        make_fft_animation(
+            mp4_output=output_animation,
+            params=params
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Resize images')
     parser.add_argument('-i', '--input_dir', type=str, required=True)
     parser.add_argument('-o', '--output_file', type=str, required=True)
-    parser.add_argument('-t', '--type', type=str, default='gif', choices=['gif', 'mp4'])
+    parser.add_argument('-t', '--type', type=str, default='gif', choices=['gif', 'mp4', 'fft_test'])
     parser.add_argument('-x', '--param', action='append', dest='params')
     args = parser.parse_args()
     animation_params = parse_params(args.params)

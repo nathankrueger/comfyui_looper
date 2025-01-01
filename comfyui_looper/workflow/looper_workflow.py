@@ -7,7 +7,7 @@ from PIL.PngImagePlugin import PngInfo
 
 from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
-from image_processing.transforms import load_image_with_transforms
+from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
 from utils.util import (
     import_custom_nodes,
     add_comfyui_directory_to_sys_path,
@@ -107,12 +107,11 @@ def looper_main(
                         loopsettings.__setattr__(setting_name, setting_val_default)
 
             # load in image & resize it
+            auto_params = AutomaticTransformParams(n=iter, offset=loopsettings.offset, total_n=total_iter, wavefile=sm.get_wavefile())
             image_tensor, loopsettings.transforms = load_image_with_transforms(
                 image_path=loop_img_path,
                 transforms=transforms,
-                iter=iter,
-                offset=loopsettings.offset,
-                total_iter=total_iter
+                auto_params=auto_params
             )
 
             # generate the image in a workflow specific manner

@@ -1,6 +1,6 @@
-import tempfile
 import os
 import wave
+import tempfile
 from dataclasses import dataclass
 from typing import Self
 
@@ -16,7 +16,13 @@ class WaveFile:
     sample_rate: int
 
     def __post_init__(self):
-        _, powvals = signal.welch(self.samples, fs=self.sample_rate, nperseg = (self.sample_rate // 2) // 10)
+        self.nperseg = None #(self.sample_rate // 2) // 10,
+        _, powvals = signal.welch(
+            x=self.samples,
+            fs=self.sample_rate,
+            nperseg=self.nperseg,
+            return_onesided=True
+        )
         self.max_pow_val = np.max(powvals)
 
     def get_samples(self, start_percentage: float, end_percentage: float) -> NDArray:
@@ -76,7 +82,7 @@ class WaveFile:
                 # trim as needed
                 if length_seconds is not None:
                     num_samples_to_keep = round(frame_rate * length_seconds)
-                    averaged_channels[:num_samples_to_keep]
+                    averaged_channels = averaged_channels[:num_samples_to_keep]
                 
                 wf = WaveFile(samples=averaged_channels, sample_rate=frame_rate)
 
@@ -88,7 +94,13 @@ class WaveFile:
 
     def get_power_in_freq_ranges(self, start_percentage: float, end_percentage: float, freq_ranges: list[tuple[int, int]]) -> tuple[float, ...]:
         samples_trimmed = self.get_samples(start_percentage, end_percentage)
-        _, powvals = signal.welch(samples_trimmed, fs=self.sample_rate, nperseg = (self.sample_rate // 2) // 10)
+        _, powvals = signal.welch(
+            x=samples_trimmed,
+            fs=self.sample_rate,
+            nperseg=self.nperseg,
+            return_onesided=True
+        )
+
         result: list[float] = []
         for freq_range in freq_ranges:
             low_f = freq_range[0]

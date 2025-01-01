@@ -2,6 +2,7 @@ from os.path import abspath, dirname
 import sys
 from typing import Any
 from PIL import Image, ImageOps
+from dataclasses import dataclass
 import numpy as np
 import math
 import torch
@@ -10,17 +11,26 @@ import cv2
 try:
     from utils.util import all_subclasses
     from utils.simple_expr_eval import SimpleExprEval
+    from utils.fft import WaveFile
 except ModuleNotFoundError:
     SCRIPT_DIR = dirname(abspath(__file__))
     sys.path.append(dirname(dirname(SCRIPT_DIR)))
     from comfyui_looper.utils.util import all_subclasses
     from comfyui_looper.utils.simple_expr_eval import SimpleExprEval
+    from comfyui_looper.utils.fft import WaveFile
 
-MAGIC_SEQUENCE_PARAMS = {
+AUTOMATIC_SEQUENCE_PARAMS = {
     'n',
     'offset',
     'total_n'
 }
+
+@dataclass
+class AutomaticTransformParams:
+    n: int
+    offset: int
+    total_n: int
+    wavefile: WaveFile
 
 class Transform:
     NAME = None
@@ -51,17 +61,19 @@ class Transform:
         return TRANSFORM_LIBRARY[name]
     
     @staticmethod
-    def apply_transformations(img: Image, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> Image:
+    def apply_transformations(img: Image, transforms: list[dict[str, Any]], auto_params: AutomaticTransformParams) -> Image:
         curr_img = img
         for tdict in transforms:
             tdict = dict(tdict)
             t_name = tdict.pop('name')
             t_params = tdict
 
-            # magic params partaining to where we are in the sequence
-            t_params['n'] = iter
-            t_params['offset'] = offset
-            t_params['total_n'] = total_iter
+            # automatic params partaining to where we are in the sequence
+            # these are intended to be used by the Python transform code itself,
+            # not expressions passed in, e.g. *not* for zoom_amt = sin(n)
+            t_params['n'] = auto_params.n
+            t_params['offset'] = auto_params.offset
+            t_params['total_n'] = auto_params.total_n
 
             t = TRANSFORM_LIBRARY[t_name](t_params)
             curr_img = t.transform(curr_img)
@@ -81,7 +93,7 @@ class Transform:
             tdict_params = tdict
             assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
             for key in tdict_params:
-                assert key not in MAGIC_SEQUENCE_PARAMS
+                assert key not in AUTOMATIC_SEQUENCE_PARAMS
                 if key not in TRANSFORM_LIBRARY[t_name].get_required_params():
                     print(f"Warning, ignored transform param: {key} for transform {t_name}")
 
@@ -660,45 +672,59 @@ class PerspectiveTransformation(Transform):
         resized_result = Image.fromarray(result).resize((image_width, image_height))
         return resized_result
 
-def elaborate_transform_expr(transform_expr: str | float, iter: int, offset: int, total_iter: int):
+def elaborate_transform_expr(transform_expr: str | float, auto_params: AutomaticTransformParams):
         """
-        n       --> total iteration sequence number
-        offset  --> current LoopSettings sequence number
-        total_n --> length of entire workflow
+        n           --> total iteration sequence number
+        offset      --> current LoopSettings sequence number
+        total_n     --> length of entire workflow
+        fft_samples --> optional tuple of amplitudes for requested frequency ranges
         """
 
+        def get_power_at_freq_range(low_f: int, high_f: int):
+            if auto_params.wavefile is not None:
+                start_percent = (auto_params.n / auto_params.total_n) * 100.0
+                end_percent = ((auto_params.n + 1) / auto_params.total_n) * 100.0
+                pow_at_frange = auto_params.wavefile.get_power_in_freq_ranges(start_percent, end_percent, [(low_f, high_f)])[0]
+                return pow_at_frange
+            else:
+                print("Warning no audio file specified, nothing to do for 'get_power_at_freq_range()'")
+                return 0
+
         if isinstance(transform_expr, str):
-            return SimpleExprEval(local_vars={'n':iter, 'offset':offset, 'total_n':total_iter})(transform_expr)
+            local_vars = {
+                'n':auto_params.n,
+                'offset':auto_params.offset,
+                'total_n':auto_params.total_n
+            }
+            return SimpleExprEval(local_vars=local_vars, permitted_fns={'get_power_at_freq_range':get_power_at_freq_range})(transform_expr)
         else:
             return transform_expr
 
-def get_elaborated_transform_values(transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> list[dict[str, Any]]:
+def get_elaborated_transform_values(transforms: list[dict[str, Any]], auto_params: AutomaticTransformParams) -> list[dict[str, Any]]:
     elaborated_transforms = []
     if transforms is not None:
         for tdict in transforms:
             elab_tdict = dict()
             for key, val in tdict.items():
                 if key in TRANSFORM_LIBRARY[tdict['name']].get_eval_params():
-                    elab_tdict[key] = elaborate_transform_expr(val, iter, offset, total_iter)
+                    elab_tdict[key] = elaborate_transform_expr(val, auto_params)
                 else:
                     elab_tdict[key] = val
             elaborated_transforms.append(elab_tdict)
     return elaborated_transforms
 
-def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], iter: int, offset: int, total_iter: int) -> tuple[torch.Tensor, list[dict[str, Any]]]:
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], auto_params: AutomaticTransformParams) -> tuple[torch.Tensor, list[dict[str, Any]]]:
     i = Image.open(image_path)
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
 
     elaborated_transforms = transforms
     if len(transforms) > 0:
-        elaborated_transforms = get_elaborated_transform_values(transforms=transforms, iter=iter, offset=offset, total_iter=total_iter)
+        elaborated_transforms = get_elaborated_transform_values(transforms=transforms, auto_params=auto_params)
         image = Transform.apply_transformations(
             img=image,
             transforms=elaborated_transforms,
-            iter=iter,
-            offset=offset,
-            total_iter=total_iter
+            auto_params=auto_params
         )
 
     image = np.array(image).astype(np.float32) / 255.0

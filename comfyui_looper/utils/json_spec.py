@@ -165,6 +165,9 @@ class SettingsManager:
         else:
             self.wavefile = None
 
+    def get_wavefile(self):
+        return self.wavefile
+
     def validate(self):
         for ls in self.workflow.all_settings:
             ls.validate()
@@ -235,8 +238,8 @@ class SettingsManager:
                 return 0
 
         if setting_name in SettingsManager.EXPR_LS_VARIABLES:
-            iter_vars = {'n':iter, 'offset':loopsetting.offset, 'total_n': self.get_total_iterations()}
-            expr_eval = SimpleExprEval(local_vars=iter_vars, permitted_fns={"get_power_at_freq_range": get_power_at_freq_range})
+            iter_vars = {'n':iter, 'offset':loopsetting.offset, 'total_n':self.get_total_iterations()}
+            expr_eval = SimpleExprEval(local_vars=iter_vars, permitted_fns={"get_power_at_freq_range":get_power_at_freq_range})
             if isinstance(setting_val, str):
                 return expr_eval(setting_val)
             elif isinstance(setting_val, list):

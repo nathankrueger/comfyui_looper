@@ -1,11 +1,12 @@
 {
     "all_settings": [
         {
-            "loop_iterations": 400,
+            "loop_iterations": 100,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
             "prompt": "lsd, cyborg, motherboard, circuitry, patterns, robot, ai, detailed, 4k, photorealistic, happy, smiling, manly, brawny",
-            "denoise_steps": 30,
-            "denoise_amt": "get_power_at_freq_range(20, 80) / 600.0",
+            "denoise_steps": 20,
+            //"denoise_amt": "get_power_at_freq_range(20, 80) / 600.0",
+            "denoise_amt": 0.6,
             "loras": [
                 {
                     "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
@@ -21,10 +22,11 @@
                 //     "name": "rotate",
                 //     "angle": "0.5*n - 1"
                 // }
-                {
-                    "name": "fisheye",
-                    "strength": "0.1 if ((get_power_at_freq_range(20, 80) / 600.0) > 0.75) else -0.1"
-                },
+                // {
+                //     "name": "fisheye",
+                //     //TODO: support this --> "0.1 if ((get_power_at_freq_range(20, 80) / 600.0) > 0.75) else -0.1"
+                //     "strength": "0.1"
+                // },
                 // {
                 //     "name": "wave",
                 //     "strength": 13,
@@ -33,7 +35,7 @@
                 // },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.03
+                    "zoom_amt": "0.15 if (get_power_at_freq_range(0, 60) > 300) else 0.0"
                 }
             ]
         }
