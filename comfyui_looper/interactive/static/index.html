@@ -105,7 +105,13 @@
             if (data.error) text += ' | ERROR: ' + data.error;
             bar.textContent = text;
 
-            if (isLiveMode && latestIndex > viewIndex) {
+            if (latestIndex < viewIndex) {
+                // Restart deleted images beyond latestIndex — snap back
+                viewIndex = latestIndex;
+                isLiveMode = true;
+                loadImage();
+                loadSettings();
+            } else if (isLiveMode && latestIndex > viewIndex) {
                 viewIndex = latestIndex;
                 loadImage();
                 loadSettings();

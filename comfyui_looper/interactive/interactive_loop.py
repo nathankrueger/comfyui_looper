@@ -108,6 +108,10 @@ def _handle_restart(
     # Clear cached settings from redo_iter onward
     state.clear_settings_from(redo_iter)
 
+    # Update latest_image_index BEFORE regeneration so the UI knows the valid range
+    state.set_latest_image_index(restart_from - 1)
+    state.set_current_iteration(redo_iter)
+
     # Copy the previous image as the new input
     input_image_path = os.path.join(output_folder, get_loop_img_filename(restart_from - 1))
     shutil.copy(input_image_path, loop_img_path)
