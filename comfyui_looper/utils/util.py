@@ -1,4 +1,3 @@
-import sys
 import os
 import shutil
 import math
@@ -6,62 +5,6 @@ from datetime import datetime
 from PIL import Image, ImageOps
 import numpy as np
 import torch
-
-def find_path(name: str, path: str = None) -> str:
-    """
-    Recursively looks at parent folders starting from the given path until it finds the given name.
-    Returns the path as a Path object if found, or None otherwise.
-    """
-    # If no path is given, use the current working directory
-    if path is None:
-        path = os.getcwd()
-
-    # Check if the current directory contains the name
-    if name in os.listdir(path):
-        path_name = os.path.join(path, name)
-        print(f"{name} found: {path_name}")
-        return path_name
-
-    # Get the parent directory
-    parent_directory = os.path.dirname(path)
-
-    # If the parent directory is the same as the current directory, we've reached the root and stop the search
-    if parent_directory == path:
-        return None
-
-    # Recursively call the function with the parent directory
-    return find_path(name, parent_directory)
-
-def add_comfyui_directory_to_sys_path() -> None:
-    """
-    Add 'ComfyUI' to the sys.path
-    """
-    comfyui_path = find_path("ComfyUI")
-    if comfyui_path is not None and os.path.isdir(comfyui_path):
-        sys.path.append(comfyui_path)
-        print(f"'{comfyui_path}' added to sys.path")
-
-def import_custom_nodes() -> None:
-    """Find all custom nodes in the custom_nodes folder and add those node objects to NODE_CLASS_MAPPINGS
-
-    This function sets up a new asyncio event loop, initializes the PromptServer,
-    creates a PromptQueue, and initializes the custom nodes.
-    """
-    import asyncio
-    import execution
-    from nodes import init_extra_nodes
-    import server
-
-    # Creating a new event loop and setting it as the default loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Creating an instance of PromptServer with the loop
-    server_instance = server.PromptServer(loop)
-    execution.PromptQueue(server_instance)
-
-    # Initializing custom nodes
-    init_extra_nodes()
 
 def save_tensor_to_images(image, output_filenames: list[str], png_info=None):
     first_image_path = None
@@ -122,11 +65,6 @@ def resize_image_match_area(input_path: str, output_path: str, area: int, modulo
     
     img = img.resize((new_w, new_h))
     img.save(output_path, pnginfo=None, compress_level=0)
-
-def get_torch_device_vram_used_gb() -> float:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    vram_used = torch.cuda.memory_allocated(device) / (1024 ** 3)
-    return vram_used
 
 def parse_params(params_list: list[str]) -> dict[str, str]:
     params = {}

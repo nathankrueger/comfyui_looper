@@ -5,7 +5,12 @@ from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 from copy import deepcopy
 
-import folder_paths
+try:
+    import folder_paths
+    HAS_FOLDER_PATHS = True
+except ImportError:
+    HAS_FOLDER_PATHS = False
+
 from image_processing.transforms import Transform
 from image_processing.animator import get_animation_param_value
 from utils.simple_expr_eval import SimpleExprEval
@@ -53,7 +58,8 @@ class LoraFilter:
     lora_strength: float
 
     def validate(self):
-        assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], self.lora_path))
+        if HAS_FOLDER_PATHS:
+            assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], self.lora_path))
         assert self.lora_strength >= 0
 
 @dataclass_json
@@ -106,7 +112,7 @@ class LoopSettings:
                 lora.validate()
 
         # model files
-        if self.checkpoint is not None and self.checkpoint is not EMPTY_OBJECT:
+        if HAS_FOLDER_PATHS and self.checkpoint is not None and self.checkpoint is not EMPTY_OBJECT:
             ckpt_found = False
             for folder_query in {"checkpoints", "diffusion_models"}:
                 for specific_folder in folder_paths.get_folder_paths(folder_query):

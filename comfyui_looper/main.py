@@ -1,5 +1,4 @@
 import os
-import sys
 import argparse
 from pathlib import Path
 
@@ -7,16 +6,12 @@ from workflow.engine_factory import get_all_workflows, create_workflow
 from workflow.looper_workflow import looper_main
 from image_processing.transforms import get_transform_help_string
 from utils.json_spec import SettingsManager
+from utils.comfyui_client import ComfyUIClient
 from utils.util import (
     get_log_filename,
     get_loop_img_filename,
     parse_params
 )
-
-# handle args which are otherwise consumed by comfyui
-LOOPER_ARGS = sys.argv[1:]
-print(f'ARGS: {LOOPER_ARGS}')
-sys.argv = [sys.argv[0]]
 
 # constants
 LOG_BASENAME='looper_log.log'
@@ -41,8 +36,12 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--animation_param', action='append', dest='animation_params')
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='Launch interactive web control interface on port 5000')
-    args = parser.parse_args(LOOPER_ARGS)
+    parser.add_argument('--comfyui-url', type=str, default='http://localhost:8188',
+                        help='URL of the ComfyUI server (default: http://localhost:8188)')
+    args = parser.parse_args()
     animation_params = parse_params(args.animation_params)
+
+    client = ComfyUIClient(args.comfyui_url)
 
     if args.log_elaborated_settings:
         sm = SettingsManager(args.json_file, animation_params)
@@ -64,7 +63,7 @@ if __name__ == "__main__":
         os.makedirs(output_folder, exist_ok=True)
         starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
 
-        workflow_engine = create_workflow(args.workflow_type)
+        workflow_engine = create_workflow(args.workflow_type, client)
         workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
 
         # Get total iterations for state initialization
@@ -104,7 +103,6 @@ if __name__ == "__main__":
     else:
         for rep in range(args.passes):
             output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
-            loopback_filename = "looper.png"
             starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
 
             # ensure the output folder exists
@@ -113,7 +111,7 @@ if __name__ == "__main__":
             # run the diffusion
             log_filename = get_log_filename(LOG_BASENAME)
             with open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8') as log_file:
-                workflow_engine = create_workflow(args.workflow_type)
+                workflow_engine = create_workflow(args.workflow_type, client)
                 workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
 
                 looper_main(

@@ -6,4 +6,5 @@ opencv-python
 dataclasses-json
 tqdm
 flask
-gunicorn
+requests
+websocket-client

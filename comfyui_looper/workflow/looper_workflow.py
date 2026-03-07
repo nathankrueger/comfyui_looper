@@ -9,15 +9,9 @@ from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
 from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
 from utils.util import (
-    import_custom_nodes,
-    add_comfyui_directory_to_sys_path,
     save_tensor_to_images,
     get_loop_img_filename,
 )
-
-# ComfyUI imports
-add_comfyui_directory_to_sys_path()
-import_custom_nodes()
 
 class WorkflowEngine:
     """
