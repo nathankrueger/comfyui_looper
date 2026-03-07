@@ -5,7 +5,7 @@ The API format is: {node_id: {"class_type": "NodeName", "inputs": {...}}}
 Node references use ["node_id", output_index] tuples.
 """
 
-from utils.json_spec import LoopSettings
+from utils.json_spec import LoopSettings, EMPTY_OBJECT, EMPTY_LIST
 
 # Save prefix used to identify looper outputs on the ComfyUI server
 SAVE_PREFIX = "looper_output"
@@ -113,7 +113,7 @@ def build_sdxl_workflow(input_image_name: str, settings: LoopSettings, defaults:
     latent_ref = g.ref(encode_id)
 
     # Optional Canny ControlNet
-    if canny is not None:
+    if canny is not None and canny is not EMPTY_OBJECT:
         cn_load_id = g.add("ControlNetLoader", {
             "control_net_name": "control-lora-canny-rank256.safetensors",
         })
@@ -158,7 +158,8 @@ def build_flux1d_workflow(input_image_name: str, settings: LoopSettings, default
     g = _NodeGraph()
 
     checkpoint = settings.checkpoint
-    clip = settings.clip or defaults.get("clip", ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"])
+    clip = settings.clip if settings.clip != EMPTY_LIST else None
+    clip = clip or defaults.get("clip", ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"])
     prompt = settings.prompt or ""
     steps = settings.denoise_steps or defaults.get("denoise_steps", 20)
     denoise = round(settings.denoise_amt, 2) if settings.denoise_amt is not None else 0.5
@@ -233,7 +234,8 @@ def build_sd3p5_workflow(input_image_name: str, settings: LoopSettings, defaults
     g = _NodeGraph()
 
     checkpoint = settings.checkpoint or defaults.get("checkpoint")
-    clip = settings.clip or defaults.get("clip", ["t5xxl_fp8_e4m3fn.safetensors", "clip_g.safetensors"])
+    clip = settings.clip if settings.clip != EMPTY_LIST else None
+    clip = clip or defaults.get("clip", ["t5xxl_fp8_e4m3fn.safetensors", "clip_g.safetensors"])
     prompt = settings.prompt or ""
     neg_prompt = settings.neg_prompt or defaults.get("neg_prompt", "")
     steps = settings.denoise_steps or defaults.get("denoise_steps", 20)

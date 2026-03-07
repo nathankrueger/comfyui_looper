@@ -13,8 +13,16 @@ fi
 echo "Activating virtual environment..."
 source "$VENV_DIR/bin/activate"
 
+echo "Installing CPU-only PyTorch..."
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
 echo ""
 echo "Done! Activate the venv with: source $VENV_DIR/bin/activate"
+echo ""
+echo "To run the looper against a Windows ComfyUI server:"
+echo "  python comfyui_looper/main.py --comfyui-url http://<windows-ip>:8188 -w sdxl -i <img> -o output/test -j data/workflow.json"
+echo ""
+echo "Make sure ComfyUI is running on Windows with: python main.py --listen 0.0.0.0"

@@ -2,6 +2,8 @@ pytest
 moviepy
 pydub
 pillow
+scipy
+matplotlib
 opencv-python
 dataclasses-json
 tqdm

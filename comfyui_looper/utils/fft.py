@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import os
 import wave
 import tempfile
 from dataclasses import dataclass
-from typing import Self
 
 import scipy.integrate as integrate
 from scipy import signal
@@ -37,7 +38,7 @@ class WaveFile:
         return self.samples[start_sample:end_sample]
 
     @staticmethod
-    def get_wavefile(mp3_path: str, length_seconds: float | None = None) -> Self:
+    def get_wavefile(mp3_path: str, length_seconds: float | None = None) -> WaveFile:
         """ 
         This factory method takes an .mp3 file, and return a WaveFile object
         """
