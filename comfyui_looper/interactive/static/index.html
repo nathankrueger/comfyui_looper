@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Looper</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #1a1a2e; color: #e0e0e0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; padding: 12px;
+        }
+        #status-bar {
+            width: 100%; max-width: 800px;
+            background: #16213e; border-radius: 8px; padding: 12px;
+            margin-bottom: 12px; text-align: center;
+            font-size: 1.1em; font-weight: bold;
+        }
+        .status-running { color: #4ade80; }
+        .status-paused  { color: #fbbf24; }
+        .status-stopped { color: #f87171; }
+        #image-container {
+            width: 100%; max-width: 800px; text-align: center;
+            margin-bottom: 12px;
+        }
+        #image-container img {
+            max-width: 100%; height: auto; border-radius: 8px;
+            border: 2px solid #333;
+        }
+        #image-label {
+            margin-top: 4px; font-size: 0.9em; color: #aaa;
+        }
+        #controls {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center; margin-bottom: 12px;
+            width: 100%; max-width: 800px;
+        }
+        button {
+            padding: 10px 20px; border: none; border-radius: 6px;
+            font-size: 1em; cursor: pointer; font-weight: bold;
+            min-width: 90px;
+        }
+        .btn-nav     { background: #334155; color: #e0e0e0; }
+        .btn-sync    { background: #2563eb; color: white; }
+        .btn-restart { background: #dc2626; color: white; }
+        .btn-resume  { background: #16a34a; color: white; }
+        .btn-pause   { background: #d97706; color: white; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button:hover:not(:disabled) { filter: brightness(1.2); }
+        #settings-panel {
+            width: 100%; max-width: 800px;
+            background: #16213e; border-radius: 8px; padding: 12px;
+        }
+        #settings-panel h3 { margin-bottom: 8px; }
+        #settings-content {
+            white-space: pre-wrap; font-family: monospace;
+            font-size: 0.85em; max-height: 400px; overflow-y: auto;
+            background: #0f172a; padding: 8px; border-radius: 4px;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div id="status-bar">Loading...</div>
+    <div id="image-container">
+        <img id="main-image" src="" alt="Generated image">
+        <div id="image-label"></div>
+    </div>
+    <div id="controls">
+        <button class="btn-nav" id="btn-back">&laquo; BACK</button>
+        <button class="btn-restart" id="btn-restart">RESTART</button>
+        <button class="btn-resume" id="btn-resume" style="display:none">RESUME</button>
+        <button class="btn-pause" id="btn-pause">PAUSE</button>
+        <button class="btn-sync" id="btn-sync">SYNC</button>
+        <button class="btn-nav" id="btn-forward">FORWARD &raquo;</button>
+    </div>
+    <div id="settings-panel">
+        <h3>Settings</h3>
+        <div id="settings-content">Loading...</div>
+    </div>
+
+    <script>
+    let viewIndex = 0;
+    let latestIndex = 0;
+    let isLiveMode = true;
+    let loopStatus = '';
+    const POLL_MS = 1500;
+
+    // --- API helpers ---
+
+    async function fetchStatus() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            latestIndex = data.latest_image_index;
+            loopStatus = data.status;
+
+            const bar = document.getElementById('status-bar');
+            bar.className = 'status-' + data.status;
+            let text = data.status.toUpperCase() +
+                ' | Iteration ' + data.current_iteration + ' / ' + data.total_iterations +
+                ' | Image ' + latestIndex;
+            if (data.error) text += ' | ERROR: ' + data.error;
+            bar.textContent = text;
+
+            if (isLiveMode && latestIndex > viewIndex) {
+                viewIndex = latestIndex;
+                loadImage();
+                loadSettings();
+            }
+
+            updateButtons();
+        } catch (e) {
+            console.error('Status poll failed:', e);
+        }
+    }
+
+    function loadImage() {
+        const img = document.getElementById('main-image');
+        img.src = '/api/image/' + viewIndex + '?t=' + Date.now();
+        document.getElementById('image-label').textContent =
+            'Image ' + viewIndex + ' / ' + latestIndex;
+    }
+
+    async function loadSettings() {
+        try {
+            const resp = await fetch('/api/settings/' + viewIndex);
+            const data = await resp.json();
+            document.getElementById('settings-content').textContent =
+                data.settings || data.error || 'No settings available';
+        } catch (e) {
+            document.getElementById('settings-content').textContent = 'Error loading settings';
+        }
+    }
+
+    // --- Button handlers ---
+
+    function goBack() {
+        if (viewIndex > 0) {
+            viewIndex--;
+            isLiveMode = false;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
+    function goForward() {
+        if (viewIndex < latestIndex) {
+            viewIndex++;
+            if (viewIndex === latestIndex) isLiveMode = true;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
+    function doSync() {
+        viewIndex = latestIndex;
+        isLiveMode = true;
+        loadImage();
+        loadSettings();
+        updateButtons();
+    }
+
+    async function doRestart() {
+        if (viewIndex < 1) return;
+        if (!confirm('Restart from image ' + viewIndex + '?\n\nThis will delete image ' +
+            viewIndex + ' and all images after it, then regenerate with a new seed.')) {
+            return;
+        }
+        await fetch('/api/restart', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ from_image_index: viewIndex })
+        });
+        isLiveMode = true;
+    }
+
+    async function doResume() {
+        await fetch('/api/resume', { method: 'POST' });
+    }
+
+    async function doPause() {
+        await fetch('/api/pause', { method: 'POST' });
+    }
+
+    function updateButtons() {
+        document.getElementById('btn-back').disabled = (viewIndex <= 0);
+        document.getElementById('btn-forward').disabled = (viewIndex >= latestIndex);
+        document.getElementById('btn-restart').disabled = (viewIndex < 1 || loopStatus === 'stopped');
+
+        const isPaused = (loopStatus === 'paused');
+        document.getElementById('btn-resume').style.display = isPaused ? '' : 'none';
+        document.getElementById('btn-pause').style.display = isPaused ? 'none' : '';
+        document.getElementById('btn-pause').disabled = (loopStatus === 'stopped');
+    }
+
+    // --- Wire up buttons ---
+
+    document.getElementById('btn-back').addEventListener('click', goBack);
+    document.getElementById('btn-forward').addEventListener('click', goForward);
+    document.getElementById('btn-sync').addEventListener('click', doSync);
+    document.getElementById('btn-restart').addEventListener('click', doRestart);
+    document.getElementById('btn-resume').addEventListener('click', doResume);
+    document.getElementById('btn-pause').addEventListener('click', doPause);
+
+    // --- Polling ---
+
+    setInterval(fetchStatus, POLL_MS);
+    fetchStatus();
+    </script>
+</body>
+</html>

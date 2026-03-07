@@ -39,6 +39,8 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--animation_type', type=str, default='gif', choices=['gif', 'mp4'])
     parser.add_argument('-a', '--animation_filename', type=str, required=False)
     parser.add_argument('-x', '--animation_param', action='append', dest='animation_params')
+    parser.add_argument('--interactive', action='store_true', default=False,
+                        help='Launch interactive web control interface on port 5000')
     args = parser.parse_args(LOOPER_ARGS)
     animation_params = parse_params(args.animation_params)
 
@@ -48,27 +50,79 @@ if __name__ == "__main__":
         sm.log_elaborated_settings(args.log_elaborated_settings)
         exit(0)
 
-    for rep in range(args.passes):
-        output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
-        loopback_filename = "looper.png"
-        starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
-        
-        # ensure the output folder exists
-        os.makedirs(output_folder, exist_ok=True)
-        
-        # run the diffusion
-        log_filename = get_log_filename(LOG_BASENAME)
-        with open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8') as log_file:
-            workflow_engine = create_workflow(args.workflow_type)
-            workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
+    if args.interactive:
+        import threading
+        from interactive.loop_state import LoopState
+        from interactive.interactive_loop import interactive_looper_main
+        from interactive.flask_app import create_app
 
-            looper_main(
-                engine=workflow_engine,
-                loop_img_path=LOOP_IMG,
-                output_folder=output_folder,
-                json_file=args.json_file,
-                animation_file=args.animation_filename,
-                animation_type=args.animation_type,
-                animation_params=animation_params,
-                log_file=log_file
-            )
+        if args.passes > 1:
+            print("Warning: --interactive only supports a single pass. Using passes=1.")
+            args.passes = 1
+
+        output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, 0))
+        os.makedirs(output_folder, exist_ok=True)
+        starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
+
+        workflow_engine = create_workflow(args.workflow_type)
+        workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
+
+        # Get total iterations for state initialization
+        sm_temp = SettingsManager(args.json_file, animation_params)
+        sm_temp.validate()
+        total_iterations = sm_temp.get_total_iterations()
+
+        loop_state = LoopState(total_iterations=total_iterations, output_folder=output_folder)
+
+        log_filename = get_log_filename(LOG_BASENAME)
+        log_file = open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8')
+
+        def run_loop():
+            try:
+                interactive_looper_main(
+                    engine=workflow_engine,
+                    loop_img_path=LOOP_IMG,
+                    output_folder=output_folder,
+                    json_file=args.json_file,
+                    animation_file=args.animation_filename,
+                    animation_type=args.animation_type,
+                    animation_params=animation_params,
+                    log_file=log_file,
+                    state=loop_state,
+                )
+            except Exception as e:
+                print(f"Loop thread error: {e}")
+            finally:
+                log_file.close()
+
+        loop_thread = threading.Thread(target=run_loop, daemon=True)
+        loop_thread.start()
+
+        print(f"Interactive mode: open http://0.0.0.0:5000 in your browser")
+        app = create_app(loop_state)
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    else:
+        for rep in range(args.passes):
+            output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
+            loopback_filename = "looper.png"
+            starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
+
+            # ensure the output folder exists
+            os.makedirs(output_folder, exist_ok=True)
+
+            # run the diffusion
+            log_filename = get_log_filename(LOG_BASENAME)
+            with open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8') as log_file:
+                workflow_engine = create_workflow(args.workflow_type)
+                workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
+
+                looper_main(
+                    engine=workflow_engine,
+                    loop_img_path=LOOP_IMG,
+                    output_folder=output_folder,
+                    json_file=args.json_file,
+                    animation_file=args.animation_filename,
+                    animation_type=args.animation_type,
+                    animation_params=animation_params,
+                    log_file=log_file
+                )
