@@ -2,12 +2,27 @@
 set -e
 
 VENV_DIR=".venv"
+MODE=""
+
+while getopts "ur" opt; do
+    case $opt in
+        u) MODE="update" ;;
+        r) MODE="reinstall" ;;
+        *) echo "Usage: $0 [-u | -r]"; echo "  -u  Update existing venv"; echo "  -r  Delete and recreate venv"; exit 1 ;;
+    esac
+done
+
+if [ "$MODE" = "reinstall" ]; then
+    echo "Removing existing virtual environment..."
+    rm -rf "$VENV_DIR"
+fi
 
 if [ ! -d "$VENV_DIR" ]; then
     echo "Creating virtual environment in $VENV_DIR..."
     python3 -m venv "$VENV_DIR"
-else
-    echo "Reusing existing virtual environment in $VENV_DIR"
+elif [ "$MODE" != "update" ]; then
+    echo "Virtual environment already exists. Use -u to update or -r to recreate."
+    exit 0
 fi
 
 echo "Activating virtual environment..."

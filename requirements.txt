@@ -8,5 +8,6 @@ opencv-python
 dataclasses-json
 tqdm
 flask
+waitress
 requests
 websocket-client

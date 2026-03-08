@@ -47,8 +47,50 @@
         .btn-restart { background: #dc2626; color: white; }
         .btn-resume  { background: #16a34a; color: white; }
         .btn-pause   { background: #d97706; color: white; }
+        .btn-export  { background: #7c3aed; color: white; }
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         button:hover:not(:disabled) { filter: brightness(1.2); }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #16213e; border-radius: 12px; padding: 24px;
+            width: 90%; max-width: 480px; color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .modal h2 { margin-bottom: 16px; font-size: 1.3em; }
+        .modal-row {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .modal-row label { flex: 0 0 150px; font-size: 0.95em; }
+        .modal-row input, .modal-row select {
+            flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #334155;
+            background: #0f172a; color: #e0e0e0; font-size: 0.95em;
+        }
+        .modal-row input:focus, .modal-row select:focus {
+            outline: none; border-color: #7c3aed;
+        }
+        .modal-buttons {
+            display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;
+        }
+        .btn-modal-cancel { background: #334155; color: #e0e0e0; }
+        .btn-modal-export { background: #7c3aed; color: white; }
+        .export-progress {
+            display: none; margin-top: 12px; text-align: center;
+            font-size: 0.95em; color: #a5b4fc;
+        }
+        .export-progress.active { display: block; }
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 3px solid #334155; border-top-color: #7c3aed;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         #settings-panel {
             width: 100%; max-width: 800px;
             background: #16213e; border-radius: 8px; padding: 12px;
@@ -75,10 +117,62 @@
         <button class="btn-pause" id="btn-pause">PAUSE</button>
         <button class="btn-sync" id="btn-sync">SYNC</button>
         <button class="btn-nav" id="btn-forward">FORWARD &raquo;</button>
+        <button class="btn-export" id="btn-export">EXPORT</button>
     </div>
     <div id="settings-panel">
         <h3>Settings</h3>
         <div id="settings-content">Loading...</div>
+    </div>
+
+    <div class="modal-overlay" id="export-modal">
+        <div class="modal">
+            <h2>Export Animation</h2>
+            <div class="modal-row">
+                <label for="export-format">Format</label>
+                <select id="export-format">
+                    <option value="gif">GIF</option>
+                    <option value="mp4">MP4</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label for="export-filename">Filename</label>
+                <input type="text" id="export-filename" value="export" placeholder="export">
+            </div>
+            <div class="modal-row">
+                <label for="export-frame-delay">Frame delay (ms)</label>
+                <input type="number" id="export-frame-delay" value="250" min="10" max="5000">
+            </div>
+            <div class="modal-row">
+                <label for="export-max-dim">Max dimension (px)</label>
+                <input type="number" id="export-max-dim" value="768" min="64" max="4096">
+            </div>
+            <div class="modal-row mp4-only">
+                <label for="export-vbitrate">Video bitrate</label>
+                <input type="text" id="export-vbitrate" value="4000k" placeholder="4000k">
+            </div>
+            <div class="modal-row">
+                <label for="export-bounce">Bounce</label>
+                <select id="export-bounce">
+                    <option value="false">Off</option>
+                    <option value="true">On</option>
+                </select>
+            </div>
+            <div class="modal-row" id="bounce-skip-row" style="display:none">
+                <label for="export-bounce-skip">Bounce frame skip</label>
+                <input type="number" id="export-bounce-skip" value="0" min="0">
+            </div>
+            <div class="modal-row mp4-only">
+                <label for="export-mp3">Audio file path</label>
+                <input type="text" id="export-mp3" value="" placeholder="/path/to/audio.mp3">
+            </div>
+            <div class="export-progress" id="export-progress">
+                <span class="spinner"></span> Exporting animation...
+            </div>
+            <div class="modal-buttons" id="export-buttons">
+                <button class="btn-modal-cancel" id="btn-export-cancel">Cancel</button>
+                <button class="btn-modal-export" id="btn-export-start">Export</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -116,6 +210,10 @@
                 loadImage();
                 loadSettings();
             }
+
+            // Always update the label so the "/ M" total stays current
+            document.getElementById('image-label').textContent =
+                'Image ' + viewIndex + ' / ' + latestIndex;
 
             updateButtons();
         } catch (e) {
@@ -206,12 +304,157 @@
 
     // --- Wire up buttons ---
 
-    document.getElementById('btn-back').addEventListener('click', goBack);
-    document.getElementById('btn-forward').addEventListener('click', goForward);
+    // --- Hold-to-repeat for back/forward ---
+    function setupHoldRepeat(button, action) {
+        let holdTimeout = null;
+        let repeatInterval = null;
+        let speedupTimeouts = [];
+
+        function startHold() {
+            stopHold();
+            holdTimeout = setTimeout(() => {
+                // Phase 1: 500ms interval
+                action();
+                repeatInterval = setInterval(action, 500);
+                // Phase 2: after 3s, speed up to 250ms
+                speedupTimeouts.push(setTimeout(() => {
+                    if (repeatInterval) clearInterval(repeatInterval);
+                    repeatInterval = setInterval(action, 250);
+                    // Phase 3: after another 3s, speed up to 100ms
+                    speedupTimeouts.push(setTimeout(() => {
+                        if (repeatInterval) clearInterval(repeatInterval);
+                        repeatInterval = setInterval(action, 100);
+                    }, 3000));
+                }, 3000));
+            }, 1000);
+        }
+
+        function stopHold() {
+            if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+            if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+            speedupTimeouts.forEach(t => clearTimeout(t));
+            speedupTimeouts = [];
+        }
+
+        button.addEventListener('click', action);
+        button.addEventListener('mousedown', startHold);
+        button.addEventListener('mouseup', stopHold);
+        button.addEventListener('mouseleave', stopHold);
+        button.addEventListener('touchstart', (e) => { e.preventDefault(); action(); startHold(); });
+        button.addEventListener('touchend', stopHold);
+        button.addEventListener('touchcancel', stopHold);
+    }
+
+    setupHoldRepeat(document.getElementById('btn-back'), goBack);
+    setupHoldRepeat(document.getElementById('btn-forward'), goForward);
     document.getElementById('btn-sync').addEventListener('click', doSync);
     document.getElementById('btn-restart').addEventListener('click', doRestart);
     document.getElementById('btn-resume').addEventListener('click', doResume);
     document.getElementById('btn-pause').addEventListener('click', doPause);
+
+    // --- Export modal ---
+
+    const exportModal = document.getElementById('export-modal');
+    const exportFormat = document.getElementById('export-format');
+    const mp4OnlyRows = document.querySelectorAll('.mp4-only');
+    const bounceSelect = document.getElementById('export-bounce');
+    const bounceSkipRow = document.getElementById('bounce-skip-row');
+    const exportProgress = document.getElementById('export-progress');
+    const exportButtons = document.getElementById('export-buttons');
+
+    function openExportModal() {
+        exportModal.classList.add('active');
+        updateFormatVisibility();
+        updateBounceVisibility();
+        exportProgress.classList.remove('active');
+        exportButtons.style.display = 'flex';
+    }
+
+    function closeExportModal() {
+        exportModal.classList.remove('active');
+    }
+
+    function updateFormatVisibility() {
+        const isMp4 = exportFormat.value === 'mp4';
+        mp4OnlyRows.forEach(row => row.style.display = isMp4 ? 'flex' : 'none');
+    }
+
+    function updateBounceVisibility() {
+        bounceSkipRow.style.display = bounceSelect.value === 'true' ? 'flex' : 'none';
+    }
+
+    async function startExport() {
+        const payload = {
+            format: exportFormat.value,
+            filename: document.getElementById('export-filename').value || 'export',
+            frame_delay: parseInt(document.getElementById('export-frame-delay').value) || 250,
+            max_dim: parseInt(document.getElementById('export-max-dim').value) || 768,
+            v_bitrate: document.getElementById('export-vbitrate').value || '4000k',
+            bounce: bounceSelect.value === 'true',
+            bounce_frame_skip: parseInt(document.getElementById('export-bounce-skip').value) || 0,
+            mp3_file: document.getElementById('export-mp3').value || '',
+        };
+
+        exportProgress.classList.add('active');
+        exportProgress.innerHTML = '<span class="spinner"></span> Exporting animation...';
+        exportButtons.style.display = 'none';
+
+        try {
+            const resp = await fetch('/api/export', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                exportProgress.innerHTML = 'Error: ' + (data.error || 'Unknown error');
+                exportButtons.style.display = 'flex';
+                return;
+            }
+            pollExportStatus();
+        } catch (e) {
+            exportProgress.innerHTML = 'Error: ' + e.message;
+            exportButtons.style.display = 'flex';
+        }
+    }
+
+    function pollExportStatus() {
+        const pollInterval = setInterval(async () => {
+            try {
+                const resp = await fetch('/api/export/status');
+                const data = await resp.json();
+                if (data.status === 'done') {
+                    clearInterval(pollInterval);
+                    exportProgress.innerHTML = 'Export complete! Starting download...';
+                    const a = document.createElement('a');
+                    a.href = '/api/export/download';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => closeExportModal(), 1500);
+                } else if (data.status === 'error') {
+                    clearInterval(pollInterval);
+                    exportProgress.innerHTML = 'Export failed: ' + (data.error || 'Unknown error');
+                    exportButtons.style.display = 'flex';
+                }
+            } catch (e) {
+                clearInterval(pollInterval);
+                exportProgress.innerHTML = 'Poll error: ' + e.message;
+                exportButtons.style.display = 'flex';
+            }
+        }, 1000);
+    }
+
+    exportModal.addEventListener('click', (e) => {
+        if (e.target === exportModal) closeExportModal();
+    });
+
+    document.getElementById('btn-export').addEventListener('click', openExportModal);
+    document.getElementById('btn-export-cancel').addEventListener('click', closeExportModal);
+    document.getElementById('btn-export-start').addEventListener('click', startExport);
+    exportFormat.addEventListener('change', updateFormatVisibility);
+    bounceSelect.addEventListener('change', updateBounceVisibility);
 
     // --- Polling ---
 

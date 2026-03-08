@@ -24,6 +24,9 @@ class LoopState:
         self._pause_event.set()  # starts unpaused
         self._restart_request: Optional[int] = None
         self._error: Optional[str] = None
+        self._export_status: Optional[str] = None
+        self._export_error: Optional[str] = None
+        self._export_file: Optional[str] = None
 
     # --- Status ---
 
@@ -113,3 +116,35 @@ class LoopState:
     def get_error(self) -> Optional[str]:
         with self._lock:
             return self._error
+
+    # --- Export ---
+
+    def get_export_status(self) -> Optional[str]:
+        with self._lock:
+            return self._export_status
+
+    def set_export_status(self, status: Optional[str]):
+        with self._lock:
+            self._export_status = status
+
+    def get_export_error(self) -> Optional[str]:
+        with self._lock:
+            return self._export_error
+
+    def set_export_error(self, error: Optional[str]):
+        with self._lock:
+            self._export_error = error
+
+    def get_export_file(self) -> Optional[str]:
+        with self._lock:
+            return self._export_file
+
+    def set_export_file(self, filepath: Optional[str]):
+        with self._lock:
+            self._export_file = filepath
+
+    def clear_export(self):
+        with self._lock:
+            self._export_status = None
+            self._export_error = None
+            self._export_file = None

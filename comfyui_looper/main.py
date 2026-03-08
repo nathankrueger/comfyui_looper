@@ -35,7 +35,9 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--animation_filename', type=str, required=False)
     parser.add_argument('-x', '--animation_param', action='append', dest='animation_params')
     parser.add_argument('--interactive', action='store_true', default=False,
-                        help='Launch interactive web control interface on port 5000')
+                        help='Launch interactive web control interface')
+    parser.add_argument('--port', type=int, default=5000,
+                        help='Port for interactive web UI (default: 5000)')
     parser.add_argument('--comfyui-url', type=str, default='http://localhost:8188',
                         help='URL of the ComfyUI server (default: http://localhost:8188)')
     args = parser.parse_args()
@@ -97,9 +99,11 @@ if __name__ == "__main__":
         loop_thread = threading.Thread(target=run_loop, daemon=True)
         loop_thread.start()
 
-        print(f"Interactive mode: open http://0.0.0.0:5000 in your browser")
+        print(f"Interactive mode: open http://0.0.0.0:{args.port} in your browser")
         app = create_app(loop_state)
-        app.run(host='0.0.0.0', port=5000, debug=False)
+
+        from waitress import serve
+        serve(app, host='0.0.0.0', port=args.port)
     else:
         for rep in range(args.passes):
             output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
