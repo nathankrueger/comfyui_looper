@@ -231,3 +231,143 @@ class TestSD3p5Workflow:
         lora_nodes = _find_node_by_class(workflow, "LoraLoader")
         assert len(lora_nodes) == 1
         assert lora_nodes[0][1]["inputs"]["strength_model"] == 0.7
+
+
+class TestParameterClamping:
+    """Verify that expression-evaluated values are clamped to ComfyUI-valid ranges."""
+
+    # -- denoise clamping [0.0, 1.0] --
+
+    @pytest.mark.parametrize("denoise_in,expected", [
+        (1.05, 1.0),
+        (1.5, 1.0),
+        (-0.1, 0.0),
+        (-5.0, 0.0),
+        (0.0, 0.0),
+        (1.0, 1.0),
+        (0.75, 0.75),
+    ])
+    def test_sdxl_denoise_clamped(self, denoise_in, expected):
+        settings = _make_basic_settings(denoise_amt=denoise_in)
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["denoise"] == expected
+
+    @pytest.mark.parametrize("denoise_in,expected", [
+        (1.05, 1.0),
+        (-0.1, 0.0),
+        (0.65, 0.65),
+    ])
+    def test_flux1d_denoise_clamped(self, denoise_in, expected):
+        settings = _make_basic_settings(checkpoint="flux.safetensors", denoise_amt=denoise_in)
+        workflow = build_flux1d_workflow("input.png", settings, {})
+        scheduler = _find_node_by_class(workflow, "BasicScheduler")[0][1]
+        assert scheduler["inputs"]["denoise"] == expected
+
+    @pytest.mark.parametrize("denoise_in,expected", [
+        (1.05, 1.0),
+        (-0.1, 0.0),
+        (0.65, 0.65),
+    ])
+    def test_sd3p5_denoise_clamped(self, denoise_in, expected):
+        settings = _make_basic_settings(
+            checkpoint="sd3.5.safetensors",
+            clip=["t5xxl.safetensors", "clip_g.safetensors"],
+            denoise_amt=denoise_in,
+        )
+        workflow = build_sd3p5_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["denoise"] == expected
+
+    # -- steps clamping (min 1, integer) --
+
+    # -- steps clamping (min 1, integer) --
+    # Note: steps=0 is falsy so falls through to default via `or`; we test negative (truthy) values
+
+    @pytest.mark.parametrize("steps_in,expected", [
+        (-5, 1),
+        (-1, 1),
+        (1, 1),
+        (20, 20),
+    ])
+    def test_sdxl_steps_clamped(self, steps_in, expected):
+        settings = _make_basic_settings(denoise_steps=steps_in)
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["steps"] == expected
+
+    @pytest.mark.parametrize("steps_in,expected", [
+        (-5, 1),
+        (-1, 1),
+        (20, 20),
+    ])
+    def test_flux1d_steps_clamped(self, steps_in, expected):
+        settings = _make_basic_settings(checkpoint="flux.safetensors", denoise_steps=steps_in)
+        workflow = build_flux1d_workflow("input.png", settings, {})
+        scheduler = _find_node_by_class(workflow, "BasicScheduler")[0][1]
+        assert scheduler["inputs"]["steps"] == expected
+
+    @pytest.mark.parametrize("steps_in,expected", [
+        (-5, 1),
+        (-1, 1),
+        (20, 20),
+    ])
+    def test_sd3p5_steps_clamped(self, steps_in, expected):
+        settings = _make_basic_settings(
+            checkpoint="sd3.5.safetensors",
+            clip=["t5xxl.safetensors", "clip_g.safetensors"],
+            denoise_steps=steps_in,
+        )
+        workflow = build_sd3p5_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["steps"] == expected
+
+    # -- cfg clamping (min 0.0) --
+    # Note: cfg=0.0 is falsy so falls through to default via `or`; we test negative (truthy) values
+
+    @pytest.mark.parametrize("cfg_in,expected", [
+        (-1.0, 0.0),
+        (-0.5, 0.0),
+        (7.5, 7.5),
+    ])
+    def test_sdxl_cfg_clamped(self, cfg_in, expected):
+        settings = _make_basic_settings(cfg=cfg_in)
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["cfg"] == expected
+
+    @pytest.mark.parametrize("cfg_in,expected", [
+        (-1.0, 0.0),
+        (-0.5, 0.0),
+        (3.5, 3.5),
+    ])
+    def test_sd3p5_cfg_clamped(self, cfg_in, expected):
+        settings = _make_basic_settings(
+            checkpoint="sd3.5.safetensors",
+            clip=["t5xxl.safetensors", "clip_g.safetensors"],
+            cfg=cfg_in,
+        )
+        workflow = build_sd3p5_workflow("input.png", settings, {})
+        sampler = _find_node_by_class(workflow, "KSampler")[0][1]
+        assert sampler["inputs"]["cfg"] == expected
+
+    # -- canny clamping --
+
+    def test_canny_strength_clamped_above(self):
+        settings = _make_basic_settings(canny=Canny(low_thresh=100, high_thresh=200, strength=1.5))
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        cn_apply = _find_node_by_class(workflow, "ControlNetApply")[0][1]
+        assert cn_apply["inputs"]["strength"] == 1.0
+
+    def test_canny_strength_clamped_below(self):
+        settings = _make_basic_settings(canny=Canny(low_thresh=100, high_thresh=200, strength=-0.3))
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        cn_apply = _find_node_by_class(workflow, "ControlNetApply")[0][1]
+        assert cn_apply["inputs"]["strength"] == 0.0
+
+    def test_canny_thresholds_clamped(self):
+        settings = _make_basic_settings(canny=Canny(low_thresh=-10, high_thresh=-20, strength=0.5))
+        workflow = build_sdxl_workflow("input.png", settings, {})
+        canny_node = _find_node_by_class(workflow, "Canny")[0][1]
+        assert canny_node["inputs"]["low_threshold"] == 0.0
+        assert canny_node["inputs"]["high_threshold"] == 0.0

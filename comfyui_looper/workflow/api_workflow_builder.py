@@ -36,7 +36,7 @@ def build_sdxl_workflow(input_image_name: str, settings: LoopSettings, defaults:
     prompt = settings.prompt or ""
     neg_prompt = settings.neg_prompt or defaults.get("neg_prompt", "")
     steps = settings.denoise_steps or defaults.get("denoise_steps", 20)
-    denoise = round(settings.denoise_amt, 2) if settings.denoise_amt is not None else 0.5
+    denoise = max(0.0, min(1.0, round(settings.denoise_amt, 2))) if settings.denoise_amt is not None else 0.5
     cfg = settings.cfg or defaults.get("cfg", 8.0)
     seed = settings.seed
     loras = settings.loras or []
@@ -118,12 +118,12 @@ def build_sdxl_workflow(input_image_name: str, settings: LoopSettings, defaults:
             "control_net_name": "control-lora-canny-rank256.safetensors",
         })
         canny_id = g.add("Canny", {
-            "low_threshold": canny.low_thresh,
-            "high_threshold": canny.high_thresh,
+            "low_threshold": max(0.0, canny.low_thresh),
+            "high_threshold": max(0.0, canny.high_thresh),
             "image": image_ref,
         })
         cn_apply_id = g.add("ControlNetApply", {
-            "strength": canny.strength,
+            "strength": max(0.0, min(1.0, canny.strength)),
             "conditioning": pos_ref,
             "control_net": g.ref(cn_load_id),
             "image": g.ref(canny_id),
@@ -133,8 +133,8 @@ def build_sdxl_workflow(input_image_name: str, settings: LoopSettings, defaults:
     # KSampler
     sampler_id = g.add("KSampler", {
         "seed": seed,
-        "steps": steps,
-        "cfg": cfg,
+        "steps": max(1, int(steps)),
+        "cfg": max(0.0, cfg),
         "sampler_name": "euler",
         "scheduler": "normal",
         "denoise": denoise,
@@ -162,7 +162,7 @@ def build_flux1d_workflow(input_image_name: str, settings: LoopSettings, default
     clip = clip or defaults.get("clip", ["t5xxl_fp8_e4m3fn.safetensors", "clip_l.safetensors"])
     prompt = settings.prompt or ""
     steps = settings.denoise_steps or defaults.get("denoise_steps", 20)
-    denoise = round(settings.denoise_amt, 2) if settings.denoise_amt is not None else 0.5
+    denoise = max(0.0, min(1.0, round(settings.denoise_amt, 2))) if settings.denoise_amt is not None else 0.5
     seed = settings.seed
     loras = settings.loras or []
 
@@ -208,7 +208,7 @@ def build_flux1d_workflow(input_image_name: str, settings: LoopSettings, default
     sampler_select_id = g.add("KSamplerSelect", {"sampler_name": "euler"})
     scheduler_id = g.add("BasicScheduler", {
         "scheduler": "beta",
-        "steps": steps,
+        "steps": max(1, int(steps)),
         "denoise": denoise,
         "model": model_ref,
     })
@@ -239,7 +239,7 @@ def build_sd3p5_workflow(input_image_name: str, settings: LoopSettings, defaults
     prompt = settings.prompt or ""
     neg_prompt = settings.neg_prompt or defaults.get("neg_prompt", "")
     steps = settings.denoise_steps or defaults.get("denoise_steps", 20)
-    denoise = round(settings.denoise_amt, 2) if settings.denoise_amt is not None else 0.5
+    denoise = max(0.0, min(1.0, round(settings.denoise_amt, 2))) if settings.denoise_amt is not None else 0.5
     cfg = settings.cfg or defaults.get("cfg", 3.5)
     seed = settings.seed
     loras = settings.loras or []
@@ -280,8 +280,8 @@ def build_sd3p5_workflow(input_image_name: str, settings: LoopSettings, defaults
     # KSampler
     sampler_id = g.add("KSampler", {
         "seed": seed,
-        "steps": steps,
-        "cfg": cfg,
+        "steps": max(1, int(steps)),
+        "cfg": max(0.0, cfg),
         "sampler_name": "euler",
         "scheduler": "beta",
         "denoise": denoise,

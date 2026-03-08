@@ -1,7 +1,4 @@
-*.mp4
-*.gif
 *.log
-*.png
 output
 .pytest_cache
 __pycache__
