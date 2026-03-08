@@ -1,18 +1,13 @@
 from workflow.looper_workflow import WorkflowEngine
-from workflow.flux1d_engine import Flux1DWorkflowEngine
-from workflow.sdxl_engine import SDXLWorkflowEngine
-from workflow.sd3p5_engine import SD3p5WorkflowEngine
+from workflow.api_engine import APIWorkflowEngine
+from utils.comfyui_client import ComfyUIClient
 
-WORKFLOW_ENGINES = {
-    Flux1DWorkflowEngine,
-    SDXLWorkflowEngine,
-    SD3p5WorkflowEngine,
-}
-WORKFLOW_LIBRARY: dict[str, WorkflowEngine] = {c.get_name(): c for c in WORKFLOW_ENGINES}
+ALL_WORKFLOWS = {"sdxl", "flux1d", "sd3.5"}
 
-def create_workflow(name: str) -> WorkflowEngine:
-    return WORKFLOW_LIBRARY[name]()
+def create_workflow(name: str, client: ComfyUIClient) -> WorkflowEngine:
+    if name not in ALL_WORKFLOWS:
+        raise ValueError(f"Unknown workflow: {name}. Available: {ALL_WORKFLOWS}")
+    return APIWorkflowEngine(model_type=name, client=client)
 
 def get_all_workflows() -> set[str]:
-    result = set(WORKFLOW_LIBRARY.keys())
-    return result
+    return set(ALL_WORKFLOWS)

@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Looper</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%237c3aed'/%3E%3Cstop offset='100%25' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 6c-4.4 0-8 3.1-8 7s3.6 7 8 7c1.5 0 3-.4 4.2-1.1' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M16 26c4.4 0 8-3.1 8-7s-3.6-7-8-7c-1.5 0-3 .4-4.2 1.1' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            color: #e0e0e0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; padding: 16px 12px;
+        }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        /* Header */
+        #app-header {
+            width: 100%; max-width: 800px; text-align: center;
+            margin-bottom: 16px; padding: 8px 0;
+        }
+        #app-header h1 {
+            font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #6d28d9 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        #app-links {
+            width: 100%; max-width: 800px; text-align: center;
+            margin: -10px 0 12px 0; font-size: 0.8em;
+        }
+        #app-links a {
+            color: #7c3aed; text-decoration: none; transition: color 0.15s ease;
+        }
+        #app-links a:hover { color: #a78bfa; }
+        /* Status bar */
+        #status-bar {
+            width: 100%; max-width: 800px;
+            background: #16213e; border-radius: 10px; padding: 12px 16px;
+            margin-bottom: 16px; text-align: center;
+            font-size: 1.05em; font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            display: inline-block; flex-shrink: 0;
+        }
+        .status-running .status-dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: pulse-dot 2s ease-in-out infinite; }
+        .status-paused .status-dot  { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
+        .status-stopped .status-dot { background: #f87171; box-shadow: 0 0 6px #f87171; }
+        .status-running .status-text { color: #4ade80; }
+        .status-paused .status-text  { color: #fbbf24; }
+        .status-stopped .status-text { color: #f87171; }
+        .status-badge {
+            display: inline-block; padding: 2px 10px; border-radius: 12px;
+            font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-running .status-badge { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .status-paused .status-badge  { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .status-stopped .status-badge { background: rgba(248,113,113,0.15); color: #f87171; }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        /* Image */
+        #image-container {
+            width: 100%; max-width: 800px; text-align: center;
+            margin-bottom: 16px;
+        }
+        #image-container img {
+            max-width: 100%; height: auto; border-radius: 10px;
+            border: 2px solid #334155;
+            box-shadow: 0 4px 24px rgba(124,58,237,0.15), 0 2px 8px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease;
+        }
+        #image-label {
+            margin-top: 8px; font-size: 0.9em; color: #888;
+            font-variant-numeric: tabular-nums;
+        }
+        /* Controls */
+        #controls {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center; margin-bottom: 16px;
+            width: 100%; max-width: 800px;
+        }
+        button {
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 1em; cursor: pointer; font-weight: 600;
+            min-width: 90px;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-nav     { background: #334155; color: #e0e0e0; }
+        .btn-sync    { background: #2563eb; color: white; }
+        .btn-restart { background: #dc2626; color: white; }
+        .btn-resume  { background: #16a34a; color: white; }
+        .btn-pause   { background: #d97706; color: white; }
+        .btn-export  { background: #7c3aed; color: white; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+        button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        button:active:not(:disabled) { transform: translateY(0px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #16213e; border-radius: 14px; padding: 24px;
+            width: 90%; max-width: 520px; color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.1);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal h2 { margin-bottom: 16px; font-size: 1.3em; }
+        .modal-section {
+            font-size: 0.8em; font-weight: bold; color: #7c3aed;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 16px 0 8px 0; padding-bottom: 4px;
+            border-bottom: 1px solid #334155;
+        }
+        .modal-section:first-of-type { margin-top: 0; }
+        .modal-row {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .modal-row label { flex: 0 0 160px; font-size: 0.95em; }
+        .modal-row input, .modal-row select {
+            flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #334155;
+            background: #0f172a; color: #e0e0e0; font-size: 0.95em;
+        }
+        .modal-row input:focus, .modal-row select:focus {
+            outline: none; border-color: #7c3aed;
+        }
+        .hint {
+            font-size: 0.8em; color: #888; margin: -8px 0 12px 160px;
+        }
+        .tooltip {
+            cursor: help; color: #7c3aed; font-size: 0.85em;
+            margin-left: 4px;
+        }
+        .modal-buttons {
+            display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;
+        }
+        .btn-modal-cancel { background: #334155; color: #e0e0e0; }
+        .btn-modal-export { background: #7c3aed; color: white; }
+        .export-progress {
+            display: none; margin-top: 12px; text-align: center;
+            font-size: 0.95em; color: #a5b4fc;
+        }
+        .export-progress.active { display: block; }
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 3px solid #334155; border-top-color: #7c3aed;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #settings-panel {
+            width: 100%; max-width: 800px;
+            background: #16213e; border-radius: 10px; padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25), 0 0 0 1px rgba(124,58,237,0.08);
+        }
+        #settings-tabs {
+            display: flex; gap: 0; margin-bottom: 14px;
+            border-bottom: 2px solid #334155;
+        }
+        .tab-btn {
+            background: none; border: none; color: #888;
+            padding: 10px 24px; font-size: 0.95em; font-weight: 600;
+            cursor: pointer; border-bottom: 2px solid transparent;
+            margin-bottom: -2px; min-width: auto; border-radius: 0;
+            transition: color 0.15s ease, border-color 0.15s ease;
+        }
+        .tab-btn.active { color: #e0e0e0; border-bottom-color: #7c3aed; }
+        .tab-btn:hover { color: #c4b5fd; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #settings-content {
+            white-space: pre-wrap; font-family: monospace;
+            font-size: 0.85em; max-height: 400px; overflow-y: auto;
+            background: #0f172a; padding: 8px; border-radius: 4px;
+            word-break: break-word;
+        }
+        #override-mode-toggle {
+            display: flex; gap: 16px; margin-bottom: 16px;
+            padding: 8px; background: #0f172a; border-radius: 6px;
+        }
+        #override-mode-toggle label {
+            font-size: 0.9em; cursor: pointer; display: flex; align-items: center; gap: 6px;
+        }
+        .override-field {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 10px; padding: 8px;
+            background: #0f172a; border-radius: 6px;
+        }
+        .override-field input[type="checkbox"] {
+            flex: 0 0 18px; width: 18px; height: 18px; cursor: pointer;
+            accent-color: #7c3aed;
+        }
+        .override-field .ovr-label {
+            flex: 0 0 110px; font-size: 0.9em; font-weight: bold; color: #aaa;
+        }
+        .override-field textarea {
+            flex: 1; padding: 6px; border-radius: 4px; border: 1px solid #334155;
+            background: #1a1a2e; color: #e0e0e0; font-size: 0.9em;
+            font-family: inherit; resize: vertical; min-height: 36px;
+        }
+        .override-field textarea:disabled,
+        .override-field input:disabled,
+        .override-field select:disabled { opacity: 0.4; }
+        .override-field textarea:focus,
+        .override-field input:focus { outline: none; border-color: #7c3aed; }
+        .override-field input[type="range"] {
+            flex: 1; accent-color: #7c3aed;
+        }
+        .override-field input[type="text"],
+        .override-field input[type="number"] {
+            flex: 1; padding: 6px; border-radius: 4px; border: 1px solid #334155;
+            background: #1a1a2e; color: #e0e0e0; font-size: 0.9em;
+        }
+        .ovr-value {
+            flex: 0 0 50px; text-align: right; font-family: monospace;
+            font-size: 0.85em; color: #a5b4fc;
+        }
+        .ovr-inherited { color: #666; font-style: italic; font-size: 0.85em; }
+        #override-indicator {
+            margin: 8px 0; padding: 6px 10px; background: #2d1b69;
+            border-radius: 4px; font-size: 0.85em; color: #a5b4fc;
+        }
+        #override-buttons {
+            display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;
+        }
+        #formula-pause-hint {
+            font-size: 0.85em; color: #fbbf24; margin-top: 8px;
+        }
+        .override-field textarea.ovr-json {
+            font-family: monospace; font-size: 0.8em;
+            white-space: pre; overflow-y: auto; resize: none;
+            max-height: 160px;
+        }
+        .ovr-json-error {
+            font-size: 0.8em; color: #f87171; margin: -6px 0 8px 136px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"><h1>ComfyUI Looper</h1></div>
+    <div id="app-links"><a href="https://github.com/nathankrueger/comfyui_looper" target="_blank" rel="noopener">GitHub</a></div>
+    <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
+    <div id="image-container">
+        <img id="main-image" src="" alt="Generated image">
+        <div id="image-label"></div>
+    </div>
+    <div id="controls">
+        <button class="btn-nav" id="btn-back">&laquo; Back</button>
+        <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
+        <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
+        <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
+        <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
+        <button class="btn-nav" id="btn-forward">Forward &raquo;</button>
+        <button class="btn-export" id="btn-export">&#128190; Export</button>
+    </div>
+    <div id="settings-panel">
+        <div id="settings-tabs">
+            <button class="tab-btn active" data-tab="view">View</button>
+            <button class="tab-btn" data-tab="override">Override</button>
+        </div>
+        <div id="tab-view" class="tab-content active">
+            <div id="settings-content">Loading...</div>
+        </div>
+        <div id="tab-override" class="tab-content">
+            <div id="override-mode-toggle">
+                <label><input type="radio" name="override-mode" value="frame" checked> Frame only (next iteration)</label>
+                <label><input type="radio" name="override-mode" value="formula"> Formula (entire section)</label>
+            </div>
+            <div id="override-fields">
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-prompt-enable">
+                    <span class="ovr-label">prompt</span>
+                    <textarea id="ovr-prompt" rows="2" disabled></textarea>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-neg_prompt-enable">
+                    <span class="ovr-label">neg_prompt</span>
+                    <textarea id="ovr-neg_prompt" rows="2" disabled></textarea>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-denoise_amt-enable">
+                    <span class="ovr-label">denoise_amt</span>
+                    <input type="range" id="ovr-denoise_amt-slider" min="0" max="1" step="0.01" value="0.5" disabled>
+                    <span class="ovr-value" id="ovr-denoise_amt-value">0.50</span>
+                    <input type="text" id="ovr-denoise_amt-expr" style="display:none" disabled placeholder="e.g. 0.2 + (0.5/35)*n">
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-denoise_steps-enable">
+                    <span class="ovr-label">denoise_steps</span>
+                    <input type="range" id="ovr-denoise_steps-slider" min="1" max="100" step="1" value="30" disabled>
+                    <span class="ovr-value" id="ovr-denoise_steps-value">30</span>
+                    <input type="text" id="ovr-denoise_steps-expr" style="display:none" disabled placeholder="e.g. 30 + n">
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-cfg-enable">
+                    <span class="ovr-label">cfg</span>
+                    <input type="range" id="ovr-cfg-slider" min="1" max="30" step="0.1" value="7.0" disabled>
+                    <span class="ovr-value" id="ovr-cfg-value">7.0</span>
+                    <input type="text" id="ovr-cfg-expr" style="display:none" disabled placeholder="e.g. 7.0">
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-seed-enable">
+                    <span class="ovr-label">seed</span>
+                    <input type="number" id="ovr-seed" disabled>
+                    <button class="btn-nav" id="ovr-seed-randomize" disabled style="min-width:auto; padding:6px 12px; font-size:0.85em">Random</button>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-checkpoint-enable">
+                    <span class="ovr-label">checkpoint</span>
+                    <input type="text" id="ovr-checkpoint" disabled placeholder="model.safetensors">
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-loras-enable">
+                    <span class="ovr-label">loras</span>
+                    <textarea id="ovr-loras" class="ovr-json" rows="1" disabled placeholder='[{"lora_path": "...", "lora_strength": 0.7}]'></textarea>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-transforms-enable">
+                    <span class="ovr-label">transforms</span>
+                    <textarea id="ovr-transforms" class="ovr-json" rows="1" disabled placeholder='[{"name": "zoom_in", "zoom_amt": 0.08}]'></textarea>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-canny-enable">
+                    <span class="ovr-label">canny</span>
+                    <textarea id="ovr-canny" class="ovr-json" rows="1" disabled placeholder='{"low_thresh": 0.0, "high_thresh": 0.5, "strength": 0.75}'></textarea>
+                </div>
+                <div class="override-field">
+                    <input type="checkbox" id="ovr-con_deltas-enable">
+                    <span class="ovr-label">con_deltas</span>
+                    <textarea id="ovr-con_deltas" class="ovr-json" rows="1" disabled placeholder='[{"pos": "...", "neg": "...", "strength": 1.0}]'></textarea>
+                </div>
+            </div>
+            <div class="ovr-json-error" id="ovr-json-error" style="display:none"></div>
+            <div id="override-indicator" style="display:none">
+                Pending frame overrides: <span id="override-list"></span>
+            </div>
+            <div id="formula-pause-hint" style="display:none">
+                Pause the loop before applying formula overrides.
+            </div>
+            <div id="override-buttons">
+                <button class="btn-nav" id="btn-override-clear">Clear</button>
+                <button class="btn-sync" id="btn-override-apply">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="export-modal">
+        <div class="modal">
+            <h2>Export Animation</h2>
+
+            <div class="modal-section">Output</div>
+            <div class="modal-row">
+                <label for="export-format">Format</label>
+                <select id="export-format">
+                    <option value="gif">GIF</option>
+                    <option value="mp4">MP4</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label for="export-filename">Filename</label>
+                <input type="text" id="export-filename" value="export" placeholder="export">
+            </div>
+            <div class="modal-row">
+                <label for="export-max-dim">Max dimension (px)</label>
+                <input type="number" id="export-max-dim" value="768" min="64" max="4096">
+            </div>
+            <div class="modal-row mp4-only">
+                <label for="export-vbitrate">Video bitrate</label>
+                <select id="export-vbitrate">
+                    <option value="2000k">2000k (smaller file)</option>
+                    <option value="4000k" selected>4000k (default)</option>
+                    <option value="8000k">8000k (high quality)</option>
+                    <option value="12000k">12000k (very high)</option>
+                    <option value="custom">Custom...</option>
+                </select>
+            </div>
+            <div class="modal-row mp4-only" id="vbitrate-custom-row" style="display:none">
+                <label for="export-vbitrate-custom">Custom bitrate</label>
+                <input type="text" id="export-vbitrate-custom" value="4000k" placeholder="e.g. 6000k">
+            </div>
+
+            <div class="modal-section">Playback</div>
+            <div class="modal-row">
+                <label for="export-frame-delay">Frame delay (ms)</label>
+                <input type="number" id="export-frame-delay" value="250" min="10" max="5000">
+            </div>
+            <div class="hint" id="fps-hint">= 4.0 fps</div>
+            <div class="modal-row">
+                <label for="export-start-frame">Start frame</label>
+                <input type="number" id="export-start-frame" value="0" min="0">
+            </div>
+            <div class="modal-row">
+                <label for="export-end-frame">End frame</label>
+                <input type="number" id="export-end-frame" value="" min="0" placeholder="last">
+            </div>
+            <div class="modal-row">
+                <label for="export-bounce">Bounce <span class="tooltip" title="Plays forward then backward, creating a ping-pong loop">(?)</span></label>
+                <select id="export-bounce">
+                    <option value="false">Off</option>
+                    <option value="true">On</option>
+                </select>
+            </div>
+            <div class="modal-row" id="bounce-skip-row" style="display:none">
+                <label for="export-bounce-skip">Bounce frame skip</label>
+                <input type="number" id="export-bounce-skip" value="0" min="0">
+            </div>
+
+            <div class="modal-section mp4-only">Audio (MP4 only)</div>
+            <div class="modal-row mp4-only">
+                <label for="export-mp3">Audio file path</label>
+                <input type="text" id="export-mp3" value="" placeholder="/path/to/audio.mp3">
+            </div>
+
+            <div class="export-progress" id="export-progress">
+                <span class="spinner"></span> Exporting animation...
+            </div>
+            <div class="modal-buttons" id="export-buttons">
+                <button class="btn-modal-cancel" id="btn-export-cancel">Cancel</button>
+                <button class="btn-modal-export" id="btn-export-start">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let viewIndex = 0;
+    let latestIndex = 0;
+    let isLiveMode = true;
+    let loopStatus = '';
+    const POLL_MS = 1500;
+
+    // --- API helpers ---
+
+    async function fetchStatus() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            latestIndex = data.latest_image_index;
+            loopStatus = data.status;
+
+            const bar = document.getElementById('status-bar');
+            bar.className = 'status-' + data.status;
+            let info = 'Iter ' + data.current_iteration + '/' + data.total_iterations +
+                ' \u00b7 Image ' + latestIndex;
+            if (data.error) info += ' \u00b7 ' + data.error;
+            bar.innerHTML = '<span class="status-dot"></span>' +
+                '<span class="status-badge">' + data.status + '</span>' +
+                '<span class="status-text">' + info + '</span>';
+
+            if (latestIndex < viewIndex) {
+                // Restart deleted images beyond latestIndex — snap back
+                viewIndex = latestIndex;
+                isLiveMode = true;
+                loadImage();
+                loadSettings();
+            } else if (isLiveMode && latestIndex > viewIndex) {
+                viewIndex = latestIndex;
+                loadImage();
+                loadSettings();
+            }
+
+            // Always update the label so the "/ M" total stays current
+            document.getElementById('image-label').textContent =
+                'Image ' + viewIndex + ' / ' + latestIndex;
+
+            updateButtons();
+        } catch (e) {
+            console.error('Status poll failed:', e);
+        }
+    }
+
+    function loadImage() {
+        const img = document.getElementById('main-image');
+        img.src = '/api/image/' + viewIndex + '?t=' + Date.now();
+        document.getElementById('image-label').textContent =
+            'Image ' + viewIndex + ' / ' + latestIndex;
+    }
+
+    async function loadSettings() {
+        try {
+            const resp = await fetch('/api/settings/' + viewIndex);
+            const data = await resp.json();
+            document.getElementById('settings-content').textContent =
+                data.settings || data.error || 'No settings available';
+        } catch (e) {
+            document.getElementById('settings-content').textContent = 'Error loading settings';
+        }
+    }
+
+    // --- Button handlers ---
+
+    function goBack() {
+        if (viewIndex > 0) {
+            viewIndex--;
+            isLiveMode = false;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
+    function goForward() {
+        if (viewIndex < latestIndex) {
+            viewIndex++;
+            if (viewIndex === latestIndex) isLiveMode = true;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
+    function doSync() {
+        viewIndex = latestIndex;
+        isLiveMode = true;
+        loadImage();
+        loadSettings();
+        updateButtons();
+    }
+
+    async function doRestart() {
+        if (viewIndex < 1) return;
+        if (!confirm('Restart from image ' + viewIndex + '?\n\nThis will delete image ' +
+            viewIndex + ' and all images after it, then regenerate with a new seed.')) {
+            return;
+        }
+        await fetch('/api/restart', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ from_image_index: viewIndex })
+        });
+        isLiveMode = true;
+    }
+
+    async function doResume() {
+        await fetch('/api/resume', { method: 'POST' });
+    }
+
+    async function doPause() {
+        await fetch('/api/pause', { method: 'POST' });
+    }
+
+    function updateButtons() {
+        document.getElementById('btn-back').disabled = (viewIndex <= 0);
+        document.getElementById('btn-forward').disabled = (viewIndex >= latestIndex);
+        document.getElementById('btn-restart').disabled = (viewIndex < 1 || loopStatus === 'stopped');
+
+        const isPaused = (loopStatus === 'paused');
+        document.getElementById('btn-resume').style.display = isPaused ? '' : 'none';
+        document.getElementById('btn-pause').style.display = isPaused ? 'none' : '';
+        document.getElementById('btn-pause').disabled = (loopStatus === 'stopped');
+
+        // Keep override apply button and formula hint in sync
+        if (typeof updateApplyButton === 'function') updateApplyButton();
+        const hint = document.getElementById('formula-pause-hint');
+        if (hint) {
+            const mode = document.querySelector('input[name="override-mode"]:checked');
+            hint.style.display = (mode && mode.value === 'formula' && loopStatus === 'running') ? '' : 'none';
+        }
+    }
+
+    // --- Wire up buttons ---
+
+    // --- Hold-to-repeat for back/forward ---
+    function setupHoldRepeat(button, action) {
+        let holdTimeout = null;
+        let repeatInterval = null;
+        let speedupTimeouts = [];
+
+        function startHold() {
+            stopHold();
+            holdTimeout = setTimeout(() => {
+                // Phase 1: 500ms interval
+                action();
+                repeatInterval = setInterval(action, 500);
+                // Phase 2: after 3s, speed up to 250ms
+                speedupTimeouts.push(setTimeout(() => {
+                    if (repeatInterval) clearInterval(repeatInterval);
+                    repeatInterval = setInterval(action, 250);
+                    // Phase 3: after another 3s, speed up to 100ms
+                    speedupTimeouts.push(setTimeout(() => {
+                        if (repeatInterval) clearInterval(repeatInterval);
+                        repeatInterval = setInterval(action, 100);
+                    }, 3000));
+                }, 3000));
+            }, 1000);
+        }
+
+        function stopHold() {
+            if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+            if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+            speedupTimeouts.forEach(t => clearTimeout(t));
+            speedupTimeouts = [];
+        }
+
+        button.addEventListener('click', action);
+        button.addEventListener('mousedown', startHold);
+        button.addEventListener('mouseup', stopHold);
+        button.addEventListener('mouseleave', stopHold);
+        button.addEventListener('touchstart', (e) => { e.preventDefault(); action(); startHold(); });
+        button.addEventListener('touchend', stopHold);
+        button.addEventListener('touchcancel', stopHold);
+    }
+
+    setupHoldRepeat(document.getElementById('btn-back'), goBack);
+    setupHoldRepeat(document.getElementById('btn-forward'), goForward);
+    document.getElementById('btn-sync').addEventListener('click', doSync);
+    document.getElementById('btn-restart').addEventListener('click', doRestart);
+    document.getElementById('btn-resume').addEventListener('click', doResume);
+    document.getElementById('btn-pause').addEventListener('click', doPause);
+
+    // --- Export modal ---
+
+    const exportModal = document.getElementById('export-modal');
+    const exportFormat = document.getElementById('export-format');
+    const mp4OnlyRows = document.querySelectorAll('.mp4-only');
+    const bounceSelect = document.getElementById('export-bounce');
+    const bounceSkipRow = document.getElementById('bounce-skip-row');
+    const exportProgress = document.getElementById('export-progress');
+    const exportButtons = document.getElementById('export-buttons');
+    const vbitrateSelect = document.getElementById('export-vbitrate');
+    const vbitrateCustomRow = document.getElementById('vbitrate-custom-row');
+    const frameDelayInput = document.getElementById('export-frame-delay');
+    const fpsHint = document.getElementById('fps-hint');
+    const exportStartBtn = document.getElementById('btn-export-start');
+    const filenameInput = document.getElementById('export-filename');
+
+    function openExportModal() {
+        // Set end frame default to latest
+        const endFrameInput = document.getElementById('export-end-frame');
+        if (!endFrameInput.value) endFrameInput.placeholder = 'last (' + latestIndex + ')';
+        exportModal.classList.add('active');
+        updateFormatVisibility();
+        updateBounceVisibility();
+        updateFpsHint();
+        updateVbitrateCustom();
+        validateExportForm();
+        exportProgress.classList.remove('active');
+        exportButtons.style.display = 'flex';
+    }
+
+    function closeExportModal() {
+        exportModal.classList.remove('active');
+    }
+
+    function updateFormatVisibility() {
+        const isMp4 = exportFormat.value === 'mp4';
+        mp4OnlyRows.forEach(row => row.style.display = isMp4 ? 'flex' : 'none');
+    }
+
+    function updateBounceVisibility() {
+        bounceSkipRow.style.display = bounceSelect.value === 'true' ? 'flex' : 'none';
+    }
+
+    function updateFpsHint() {
+        const delay = parseInt(frameDelayInput.value) || 250;
+        const fps = (1000 / delay).toFixed(1);
+        fpsHint.textContent = '= ' + fps + ' fps';
+    }
+
+    function updateVbitrateCustom() {
+        vbitrateCustomRow.style.display = vbitrateSelect.value === 'custom' ? 'flex' : 'none';
+    }
+
+    function validateExportForm() {
+        const valid = (filenameInput.value || '').trim().length > 0;
+        exportStartBtn.disabled = !valid;
+    }
+
+    function getVbitrate() {
+        if (vbitrateSelect.value === 'custom') {
+            return document.getElementById('export-vbitrate-custom').value || '4000k';
+        }
+        return vbitrateSelect.value;
+    }
+
+    async function startExport() {
+        const endFrameVal = document.getElementById('export-end-frame').value;
+        const payload = {
+            format: exportFormat.value,
+            filename: filenameInput.value || 'export',
+            frame_delay: parseInt(frameDelayInput.value) || 250,
+            max_dim: parseInt(document.getElementById('export-max-dim').value) || 768,
+            v_bitrate: getVbitrate(),
+            bounce: bounceSelect.value === 'true',
+            bounce_frame_skip: parseInt(document.getElementById('export-bounce-skip').value) || 0,
+            mp3_file: document.getElementById('export-mp3').value || '',
+            start_frame: parseInt(document.getElementById('export-start-frame').value) || 0,
+            end_frame: endFrameVal ? parseInt(endFrameVal) : -1,
+        };
+
+        exportProgress.classList.add('active');
+        exportProgress.innerHTML = '<span class="spinner"></span> Exporting animation...';
+        exportButtons.style.display = 'none';
+
+        try {
+            const resp = await fetch('/api/export', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                exportProgress.innerHTML = 'Error: ' + (data.error || 'Unknown error');
+                exportButtons.style.display = 'flex';
+                return;
+            }
+            pollExportStatus();
+        } catch (e) {
+            exportProgress.innerHTML = 'Error: ' + e.message;
+            exportButtons.style.display = 'flex';
+        }
+    }
+
+    function pollExportStatus() {
+        const pollInterval = setInterval(async () => {
+            try {
+                const resp = await fetch('/api/export/status');
+                const data = await resp.json();
+                if (data.status === 'done') {
+                    clearInterval(pollInterval);
+                    exportProgress.innerHTML = 'Export complete! Starting download...';
+                    const a = document.createElement('a');
+                    a.href = '/api/export/download';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => closeExportModal(), 1500);
+                } else if (data.status === 'error') {
+                    clearInterval(pollInterval);
+                    exportProgress.innerHTML = 'Export failed: ' + (data.error || 'Unknown error');
+                    exportButtons.style.display = 'flex';
+                }
+            } catch (e) {
+                clearInterval(pollInterval);
+                exportProgress.innerHTML = 'Poll error: ' + e.message;
+                exportButtons.style.display = 'flex';
+            }
+        }, 1000);
+    }
+
+    exportModal.addEventListener('click', (e) => {
+        if (e.target === exportModal) closeExportModal();
+    });
+
+    document.getElementById('btn-export').addEventListener('click', openExportModal);
+    document.getElementById('btn-export-cancel').addEventListener('click', closeExportModal);
+    document.getElementById('btn-export-start').addEventListener('click', startExport);
+    exportFormat.addEventListener('change', () => { updateFormatVisibility(); updateVbitrateCustom(); });
+    bounceSelect.addEventListener('change', updateBounceVisibility);
+    frameDelayInput.addEventListener('input', updateFpsHint);
+    vbitrateSelect.addEventListener('change', updateVbitrateCustom);
+    filenameInput.addEventListener('input', validateExportForm);
+
+    // --- Settings tabs ---
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            if (btn.dataset.tab === 'override') loadOverrideDefaults();
+        });
+    });
+
+    // --- Override system ---
+
+    const SLIDER_FIELDS = ['denoise_amt', 'denoise_steps', 'cfg'];
+    const TEXT_FIELDS = ['prompt', 'neg_prompt', 'checkpoint'];
+    const JSON_FIELDS = ['loras', 'transforms', 'canny', 'con_deltas'];
+    const ALL_OVR_FIELDS = [...TEXT_FIELDS, ...SLIDER_FIELDS, 'seed', ...JSON_FIELDS];
+
+    function getOverrideMode() {
+        return document.querySelector('input[name="override-mode"]:checked').value;
+    }
+
+    // Toggle slider vs expression input based on mode
+    function updateOverrideInputVisibility() {
+        const mode = getOverrideMode();
+        for (const f of SLIDER_FIELDS) {
+            const slider = document.getElementById('ovr-' + f + '-slider');
+            const value = document.getElementById('ovr-' + f + '-value');
+            const expr = document.getElementById('ovr-' + f + '-expr');
+            if (mode === 'frame') {
+                slider.style.display = ''; value.style.display = '';
+                expr.style.display = 'none';
+            } else {
+                slider.style.display = 'none'; value.style.display = 'none';
+                expr.style.display = '';
+            }
+        }
+        // Formula pause hint
+        const hint = document.getElementById('formula-pause-hint');
+        hint.style.display = (mode === 'formula' && loopStatus === 'running') ? '' : 'none';
+        // Disable apply for formula when running
+        updateApplyButton();
+    }
+
+    function updateApplyButton() {
+        const mode = getOverrideMode();
+        const applyBtn = document.getElementById('btn-override-apply');
+        if (mode === 'formula' && loopStatus === 'running') {
+            applyBtn.disabled = true;
+        } else {
+            applyBtn.disabled = false;
+        }
+    }
+
+    // Checkbox enable/disable
+    ALL_OVR_FIELDS.forEach(f => {
+        const cb = document.getElementById('ovr-' + f + '-enable');
+        cb.addEventListener('change', () => {
+            const enabled = cb.checked;
+            if (SLIDER_FIELDS.includes(f)) {
+                document.getElementById('ovr-' + f + '-slider').disabled = !enabled;
+                document.getElementById('ovr-' + f + '-expr').disabled = !enabled;
+            } else if (f === 'seed') {
+                document.getElementById('ovr-seed').disabled = !enabled;
+                document.getElementById('ovr-seed-randomize').disabled = !enabled;
+            } else {
+                // Works for TEXT_FIELDS and JSON_FIELDS (all use id="ovr-{f}")
+                document.getElementById('ovr-' + f).disabled = !enabled;
+            }
+        });
+    });
+
+    // Slider value sync
+    SLIDER_FIELDS.forEach(f => {
+        const slider = document.getElementById('ovr-' + f + '-slider');
+        const display = document.getElementById('ovr-' + f + '-value');
+        slider.addEventListener('input', () => {
+            display.textContent = parseFloat(slider.value).toFixed(f === 'denoise_steps' ? 0 : (f === 'cfg' ? 1 : 2));
+        });
+    });
+
+    // Seed randomize
+    document.getElementById('ovr-seed-randomize').addEventListener('click', () => {
+        document.getElementById('ovr-seed').value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+    });
+
+    // Mode toggle
+    document.querySelectorAll('input[name="override-mode"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            updateOverrideInputVisibility();
+            loadOverrideDefaults();
+        });
+    });
+
+    function autoResizeTextarea(el) {
+        el.style.height = 'auto';
+        if (el.value) {
+            // Grow to fit content, but CSS max-height caps it and enables scroll
+            el.style.height = el.scrollHeight + 'px';
+        } else {
+            el.style.height = '';  // collapse to rows="1"
+        }
+    }
+
+    // Attach auto-resize to all JSON textareas
+    JSON_FIELDS.forEach(f => {
+        const el = document.getElementById('ovr-' + f);
+        el.addEventListener('input', () => autoResizeTextarea(el));
+    });
+
+    function setJsonField(fieldName, value) {
+        const el = document.getElementById('ovr-' + fieldName);
+        if (value != null) {
+            el.value = JSON.stringify(value, null, 2);
+            el.placeholder = '';
+        } else {
+            el.value = '';
+            el.placeholder = '(inherited)';
+        }
+        autoResizeTextarea(el);
+    }
+
+    function setTextField(fieldName, value) {
+        const el = document.getElementById('ovr-' + fieldName);
+        el.value = value != null ? value : '';
+        el.placeholder = value == null ? '(inherited)' : '';
+    }
+
+    async function loadOverrideDefaults() {
+        const mode = getOverrideMode();
+        if (viewIndex === 0) return;
+
+        if (mode === 'frame') {
+            // Parse elaborated JSON from View tab
+            try {
+                const settings = JSON.parse(document.getElementById('settings-content').textContent);
+                if (settings.prompt != null) document.getElementById('ovr-prompt').value = settings.prompt;
+                if (settings.neg_prompt != null) document.getElementById('ovr-neg_prompt').value = settings.neg_prompt;
+                if (settings.denoise_amt != null) {
+                    document.getElementById('ovr-denoise_amt-slider').value = settings.denoise_amt;
+                    document.getElementById('ovr-denoise_amt-value').textContent = parseFloat(settings.denoise_amt).toFixed(2);
+                }
+                if (settings.denoise_steps != null) {
+                    document.getElementById('ovr-denoise_steps-slider').value = settings.denoise_steps;
+                    document.getElementById('ovr-denoise_steps-value').textContent = parseInt(settings.denoise_steps);
+                }
+                if (settings.cfg != null) {
+                    document.getElementById('ovr-cfg-slider').value = settings.cfg;
+                    document.getElementById('ovr-cfg-value').textContent = parseFloat(settings.cfg).toFixed(1);
+                }
+                if (settings.seed != null) document.getElementById('ovr-seed').value = settings.seed;
+                if (settings.checkpoint != null) document.getElementById('ovr-checkpoint').value = settings.checkpoint;
+                for (const f of JSON_FIELDS) setJsonField(f, settings[f]);
+            } catch (e) { /* no valid JSON yet */ }
+        } else {
+            // Fetch raw settings for formula mode
+            try {
+                const resp = await fetch('/api/settings/' + viewIndex + '/raw');
+                const data = await resp.json();
+                if (data.raw_settings) {
+                    const raw = data.raw_settings;
+                    setTextField('prompt', raw.prompt);
+                    setTextField('neg_prompt', raw.neg_prompt);
+                    setTextField('checkpoint', raw.checkpoint);
+                    for (const f of SLIDER_FIELDS) {
+                        const expr = document.getElementById('ovr-' + f + '-expr');
+                        if (raw[f] != null) {
+                            expr.value = String(raw[f]);
+                            expr.placeholder = '';
+                        } else {
+                            expr.value = '';
+                            expr.placeholder = '(inherited)';
+                        }
+                    }
+                    if (raw.seed != null) document.getElementById('ovr-seed').value = raw.seed;
+                    for (const f of JSON_FIELDS) setJsonField(f, raw[f]);
+                }
+            } catch (e) { console.error('Failed to load raw settings:', e); }
+        }
+        updateOverrideInputVisibility();
+        loadOverrideIndicator();
+    }
+
+    async function applyOverrides() {
+        const mode = getOverrideMode();
+        const overrides = {};
+        const errorEl = document.getElementById('ovr-json-error');
+        errorEl.style.display = 'none';
+
+        for (const f of ALL_OVR_FIELDS) {
+            if (!document.getElementById('ovr-' + f + '-enable').checked) continue;
+            if (SLIDER_FIELDS.includes(f)) {
+                if (mode === 'frame') {
+                    overrides[f] = document.getElementById('ovr-' + f + '-slider').value;
+                } else {
+                    const exprVal = document.getElementById('ovr-' + f + '-expr').value;
+                    if (exprVal) overrides[f] = exprVal;
+                }
+            } else if (f === 'seed') {
+                overrides[f] = document.getElementById('ovr-seed').value;
+            } else if (JSON_FIELDS.includes(f)) {
+                const raw = document.getElementById('ovr-' + f).value.trim();
+                if (!raw) continue;
+                try {
+                    overrides[f] = JSON.parse(raw);
+                } catch (e) {
+                    errorEl.textContent = f + ': invalid JSON — ' + e.message;
+                    errorEl.style.display = '';
+                    return;
+                }
+            } else {
+                overrides[f] = document.getElementById('ovr-' + f).value;
+            }
+        }
+
+        if (Object.keys(overrides).length === 0) return;
+
+        try {
+            if (mode === 'frame') {
+                await fetch('/api/override/frame', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(overrides)
+                });
+            } else {
+                await fetch('/api/override/formula', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ iteration: viewIndex - 1, overrides })
+                });
+            }
+            loadOverrideIndicator();
+        } catch (e) { console.error('Override apply failed:', e); }
+    }
+
+    async function clearOverrides() {
+        await fetch('/api/overrides', { method: 'DELETE' });
+        ALL_OVR_FIELDS.forEach(f => {
+            document.getElementById('ovr-' + f + '-enable').checked = false;
+            document.getElementById('ovr-' + f + '-enable').dispatchEvent(new Event('change'));
+        });
+        loadOverrideIndicator();
+    }
+
+    async function loadOverrideIndicator() {
+        try {
+            const resp = await fetch('/api/overrides');
+            const data = await resp.json();
+            const ind = document.getElementById('override-indicator');
+            const keys = Object.keys(data.frame_overrides || {});
+            if (keys.length > 0) {
+                ind.style.display = '';
+                document.getElementById('override-list').textContent = keys.join(', ');
+            } else {
+                ind.style.display = 'none';
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    document.getElementById('btn-override-apply').addEventListener('click', applyOverrides);
+    document.getElementById('btn-override-clear').addEventListener('click', clearOverrides);
+
+    // --- Polling ---
+
+    setInterval(fetchStatus, POLL_MS);
+    fetchStatus();
+    </script>
+</body>
+</html>

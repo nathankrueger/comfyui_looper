@@ -52,6 +52,7 @@ class SimpleExprEval:
         "range": range,
         "max": max,
         "min": min,
+        "abs": abs,
         "any": any,
         "all": all,
 
@@ -78,6 +79,7 @@ class SimpleExprEval:
         "log10": math.log10,
         "log2": math.log2,
         "exp": math.exp,
+        "sqrt": math.sqrt,
         "relu": lambda x: x if x > 0 else 0,
         "sigmoid": lambda x: 1.0 / (1.0 + math.exp(-x)),
     }

@@ -2,6 +2,12 @@ pytest
 moviepy
 pydub
 pillow
+scipy
+matplotlib
 opencv-python
 dataclasses-json
 tqdm
+flask
+waitress
+requests
+websocket-client

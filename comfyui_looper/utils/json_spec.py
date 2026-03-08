@@ -1,11 +1,17 @@
 import os
 import random
+import warnings
 from typing import Any, Optional
 from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
 from copy import deepcopy
 
-import folder_paths
+try:
+    import folder_paths
+    HAS_FOLDER_PATHS = True
+except ImportError:
+    HAS_FOLDER_PATHS = False
+
 from image_processing.transforms import Transform
 from image_processing.animator import get_animation_param_value
 from utils.simple_expr_eval import SimpleExprEval
@@ -27,6 +33,7 @@ def empty_list_factory() -> list:
 def default_seed() -> int:
     return random.randint(1, 2**64)
 
+@dataclass_json
 @dataclass
 class EmptyObject:
     pass
@@ -53,7 +60,8 @@ class LoraFilter:
     lora_strength: float
 
     def validate(self):
-        assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], self.lora_path))
+        if HAS_FOLDER_PATHS:
+            assert os.path.exists(os.path.join(folder_paths.get_folder_paths("loras")[0], self.lora_path))
         assert self.lora_strength >= 0
 
 @dataclass_json
@@ -106,7 +114,7 @@ class LoopSettings:
                 lora.validate()
 
         # model files
-        if self.checkpoint is not None and self.checkpoint is not EMPTY_OBJECT:
+        if HAS_FOLDER_PATHS and self.checkpoint is not None and self.checkpoint is not EMPTY_OBJECT:
             ckpt_found = False
             for folder_query in {"checkpoints", "diffusion_models"}:
                 for specific_folder in folder_paths.get_folder_paths(folder_query):
@@ -144,7 +152,9 @@ class SettingsManager:
     def __init__(self, workflow_json_path: str, animation_params: dict[str, str]):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
             json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
-            self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", module="dataclasses_json")
+                self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
 
         assert self.workflow.version == CURRENT_WORKFLOW_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}
