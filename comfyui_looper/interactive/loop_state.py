@@ -1,6 +1,6 @@
 import threading
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 class LoopStatus(Enum):
@@ -27,6 +27,8 @@ class LoopState:
         self._export_status: Optional[str] = None
         self._export_error: Optional[str] = None
         self._export_file: Optional[str] = None
+        self._frame_overrides: dict[str, Any] = {}
+        self._settings_manager = None
 
     # --- Status ---
 
@@ -148,3 +150,31 @@ class LoopState:
             self._export_status = None
             self._export_error = None
             self._export_file = None
+
+    # --- Frame overrides ---
+
+    def set_frame_overrides(self, overrides: dict[str, Any]):
+        with self._lock:
+            self._frame_overrides = dict(overrides)
+
+    def get_and_clear_frame_overrides(self) -> dict[str, Any]:
+        with self._lock:
+            overrides = self._frame_overrides
+            self._frame_overrides = {}
+            return overrides
+
+    def get_frame_overrides(self) -> dict[str, Any]:
+        with self._lock:
+            return dict(self._frame_overrides)
+
+    def clear_frame_overrides(self):
+        with self._lock:
+            self._frame_overrides = {}
+
+    # --- Settings manager reference ---
+
+    def set_settings_manager(self, sm):
+        self._settings_manager = sm
+
+    def get_settings_manager(self):
+        return self._settings_manager

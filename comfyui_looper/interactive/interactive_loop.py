@@ -36,12 +36,19 @@ def _run_iteration(
 ) -> int:
     """Run a single iteration. Returns the seed used."""
     loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
+
+    # Apply one-shot frame overrides from the UI
+    frame_overrides = state.get_and_clear_frame_overrides()
+    for field_name, value in frame_overrides.items():
+        setattr(loopsettings, field_name, value)
+
     transforms = loopsettings.transforms
     seed = loopsettings.seed
 
-    if force_new_seed or seed == prev_seed:
-        seed = default_seed()
-        loopsettings.seed = seed
+    if 'seed' not in frame_overrides:
+        if force_new_seed or seed == prev_seed:
+            seed = default_seed()
+            loopsettings.seed = seed
     sm.update_seed(iter, seed)
 
     _apply_engine_defaults(engine, loopsettings)
@@ -98,6 +105,7 @@ def _handle_restart(
     5. Return (next_iter, prev_seed)
     """
     redo_iter = restart_from - 1
+    state.clear_frame_overrides()
 
     # Delete images from restart_from onward
     for idx in range(restart_from, total_iter + 1):
@@ -151,6 +159,7 @@ def interactive_looper_main(
 ):
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
+    state.set_settings_manager(sm)
 
     try:
         with torch.inference_mode():

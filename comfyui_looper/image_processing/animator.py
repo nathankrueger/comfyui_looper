@@ -50,7 +50,15 @@ def get_animation_param_value(param_name: str, animation_params: dict[str, str])
 
 def get_image_paths(input_folder: str, params: dict[str, str] = None) -> list[str]:
     # find all images
-    frame_paths = [img_path for img_path in glob.glob(f'{input_folder}/*{IMG_TYPE}')]
+    frame_paths = sorted([img_path for img_path in glob.glob(f'{input_folder}/*{IMG_TYPE}')])
+
+    # apply frame range if specified
+    if params is not None:
+        start_frame = int(params.get('start_frame', 0))
+        end_frame = int(params.get('end_frame', -1))
+        if start_frame > 0 or end_frame >= 0:
+            end_idx = (end_frame + 1) if end_frame >= 0 else len(frame_paths)
+            frame_paths = frame_paths[start_frame:end_idx]
 
     if params is not None:
         if 'bounce' in params:

@@ -4,6 +4,7 @@ import threading
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from interactive.loop_state import LoopState, LoopStatus
 from image_processing.animator import make_animation
+from utils.json_spec import EMPTY_OBJECT, EMPTY_LIST, LoraFilter, Canny, ConDelta
 
 
 def _loop_img_filename(idx: int) -> str:
@@ -90,6 +91,13 @@ def create_app(state: LoopState) -> Flask:
         params['frame_delay'] = str(data.get('frame_delay', 250))
         params['max_dim'] = str(data.get('max_dim', 768))
 
+        start_frame = data.get('start_frame', 0)
+        end_frame = data.get('end_frame', -1)
+        if start_frame > 0:
+            params['start_frame'] = str(start_frame)
+        if end_frame >= 0:
+            params['end_frame'] = str(end_frame)
+
         if fmt == 'mp4':
             params['v_bitrate'] = str(data.get('v_bitrate', '4000k'))
             mp3_file = data.get('mp3_file', '')
@@ -140,5 +148,101 @@ def create_app(state: LoopState) -> Flask:
         basename = os.path.basename(filepath)
         state.clear_export()
         return send_file(filepath, as_attachment=True, download_name=basename)
+
+    # --- Settings overrides ---
+
+    OVERRIDE_ALLOWED_FIELDS = {
+        'prompt', 'neg_prompt', 'denoise_amt', 'denoise_steps', 'cfg', 'seed',
+        'checkpoint', 'loras', 'transforms', 'canny', 'con_deltas',
+    }
+
+    def _serialize_setting_val(val):
+        """Convert a LoopSettings field value to JSON-serializable form."""
+        if val is EMPTY_OBJECT or (isinstance(val, list) and val == EMPTY_LIST):
+            return None
+        if isinstance(val, (Canny, LoraFilter, ConDelta)):
+            return val.to_dict()
+        if isinstance(val, list):
+            return [item.to_dict() if hasattr(item, 'to_dict') else item for item in val]
+        return val
+
+    def _deserialize_override(key, value):
+        """Convert a JSON override value to the appropriate Python type for setattr."""
+        if key in ('denoise_amt', 'cfg'):
+            return float(value)
+        if key in ('denoise_steps', 'seed'):
+            return int(value)
+        if key in ('prompt', 'neg_prompt', 'checkpoint'):
+            return str(value)
+        if key == 'loras':
+            return [LoraFilter.from_dict(item) for item in value]
+        if key == 'canny':
+            return Canny.from_dict(value) if value else None
+        if key == 'con_deltas':
+            return [ConDelta.from_dict(item) for item in value]
+        if key == 'transforms':
+            return value  # already list of dicts
+        return value
+
+    @app.route('/api/settings/<int:index>/raw')
+    def api_settings_raw(index: int):
+        if index == 0:
+            return jsonify({'error': 'No settings for starting image'}), 400
+        iteration = index - 1
+        sm = state.get_settings_manager()
+        if sm is None:
+            return jsonify({'error': 'Settings manager not ready'}), 503
+        section_idx, loopsetting = sm.get_loopsettings_for_iter(iteration)
+        raw = {}
+        for field_name in OVERRIDE_ALLOWED_FIELDS:
+            raw[field_name] = _serialize_setting_val(getattr(loopsetting, field_name))
+        raw['section_idx'] = section_idx
+        raw['loop_iterations'] = loopsetting.loop_iterations
+        raw['offset'] = loopsetting.offset
+        return jsonify({'raw_settings': raw})
+
+    @app.route('/api/override/frame', methods=['POST'])
+    def api_override_frame():
+        data = request.get_json()
+        overrides = {}
+        for key, value in data.items():
+            if key not in OVERRIDE_ALLOWED_FIELDS:
+                return jsonify({'error': f'Field {key} not allowed'}), 400
+            overrides[key] = _deserialize_override(key, value)
+        state.set_frame_overrides(overrides)
+        return jsonify({'status': 'ok', 'overrides': list(overrides.keys())})
+
+    @app.route('/api/override/formula', methods=['POST'])
+    def api_override_formula():
+        data = request.get_json()
+        iteration = data.get('iteration')
+        overrides = data.get('overrides', {})
+        if iteration is None:
+            return jsonify({'error': 'iteration required'}), 400
+        sm = state.get_settings_manager()
+        if sm is None:
+            return jsonify({'error': 'Settings manager not ready'}), 503
+        _section_idx, loopsetting = sm.get_loopsettings_for_iter(iteration)
+        for key, value in overrides.items():
+            if key not in OVERRIDE_ALLOWED_FIELDS:
+                return jsonify({'error': f'Field {key} not allowed'}), 400
+            # For formula mode: EXPR fields keep strings as expressions,
+            # complex types get deserialized to proper objects
+            if key in ('loras', 'canny', 'con_deltas', 'transforms'):
+                setattr(loopsetting, key, _deserialize_override(key, value))
+            else:
+                # Strings stay as strings (expressions), primitives pass through
+                setattr(loopsetting, key, value)
+        state.clear_settings_from(iteration)
+        return jsonify({'status': 'ok', 'section_idx': _section_idx})
+
+    @app.route('/api/overrides')
+    def api_get_overrides():
+        return jsonify({'frame_overrides': state.get_frame_overrides()})
+
+    @app.route('/api/overrides', methods=['DELETE'])
+    def api_clear_overrides():
+        state.clear_frame_overrides()
+        return jsonify({'status': 'cleared'})
 
     return app
