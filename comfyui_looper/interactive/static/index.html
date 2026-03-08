@@ -4,43 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ComfyUI Looper</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%237c3aed'/%3E%3Cstop offset='100%25' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 6c-4.4 0-8 3.1-8 7s3.6 7 8 7c1.5 0 3-.4 4.2-1.1' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M16 26c4.4 0 8-3.1 8-7s-3.6-7-8-7c-1.5 0-3 .4-4.2 1.1' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #1a1a2e; color: #e0e0e0;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            color: #e0e0e0;
             display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh; padding: 12px;
+            min-height: 100vh; padding: 16px 12px;
         }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        /* Header */
+        #app-header {
+            width: 100%; max-width: 800px; text-align: center;
+            margin-bottom: 16px; padding: 8px 0;
+        }
+        #app-header h1 {
+            font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #6d28d9 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        /* Status bar */
         #status-bar {
             width: 100%; max-width: 800px;
-            background: #16213e; border-radius: 8px; padding: 12px;
-            margin-bottom: 12px; text-align: center;
-            font-size: 1.1em; font-weight: bold;
+            background: #16213e; border-radius: 10px; padding: 12px 16px;
+            margin-bottom: 16px; text-align: center;
+            font-size: 1.05em; font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
-        .status-running { color: #4ade80; }
-        .status-paused  { color: #fbbf24; }
-        .status-stopped { color: #f87171; }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            display: inline-block; flex-shrink: 0;
+        }
+        .status-running .status-dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: pulse-dot 2s ease-in-out infinite; }
+        .status-paused .status-dot  { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
+        .status-stopped .status-dot { background: #f87171; box-shadow: 0 0 6px #f87171; }
+        .status-running .status-text { color: #4ade80; }
+        .status-paused .status-text  { color: #fbbf24; }
+        .status-stopped .status-text { color: #f87171; }
+        .status-badge {
+            display: inline-block; padding: 2px 10px; border-radius: 12px;
+            font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-running .status-badge { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .status-paused .status-badge  { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .status-stopped .status-badge { background: rgba(248,113,113,0.15); color: #f87171; }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        /* Image */
         #image-container {
             width: 100%; max-width: 800px; text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         #image-container img {
-            max-width: 100%; height: auto; border-radius: 8px;
-            border: 2px solid #333;
+            max-width: 100%; height: auto; border-radius: 10px;
+            border: 2px solid #334155;
+            box-shadow: 0 4px 24px rgba(124,58,237,0.15), 0 2px 8px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease;
         }
         #image-label {
-            margin-top: 4px; font-size: 0.9em; color: #aaa;
+            margin-top: 8px; font-size: 0.9em; color: #888;
+            font-variant-numeric: tabular-nums;
         }
+        /* Controls */
         #controls {
             display: flex; flex-wrap: wrap; gap: 8px;
-            justify-content: center; margin-bottom: 12px;
+            justify-content: center; margin-bottom: 16px;
             width: 100%; max-width: 800px;
         }
         button {
-            padding: 10px 20px; border: none; border-radius: 6px;
-            font-size: 1em; cursor: pointer; font-weight: bold;
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 1em; cursor: pointer; font-weight: 600;
             min-width: 90px;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .btn-nav     { background: #334155; color: #e0e0e0; }
         .btn-sync    { background: #2563eb; color: white; }
@@ -48,8 +95,9 @@
         .btn-resume  { background: #16a34a; color: white; }
         .btn-pause   { background: #d97706; color: white; }
         .btn-export  { background: #7c3aed; color: white; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-        button:hover:not(:disabled) { filter: brightness(1.2); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+        button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        button:active:not(:disabled) { transform: translateY(0px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.7);
@@ -57,9 +105,9 @@
         }
         .modal-overlay.active { display: flex; }
         .modal {
-            background: #16213e; border-radius: 12px; padding: 24px;
+            background: #16213e; border-radius: 14px; padding: 24px;
             width: 90%; max-width: 520px; color: #e0e0e0;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.1);
             max-height: 90vh; overflow-y: auto;
         }
         .modal h2 { margin-bottom: 16px; font-size: 1.3em; }
@@ -108,20 +156,22 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         #settings-panel {
             width: 100%; max-width: 800px;
-            background: #16213e; border-radius: 8px; padding: 12px;
+            background: #16213e; border-radius: 10px; padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25), 0 0 0 1px rgba(124,58,237,0.08);
         }
         #settings-tabs {
-            display: flex; gap: 0; margin-bottom: 12px;
+            display: flex; gap: 0; margin-bottom: 14px;
             border-bottom: 2px solid #334155;
         }
         .tab-btn {
             background: none; border: none; color: #888;
-            padding: 8px 20px; font-size: 0.95em; font-weight: bold;
+            padding: 10px 24px; font-size: 0.95em; font-weight: 600;
             cursor: pointer; border-bottom: 2px solid transparent;
             margin-bottom: -2px; min-width: auto; border-radius: 0;
+            transition: color 0.15s ease, border-color 0.15s ease;
         }
         .tab-btn.active { color: #e0e0e0; border-bottom-color: #7c3aed; }
-        .tab-btn:hover { color: #e0e0e0; }
+        .tab-btn:hover { color: #c4b5fd; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         #settings-content {
@@ -193,19 +243,20 @@
     </style>
 </head>
 <body>
-    <div id="status-bar">Loading...</div>
+    <div id="app-header"><h1>ComfyUI Looper</h1></div>
+    <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
     <div id="image-container">
         <img id="main-image" src="" alt="Generated image">
         <div id="image-label"></div>
     </div>
     <div id="controls">
-        <button class="btn-nav" id="btn-back">&laquo; BACK</button>
-        <button class="btn-restart" id="btn-restart">RESTART</button>
-        <button class="btn-resume" id="btn-resume" style="display:none">RESUME</button>
-        <button class="btn-pause" id="btn-pause">PAUSE</button>
-        <button class="btn-sync" id="btn-sync">SYNC</button>
-        <button class="btn-nav" id="btn-forward">FORWARD &raquo;</button>
-        <button class="btn-export" id="btn-export">EXPORT</button>
+        <button class="btn-nav" id="btn-back">&laquo; Back</button>
+        <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
+        <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
+        <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
+        <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
+        <button class="btn-nav" id="btn-forward">Forward &raquo;</button>
+        <button class="btn-export" id="btn-export">&#128190; Export</button>
     </div>
     <div id="settings-panel">
         <div id="settings-tabs">
@@ -393,11 +444,12 @@
 
             const bar = document.getElementById('status-bar');
             bar.className = 'status-' + data.status;
-            let text = data.status.toUpperCase() +
-                ' | Iteration ' + data.current_iteration + ' / ' + data.total_iterations +
-                ' | Image ' + latestIndex;
-            if (data.error) text += ' | ERROR: ' + data.error;
-            bar.textContent = text;
+            let info = 'Iter ' + data.current_iteration + '/' + data.total_iterations +
+                ' \u00b7 Image ' + latestIndex;
+            if (data.error) info += ' \u00b7 ' + data.error;
+            bar.innerHTML = '<span class="status-dot"></span>' +
+                '<span class="status-badge">' + data.status + '</span>' +
+                '<span class="status-text">' + info + '</span>';
 
             if (latestIndex < viewIndex) {
                 // Restart deleted images beyond latestIndex — snap back
