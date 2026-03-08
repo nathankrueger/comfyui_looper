@@ -106,6 +106,7 @@ def _handle_restart(
     """
     redo_iter = restart_from - 1
     state.clear_frame_overrides()
+    state.clear_timestamps_from(redo_iter)
 
     # Delete images from restart_from onward
     for idx in range(restart_from, total_iter + 1):
@@ -190,6 +191,7 @@ def interactive_looper_main(
                 # Normal iteration
                 state.set_current_iteration(iter)
                 state.set_status(LoopStatus.RUNNING)
+                state.mark_iteration_start()
 
                 prev_seed = _run_iteration(
                     engine=engine,
@@ -203,6 +205,7 @@ def interactive_looper_main(
                     prev_seed=prev_seed,
                 )
 
+                state.mark_iteration_complete()
                 iter += 1
 
         state.set_status(LoopStatus.STOPPED)

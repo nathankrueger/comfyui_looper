@@ -19,20 +19,9 @@
         ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        /* Header */
-        #app-header {
-            width: 100%; max-width: 800px; text-align: center;
-            margin-bottom: 16px; padding: 8px 0;
-        }
-        #app-header h1 {
-            font-size: 1.5em; font-weight: 800; letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #6d28d9 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
         #app-links {
             width: 100%; max-width: 800px; text-align: center;
-            margin: -10px 0 12px 0; font-size: 0.8em;
+            margin: 16px 0 0 0; font-size: 0.8em;
         }
         #app-links a {
             color: #7c3aed; text-decoration: none; transition: color 0.15s ease;
@@ -83,7 +72,17 @@
         #image-label {
             margin-top: 8px; font-size: 0.9em; color: #888;
             font-variant-numeric: tabular-nums;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
         }
+        #frame-input {
+            width: 5em; text-align: center; font-size: 1em;
+            font-variant-numeric: tabular-nums;
+            background: #1e293b; color: #e0e0e0; border: 1px solid #334155;
+            border-radius: 4px; padding: 2px 4px;
+            outline: none; transition: border-color 0.15s, background 0.15s;
+        }
+        #frame-input:focus { border-color: #7c3aed; }
+        #frame-input.invalid { border-color: #ef4444; background: #3b1111; }
         /* Controls */
         #controls {
             display: flex; flex-wrap: wrap; gap: 8px;
@@ -251,16 +250,14 @@
     </style>
 </head>
 <body>
-    <div id="app-header"><h1>ComfyUI Looper</h1></div>
-    <div id="app-links"><a href="https://github.com/nathankrueger/comfyui_looper" target="_blank" rel="noopener">GitHub</a></div>
     <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
     <div id="image-container">
         <img id="main-image" src="" alt="Generated image">
-        <div id="image-label"></div>
+        <div id="image-label">Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></div>
     </div>
     <div id="controls">
-        <button class="btn-nav" id="btn-back">&laquo; Back</button>
-        <button class="btn-nav" id="btn-forward">Forward &raquo;</button>
+        <button class="btn-nav" id="btn-back">&laquo;&laquo;</button>
+        <button class="btn-nav" id="btn-forward">&raquo;&raquo;</button>
         <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
         <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
         <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
@@ -358,6 +355,8 @@
         </div>
     </div>
 
+    <div id="app-links"><a href="https://github.com/nathankrueger/comfyui_looper" target="_blank" rel="noopener">GitHub</a></div>
+
     <div class="modal-overlay" id="export-modal">
         <div class="modal">
             <h2>Export Animation</h2>
@@ -444,10 +443,30 @@
 
     // --- API helpers ---
 
+    function formatDuration(secs) {
+        if (secs == null) return '--';
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        if (h > 0) return h + 'h ' + m + 'm';
+        if (m > 0) return m + 'm ' + s + 's';
+        return s + 's';
+    }
+
+    function formatETA(secs) {
+        if (secs == null) return '--';
+        const eta = new Date(Date.now() + secs * 1000);
+        return eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     async function fetchStatus() {
         try {
-            const resp = await fetch('/api/status');
-            const data = await resp.json();
+            const [statusResp, progressResp] = await Promise.all([
+                fetch('/api/status'),
+                fetch('/api/progress'),
+            ]);
+            const data = await statusResp.json();
+            const progress = await progressResp.json();
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
 
@@ -456,9 +475,17 @@
             let info = 'Iter ' + data.current_iteration + '/' + data.total_iterations +
                 ' \u00b7 Image ' + latestIndex;
             if (data.error) info += ' \u00b7 ' + data.error;
+            let timeInfo = '';
+            if (data.status === 'running' && progress.avg_secs != null) {
+                timeInfo = ' \u00b7 ~' + formatDuration(progress.avg_secs) + '/iter' +
+                    ' \u00b7 ' + formatDuration(progress.eta_secs) + ' left' +
+                    ' \u00b7 ET ' + formatETA(progress.eta_secs);
+            } else if (data.status === 'stopped' && progress.elapsed_secs != null) {
+                timeInfo = ' \u00b7 Elapsed: ' + formatDuration(progress.elapsed_secs);
+            }
             bar.innerHTML = '<span class="status-dot"></span>' +
                 '<span class="status-badge">' + data.status + '</span>' +
-                '<span class="status-text">' + info + '</span>';
+                '<span class="status-text">' + info + timeInfo + '</span>';
 
             if (latestIndex < viewIndex) {
                 // Restart deleted images beyond latestIndex — snap back
@@ -473,8 +500,7 @@
             }
 
             // Always update the label so the "/ M" total stays current
-            document.getElementById('image-label').textContent =
-                'Image ' + viewIndex + ' / ' + latestIndex;
+            updateFrameLabel();
 
             updateButtons();
         } catch (e) {
@@ -482,11 +508,19 @@
         }
     }
 
+    function updateFrameLabel() {
+        var fi = document.getElementById('frame-input');
+        if (document.activeElement !== fi) {
+            fi.value = viewIndex;
+            fi.classList.remove('invalid');
+        }
+        document.getElementById('frame-total').textContent = latestIndex;
+    }
+
     function loadImage() {
         const img = document.getElementById('main-image');
         img.src = '/api/image/' + viewIndex + '?t=' + Date.now();
-        document.getElementById('image-label').textContent =
-            'Image ' + viewIndex + ' / ' + latestIndex;
+        updateFrameLabel();
     }
 
     async function loadSettings() {
@@ -582,19 +616,16 @@
         function startHold() {
             stopHold();
             holdTimeout = setTimeout(() => {
-                // Phase 1: 500ms interval
                 action();
-                repeatInterval = setInterval(action, 500);
-                // Phase 2: after 3s, speed up to 250ms
+                repeatInterval = setInterval(action, 400);
                 speedupTimeouts.push(setTimeout(() => {
                     if (repeatInterval) clearInterval(repeatInterval);
-                    repeatInterval = setInterval(action, 250);
-                    // Phase 3: after another 3s, speed up to 100ms
+                    repeatInterval = setInterval(action, 200);
                     speedupTimeouts.push(setTimeout(() => {
                         if (repeatInterval) clearInterval(repeatInterval);
                         repeatInterval = setInterval(action, 100);
-                    }, 3000));
-                }, 3000));
+                    }, 2000));
+                }, 2000));
             }, 1000);
         }
 
@@ -620,6 +651,92 @@
     document.getElementById('btn-restart').addEventListener('click', doRestart);
     document.getElementById('btn-resume').addEventListener('click', doResume);
     document.getElementById('btn-pause').addEventListener('click', doPause);
+
+    // --- Frame input ---
+    (function() {
+        var fi = document.getElementById('frame-input');
+        function validate() {
+            var v = parseInt(fi.value, 10);
+            if (isNaN(v) || v < 0 || v > latestIndex) {
+                fi.classList.add('invalid');
+                return null;
+            }
+            fi.classList.remove('invalid');
+            return v;
+        }
+        fi.addEventListener('input', validate);
+        fi.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                var v = validate();
+                if (v !== null) {
+                    viewIndex = v;
+                    isLiveMode = (viewIndex === latestIndex);
+                    loadImage();
+                    loadSettings();
+                    updateButtons();
+                    fi.blur();
+                }
+            } else if (e.key === 'Escape') {
+                fi.value = viewIndex;
+                fi.classList.remove('invalid');
+                fi.blur();
+            }
+        });
+        fi.addEventListener('blur', function() {
+            fi.value = viewIndex;
+            fi.classList.remove('invalid');
+        });
+    })();
+
+    // --- Arrow key hold-to-repeat ---
+    (function() {
+        const keyActions = { ArrowLeft: goBack, ArrowRight: goForward };
+        const keyTimers = {};
+
+        function startKeyHold(key) {
+            if (keyTimers[key]) return;
+            const action = keyActions[key];
+            const timers = { ids: [] };
+            keyTimers[key] = timers;
+
+            action();
+            timers.ids.push(setTimeout(() => {
+                action();
+                timers.ids.push(setInterval(action, 400));
+                timers.ids.push(setTimeout(() => {
+                    clearInterval(timers.ids[2]);
+                    timers.ids.push(setInterval(action, 200));
+                    timers.ids.push(setTimeout(() => {
+                        clearInterval(timers.ids[4]);
+                        timers.ids.push(setInterval(action, 100));
+                    }, 2000));
+                }, 2000));
+            }, 1000));
+        }
+
+        function stopKeyHold(key) {
+            const timers = keyTimers[key];
+            if (!timers) return;
+            timers.ids.forEach(id => { clearTimeout(id); clearInterval(id); });
+            delete keyTimers[key];
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!(e.key in keyActions)) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.repeat) return;
+            e.preventDefault();
+            startKeyHold(e.key);
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key in keyActions) stopKeyHold(e.key);
+        });
+
+        window.addEventListener('blur', () => {
+            Object.keys(keyTimers).forEach(stopKeyHold);
+        });
+    })();
 
     // --- Export modal ---
 
@@ -724,6 +841,43 @@
         }
     }
 
+    async function downloadExport() {
+        const resp = await fetch('/api/export/download');
+        if (!resp.ok) throw new Error('Download failed');
+        const blob = await resp.blob();
+        const disposition = resp.headers.get('Content-Disposition') || '';
+        const filename = disposition.match(/filename="?(.+?)"?$/)?.[1] || 'export';
+        const mime = blob.type || 'application/octet-stream';
+
+        // Use Web Share API on iOS for Camera Roll access
+        try {
+            const file = new File([blob], filename, { type: mime });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                exportProgress.innerHTML = 'Opening share sheet...';
+                await navigator.share({ files: [file] });
+                exportProgress.innerHTML = 'Shared!';
+                return;
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') {
+                exportProgress.innerHTML = 'Share cancelled.';
+                return;
+            }
+        }
+
+        // Fallback: blob URL download
+        exportProgress.innerHTML = 'Starting download...';
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
     function pollExportStatus() {
         const pollInterval = setInterval(async () => {
             try {
@@ -731,13 +885,8 @@
                 const data = await resp.json();
                 if (data.status === 'done') {
                     clearInterval(pollInterval);
-                    exportProgress.innerHTML = 'Export complete! Starting download...';
-                    const a = document.createElement('a');
-                    a.href = '/api/export/download';
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    exportProgress.innerHTML = 'Export complete! Preparing file...';
+                    await downloadExport();
                     setTimeout(() => closeExportModal(), 1500);
                 } else if (data.status === 'error') {
                     clearInterval(pollInterval);

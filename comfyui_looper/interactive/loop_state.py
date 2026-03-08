@@ -1,3 +1,4 @@
+import time
 import threading
 from enum import Enum
 from typing import Any, Optional
@@ -29,6 +30,8 @@ class LoopState:
         self._export_file: Optional[str] = None
         self._frame_overrides: dict[str, Any] = {}
         self._settings_manager = None
+        self._iteration_timestamps: list[float] = []
+        self._iter_start_time: Optional[float] = None
 
     # --- Status ---
 
@@ -170,6 +173,55 @@ class LoopState:
     def clear_frame_overrides(self):
         with self._lock:
             self._frame_overrides = {}
+
+    # --- Iteration timing ---
+
+    def mark_iteration_start(self):
+        with self._lock:
+            self._iter_start_time = time.monotonic()
+
+    def mark_iteration_complete(self):
+        with self._lock:
+            if self._iter_start_time is not None:
+                self._iteration_timestamps.append(time.monotonic() - self._iter_start_time)
+                self._iter_start_time = None
+
+    def clear_timestamps_from(self, iter_num: int):
+        with self._lock:
+            if iter_num < len(self._iteration_timestamps):
+                self._iteration_timestamps = self._iteration_timestamps[:iter_num]
+
+    def get_progress_info(self) -> dict:
+        with self._lock:
+            completed = self._latest_image_index
+            total = self._total_iterations
+            remaining = total - completed
+            timestamps = self._iteration_timestamps
+
+            if len(timestamps) == 0:
+                return {
+                    'completed': completed,
+                    'total': total,
+                    'remaining': remaining,
+                    'avg_secs': None,
+                    'eta_secs': None,
+                    'elapsed_secs': None,
+                }
+
+            # Use recent window (last 10) for avg to account for changing iteration cost
+            window = timestamps[-10:]
+            avg_secs = sum(window) / len(window)
+            eta_secs = avg_secs * remaining
+            elapsed_secs = sum(timestamps)
+
+            return {
+                'completed': completed,
+                'total': total,
+                'remaining': remaining,
+                'avg_secs': round(avg_secs, 1),
+                'eta_secs': round(eta_secs, 1),
+                'elapsed_secs': round(elapsed_secs, 1),
+            }
 
     # --- Settings manager reference ---
 

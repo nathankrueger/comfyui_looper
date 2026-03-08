@@ -48,6 +48,10 @@ def create_app(state: LoopState) -> Flask:
         else:
             return jsonify({'error': f'Settings for image {index} not available'}), 404
 
+    @app.route('/api/progress')
+    def api_progress():
+        return jsonify(state.get_progress_info())
+
     @app.route('/api/pause', methods=['POST'])
     def api_pause():
         state.pause()
