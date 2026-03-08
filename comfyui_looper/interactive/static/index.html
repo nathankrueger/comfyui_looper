@@ -30,6 +30,14 @@
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+        #app-links {
+            width: 100%; max-width: 800px; text-align: center;
+            margin: -10px 0 12px 0; font-size: 0.8em;
+        }
+        #app-links a {
+            color: #7c3aed; text-decoration: none; transition: color 0.15s ease;
+        }
+        #app-links a:hover { color: #a78bfa; }
         /* Status bar */
         #status-bar {
             width: 100%; max-width: 800px;
@@ -244,6 +252,7 @@
 </head>
 <body>
     <div id="app-header"><h1>ComfyUI Looper</h1></div>
+    <div id="app-links"><a href="https://github.com/nathankrueger/comfyui_looper" target="_blank" rel="noopener">GitHub</a></div>
     <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
     <div id="image-container">
         <img id="main-image" src="" alt="Generated image">

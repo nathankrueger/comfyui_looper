@@ -1,5 +1,6 @@
 import os
 import random
+import warnings
 from typing import Any, Optional
 from dataclasses import dataclass, field, fields
 from dataclasses_json import dataclass_json
@@ -32,6 +33,7 @@ def empty_list_factory() -> list:
 def default_seed() -> int:
     return random.randint(1, 2**64)
 
+@dataclass_json
 @dataclass
 class EmptyObject:
     pass
@@ -150,7 +152,9 @@ class SettingsManager:
     def __init__(self, workflow_json_path: str, animation_params: dict[str, str]):
         with open(workflow_json_path, "r", encoding="utf-8") as json_file:
             json_no_comments = os.linesep.join([line for line in json_file.readlines() if not line.strip().startswith("//")])
-            self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", module="dataclasses_json")
+                self.workflow: Workflow = Workflow.schema().loads(json_no_comments)
 
         assert self.workflow.version == CURRENT_WORKFLOW_VERSION
         self.iter_to_setting_map: dict[int, tuple[int, LoopSettings]] = {}

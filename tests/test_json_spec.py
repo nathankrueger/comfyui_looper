@@ -1,4 +1,5 @@
 import tempfile
+import warnings
 import pytest
 
 # workaround for running in debugger -- it picks up pytest.ini this way
@@ -23,12 +24,14 @@ def get_loop_settings():
         transforms=[{'name':'zoom_in', 'zoom_amt':0.985}]
     )
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_serdes_loopsettings():
     test = get_loop_settings()
     test_json = test.to_json(indent=4)
     test_clone = LoopSettings.schema().loads(test_json)
     assert test == test_clone
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_serdes_workflow():
     ls1 = get_loop_settings()
     ls2 = get_loop_settings()
