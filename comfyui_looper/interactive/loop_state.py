@@ -8,18 +8,20 @@ class LoopStatus(Enum):
     RUNNING = "running"
     PAUSED = "paused"
     STOPPED = "stopped"
+    COMPLETED = "completed"
 
 
 class LoopState:
     """Thread-safe shared state between the GPU loop thread and Flask server."""
 
-    def __init__(self, total_iterations: int, output_folder: str):
+    def __init__(self, total_iterations: int, output_folder: str, no_input_image: bool = False):
         self._lock = threading.Lock()
         self._status = LoopStatus.RUNNING
         self._current_iteration = 0
         self._total_iterations = total_iterations
         self._output_folder = output_folder
         self._latest_image_index = 0
+        self._no_input_image = no_input_image
         self._elaborated_settings: dict[int, str] = {}
         self._pause_event = threading.Event()
         self._pause_event.set()  # starts unpaused
@@ -68,6 +70,9 @@ class LoopState:
 
     def get_output_folder(self) -> str:
         return self._output_folder
+
+    def has_input_image(self) -> bool:
+        return not self._no_input_image
 
     # --- Settings cache ---
 

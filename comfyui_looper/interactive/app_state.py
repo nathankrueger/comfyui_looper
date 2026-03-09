@@ -96,7 +96,7 @@ class AppState:
             sm.validate()
             total_iterations = sm.get_total_iterations()
 
-            loop_state = LoopState(total_iterations=total_iterations, output_folder=output_folder)
+            loop_state = LoopState(total_iterations=total_iterations, output_folder=output_folder, no_input_image=no_input_image)
 
             log_filename = get_log_filename(LOG_BASENAME)
             log_file = open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8')

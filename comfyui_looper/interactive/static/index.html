@@ -45,9 +45,11 @@
         .status-running .status-dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: pulse-dot 2s ease-in-out infinite; }
         .status-paused .status-dot  { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
         .status-stopped .status-dot { background: #f87171; box-shadow: 0 0 6px #f87171; }
+        .status-completed .status-dot { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
         .status-running .status-text { color: #4ade80; }
         .status-paused .status-text  { color: #fbbf24; }
         .status-stopped .status-text { color: #f87171; }
+        .status-completed .status-text { color: #60a5fa; }
         .status-badge {
             display: inline-block; padding: 2px 10px; border-radius: 12px;
             font-size: 0.8em; font-weight: 700; text-transform: uppercase;
@@ -56,6 +58,7 @@
         .status-running .status-badge { background: rgba(74,222,128,0.15); color: #4ade80; }
         .status-paused .status-badge  { background: rgba(251,191,36,0.15); color: #fbbf24; }
         .status-stopped .status-badge { background: rgba(248,113,113,0.15); color: #f87171; }
+        .status-completed .status-badge { background: rgba(96,165,250,0.15); color: #60a5fa; }
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(0.85); }
@@ -317,8 +320,8 @@
                 <div class="override-field">
                     <input type="checkbox" id="ovr-seed-enable">
                     <span class="ovr-label">seed</span>
-                    <input type="number" id="ovr-seed" disabled>
-                    <button class="btn-nav" id="ovr-seed-randomize" disabled style="min-width:auto; padding:6px 12px; font-size:0.85em">Random</button>
+                    <input type="number" id="ovr-seed" disabled style="min-width:0">
+                    <button class="btn-nav" id="ovr-seed-randomize" disabled style="min-width:auto; padding:6px 10px; font-size:0.85em; flex-shrink:0">Rand</button>
                 </div>
                 <div class="override-field">
                     <input type="checkbox" id="ovr-checkpoint-enable">
@@ -445,6 +448,7 @@
     let latestIndex = 0;
     let isLiveMode = true;
     let loopStatus = '';
+    let minImageIndex = 0;
     const POLL_MS = 1500;
 
     // --- API helpers ---
@@ -475,6 +479,7 @@
             const progress = await progressResp.json();
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
+            minImageIndex = data.has_input_image ? 0 : 1;
 
             // Update JSON name display
             const jsonNameEl = document.getElementById('json-name');
@@ -494,7 +499,7 @@
                 timeInfo = ' \u00b7 ~' + formatDuration(progress.avg_secs) + '/iter' +
                     ' \u00b7 ' + formatDuration(progress.eta_secs) + ' left' +
                     ' \u00b7 ET ' + formatETA(progress.eta_secs);
-            } else if (data.status === 'stopped' && progress.elapsed_secs != null) {
+            } else if ((data.status === 'stopped' || data.status === 'completed') && progress.elapsed_secs != null) {
                 timeInfo = ' \u00b7 Elapsed: ' + formatDuration(progress.elapsed_secs);
             }
             bar.innerHTML = '<span class="status-dot"></span>' +
@@ -557,7 +562,7 @@
     // --- Button handlers ---
 
     function goBack() {
-        if (viewIndex > 0) {
+        if (viewIndex > minImageIndex) {
             viewIndex--;
             isLiveMode = false;
             loadImage();
@@ -607,14 +612,14 @@
     }
 
     function updateButtons() {
-        document.getElementById('btn-back').disabled = (viewIndex <= 0);
+        document.getElementById('btn-back').disabled = (viewIndex <= minImageIndex);
         document.getElementById('btn-forward').disabled = (viewIndex >= latestIndex);
         document.getElementById('btn-restart').disabled = (viewIndex < 1 || loopStatus === 'stopped');
 
         const isPaused = (loopStatus === 'paused');
         document.getElementById('btn-resume').style.display = isPaused ? '' : 'none';
         document.getElementById('btn-pause').style.display = isPaused ? 'none' : '';
-        document.getElementById('btn-pause').disabled = (loopStatus === 'stopped');
+        document.getElementById('btn-pause').disabled = (loopStatus === 'stopped' || loopStatus === 'completed');
 
         // Keep override apply button and formula hint in sync
         if (typeof updateApplyButton === 'function') updateApplyButton();
@@ -682,7 +687,7 @@
         var fi = document.getElementById('frame-input');
         function validate() {
             var v = parseInt(fi.value, 10);
-            if (isNaN(v) || v < 0 || v > latestIndex) {
+            if (isNaN(v) || v < minImageIndex || v > latestIndex) {
                 fi.classList.add('invalid');
                 return null;
             }

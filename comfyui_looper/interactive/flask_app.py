@@ -284,6 +284,7 @@ def create_app(app_state: AppState) -> Flask:
                 'latest_image_index': 0,
                 'error': None,
                 'json_name': None,
+                'has_input_image': True,
             })
         return jsonify({
             'status': state.get_status().value,
@@ -292,6 +293,7 @@ def create_app(app_state: AppState) -> Flask:
             'latest_image_index': state.get_latest_image_index(),
             'error': state.get_error(),
             'json_name': app_state.get_current_json_name(),
+            'has_input_image': state.has_input_image(),
         })
 
     @app.route('/api/image/<int:index>')
