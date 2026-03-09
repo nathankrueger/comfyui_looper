@@ -110,29 +110,175 @@ JSON files support `//` line comments, which are stripped during parsing.
 
 ## Transforms
 
-### Available Transforms
-| Transform | Key Param | Typical Range | Notes |
-|-----------|-----------|---------------|-------|
-| `zoom_in` | `zoom_amt` | 0.01-0.09 | Center crop. See Rule 3. |
-| `zoom_in_left/right/up/down` | `zoom_amt` | 0.01-0.09 | Directional zoom. |
-| `fold_vertical` | `fold_amt` | — | Mirror effect. |
-| `fold_horizontal` | `fold_amt` | — | Mirror effect. |
-| `squeeze_wide` | `squeeze_amt` | 0.005-0.025 | Very small values! |
-| `squeeze_tall` | `squeeze_amt` | 0.005-0.025 | Very small values! |
-| `fisheye` | `strength` | 0.1-0.21 | Barrel distortion. Can be negative. |
-| `rotate` | `angle` | 1.5-5.0 (degrees) | Per-frame rotation. |
-| `wave` | `strength`, `period`, `rate` | 8-12, 30, 4-8 | Sine wave distortion. |
-| `perspective` | `strength`, `shrink_edge` | 10-35, bottom/left/top/right | 3D warp. |
-| `paste_img` | path, position, scale | — | Composite another image. |
+All transform parameters marked with (expr) support expression strings. Transforms are applied in sequence — order matters.
+
+### Zoom Transforms
+Crop a portion of the image and resize back to original dimensions. Creates a "camera moving" effect over iterations.
+
+**`zoom_in`** — Crop from center equally on all sides.
+- `zoom_amt` (expr): Fraction to remove. 0.01-0.03 subtle, 0.05-0.09 dramatic. See Rule 3.
+```json
+{"name": "zoom_in", "zoom_amt": 0.03}
+```
+
+**`zoom_in_left`** — Crop from the right edge, keeping left content. Camera pans left.
+- `zoom_amt` (expr)
+
+**`zoom_in_right`** — Crop from the left edge, keeping right content. Camera pans right.
+- `zoom_amt` (expr)
+
+**`zoom_in_up`** — Crop from the bottom edge, keeping top content. Camera pans up.
+- `zoom_amt` (expr)
+
+**`zoom_in_down`** — Crop from the top edge, keeping bottom content. Camera pans down.
+- `zoom_amt` (expr)
+
+### Fold Transforms
+Remove a strip from the center and push the two halves together, then resize. Creates a narrowing/compressing mirror effect.
+
+**`fold_vertical`** — Remove a vertical strip from the center, push left and right halves together.
+- `fold_amt` (expr): Width in pixels to remove (split evenly from center).
+```json
+{"name": "fold_vertical", "fold_amt": 20}
+```
+
+**`fold_horizontal`** — Remove a horizontal strip from the center, push top and bottom together.
+- `fold_amt` (expr): Height in pixels to remove.
+
+### Squeeze Transforms
+Crop from the center and stretch back to original size. Similar to zoom but only along one axis, creating a stretching/squashing effect.
+
+**`squeeze_wide`** — Crop horizontally from center, stretch width back. Makes image appear wider/stretched.
+- `squeeze_amt` (expr): Fraction to remove. Use very small values: 0.005-0.025.
+```json
+{"name": "squeeze_wide", "squeeze_amt": 0.01}
+```
+
+**`squeeze_tall`** — Crop vertically from center, stretch height back. Makes image appear taller/stretched.
+- `squeeze_amt` (expr): Same range as squeeze_wide.
+
+### Distortion Transforms
+
+**`fisheye`** — Barrel distortion radiating from center. Positive values push outward (convex), negative values pull inward (concave).
+- `strength` (expr): Distortion intensity. 0.1 mild, 0.21 strong. Can be negative for inverse.
+```json
+{"name": "fisheye", "strength": 0.15}
+```
+
+**`spiral`** — Twists the image around its center. Rotation amount increases with distance from center.
+- `strength` (expr): Twist intensity in radians. Positive = counterclockwise. Try 0.5-2.0.
+```json
+{"name": "spiral", "strength": 1.0}
+```
+
+**`wave`** — Sine wave distortion applied as a mesh deformation. Direction alternates automatically based on iteration count (`n`) and `rate`.
+- `strength` (expr): Wave amplitude in pixels. 8-12 typical.
+- `period` (expr): Wavelength in pixels. 30 is common.
+- `rate` (expr): Controls direction alternation speed. 4-8 typical.
+```json
+{"name": "wave", "strength": 10, "period": 30, "rate": 6}
+```
+
+**`ripple`** — Concentric circular wave distortion radiating from center. Like dropping a stone in water.
+- `amplitude` (expr): Wave height in pixels.
+- `wavelength` (expr): Distance between ripple rings in pixels.
+- `phase` (expr, optional): Phase offset. Use expressions like `0.5*n` for animated ripples.
+```json
+{"name": "ripple", "amplitude": 5, "wavelength": 40, "phase": "0.5*n"}
+```
+
+**`elastic`** — Random smooth deformation (like viewing through textured glass). Uses Gaussian-filtered random displacement.
+- `strength` (expr): Displacement magnitude.
+- `smoothness` (expr): Gaussian sigma — higher = smoother/larger-scale warps.
+- `seed` (expr, optional): Random seed for reproducibility.
+```json
+{"name": "elastic", "strength": 30, "smoothness": 5}
+```
+
+### Geometric Transforms
+
+**`rotate`** — Rotate around center by a fixed angle per frame. Automatically crops to the largest inscribed rectangle (no black borders). Over many frames creates continuous rotation.
+- `angle` (expr): Degrees per frame. 1.5-5.0 typical. Negative for clockwise.
+```json
+{"name": "rotate", "angle": 2.0}
+```
+
+**`perspective`** — 3D perspective warp that shrinks one edge, creating a receding-into-distance effect.
+- `strength` (expr): How many pixels to indent the shrinking edge. 10-35 typical.
+- `shrink_edge`: Which edge to shrink: `"top"`, `"bottom"`, `"left"`, or `"right"`. NOT an expression.
+```json
+{"name": "perspective", "strength": 20, "shrink_edge": "bottom"}
+```
+
+**`pan`** — Shift the entire image by pixel offsets. Wraps around (pixels that go off one edge appear on the opposite side).
+- `dx` (expr): Horizontal shift in pixels. Positive = shift right.
+- `dy` (expr): Vertical shift in pixels. Positive = shift down.
+```json
+{"name": "pan", "dx": 5, "dy": 0}
+```
+
+**`mirror`** — Copy one half of the image onto the other half (flipped). Creates symmetry.
+- `mode`: One of `"left_to_right"`, `"right_to_left"`, `"top_to_bottom"`, `"bottom_to_top"`. NOT an expression.
+```json
+{"name": "mirror", "mode": "left_to_right"}
+```
+
+**`kaleidoscope`** — Radial symmetry effect. Maps all angles into repeating wedges with alternating mirroring.
+- `segments` (expr): Number of symmetry segments. Must be >= 2. 4-8 typical.
+```json
+{"name": "kaleidoscope", "segments": 6}
+```
+
+### Color Transforms
+
+**`hue_shift`** — Rotate all colors around the color wheel by a fixed amount.
+- `shift_deg` (expr): Degrees to shift (0-360). Use expressions like `5*n` for progressive rainbow shift.
+```json
+{"name": "hue_shift", "shift_deg": "5*n"}
+```
+
+**`color_channel_offset`** — Shift R, G, B channels independently along the horizontal axis. Creates chromatic aberration / glitch effects.
+- `r_offset` (expr): Red channel horizontal shift in pixels.
+- `g_offset` (expr): Green channel horizontal shift in pixels.
+- `b_offset` (expr): Blue channel horizontal shift in pixels.
+```json
+{"name": "color_channel_offset", "r_offset": 5, "g_offset": 0, "b_offset": -5}
+```
+
+**`contrast_brightness`** — Adjust contrast and brightness.
+- `contrast` (expr): Multiplier. 1.0 = no change, >1.0 = more contrast, <1.0 = less.
+- `brightness` (expr): Additive offset. 0.0 = no change, positive = brighter, negative = darker.
+```json
+{"name": "contrast_brightness", "contrast": 1.2, "brightness": 0.05}
+```
+
+### Composite Transforms
+
+**`paste_img`** — Blend another image on top of the current frame. The paste image is resized to match frame dimensions, then alpha-blended.
+- `img_path`: Absolute path to the image file. NOT an expression.
+- `opacity` (expr): Blend factor 0.0-1.0. 0.0 = all original, 1.0 = all paste image.
+```json
+{"name": "paste_img", "img_path": "/path/to/overlay.png", "opacity": 0.3}
+```
+
+### Retro/Stylization
+
+**`pixelate`** — Downscale then upscale with nearest-neighbor interpolation for a blocky pixel-art look.
+- `block_size` (expr): Size of each pixel block. 2-4 subtle, 8-16 dramatic.
+```json
+{"name": "pixelate", "block_size": 8}
+```
 
 ### Transform Stacking
-Transforms apply in sequence. Common combos:
-- `fisheye` + `zoom_in` - distort then zoom
-- `wave` + `zoom_in` - psychedelic ocean
-- `squeeze_*` + `zoom_in` - compression effect
-- `perspective` + `zoom_in` - 3D depth
+Transforms apply in the order listed. Common combos:
+- `fisheye` + `zoom_in` — distort then zoom (prevents fisheye edge artifacts from accumulating)
+- `wave` + `zoom_in` — psychedelic ocean effect
+- `squeeze_*` + `zoom_in` — compression with forward motion
+- `perspective` + `zoom_in` — 3D depth tunnel
+- `hue_shift` + `spiral` — psychedelic color vortex
+- `mirror` + `zoom_in` — symmetric tunnel effect
 
-Transform parameters can also be expressions.
+Transform parameters can be expressions, enabling animated transforms (e.g. `"angle": "2 if (n - offset) < 30 else -2"`).
 
 ---
 
