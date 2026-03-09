@@ -7,7 +7,7 @@ COMFYUI_PYTHON="/mnt/e/ComfyUI_windows_portable/python_embeded/python.exe"
 COMFYUI_MAIN="/mnt/e/ComfyUI_windows_portable/ComfyUI/main.py"
 COMFYUI_URL="http://${WINDOWS_HOST_IP}:8188"
 COMFYUI_WAIT=10
-LOOPER_PORT=5000
+LOOPER_PORT=8080
 VENV_DIR=".venv"
 
 usage() {
