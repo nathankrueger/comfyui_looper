@@ -1,5 +1,6 @@
 import os
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 from workflow.engine_factory import get_all_workflows, create_workflow
@@ -17,6 +18,12 @@ from utils.util import (
 LOG_BASENAME='looper_log.log'
 LOOP_IMG='output/looper.png'
 
+def get_default_output_folder(json_file: str) -> str:
+    """Generate a default output folder name from the workflow JSON filename and a timestamp."""
+    workflow_name = Path(json_file).stem
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return os.path.join('data', f'{workflow_name}_{timestamp}')
+
 def get_output_folder(output_folder_arg: str, total_reps: int, current_rep: int) -> str:
     if total_reps > 1:
         return os.path.join(output_folder_arg, f"pass_{current_rep}")
@@ -26,7 +33,8 @@ def get_output_folder(output_folder_arg: str, total_reps: int, current_rep: int)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Loop hallucinate', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=get_transform_help_string())
     parser.add_argument('-i', '--input_img', type=str, required=False, default=None)
-    parser.add_argument('-o', '--output_folder', type=str, required=True)
+    parser.add_argument('-o', '--output_folder', type=str, required=False, default=None,
+                        help='Output folder (default: data/<workflow_name>_<timestamp>)')
     parser.add_argument('-j', '--json_file', type=str, required=True)
     parser.add_argument('-w', '--workflow_type', default='sdxl', choices=list(get_all_workflows()))
     parser.add_argument('-p', '--passes', type=int, default=1)
@@ -41,6 +49,11 @@ if __name__ == "__main__":
     parser.add_argument('--comfyui-url', type=str, default='http://localhost:8188',
                         help='URL of the ComfyUI server (default: http://localhost:8188)')
     args = parser.parse_args()
+
+    if args.output_folder is None:
+        args.output_folder = get_default_output_folder(args.json_file)
+        print(f"No output folder specified, using: {args.output_folder}")
+
     animation_params = parse_params(args.animation_params)
 
     client = ComfyUIClient(args.comfyui_url)

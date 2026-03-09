@@ -32,12 +32,11 @@ goto usage
 :done_args
 
 :: --- Validate required args ---
-if "%OUTPUT_FOLDER%"=="" goto missing_args
 if "%JSON_FILE%"=="" goto missing_args
 goto args_ok
 
 :missing_args
-echo Error: -o and -j are required.
+echo Error: -j is required.
 echo.
 goto usage
 
@@ -102,7 +101,7 @@ echo Proceeding without launching ComfyUI...
 :: --- Launch looper ---
 :start_looper
 echo.
-:: --- Build optional input flag ---
+:: --- Build optional flags ---
 set INPUT_FLAG=
 set INPUT_DISPLAY=^<none (txt2img)^>
 if not "%INPUT_IMG%"=="" (
@@ -110,10 +109,17 @@ if not "%INPUT_IMG%"=="" (
     set INPUT_DISPLAY=%INPUT_IMG%
 )
 
+set OUTPUT_FLAG=
+set OUTPUT_DISPLAY=^<auto^>
+if not "%OUTPUT_FOLDER%"=="" (
+    set OUTPUT_FLAG=-o "%OUTPUT_FOLDER%"
+    set OUTPUT_DISPLAY=%OUTPUT_FOLDER%
+)
+
 echo Starting comfyui_looper in interactive mode...
 echo   Workflow: %WORKFLOW_TYPE%
 echo   Input:    %INPUT_DISPLAY%
-echo   Output:   %OUTPUT_FOLDER%
+echo   Output:   %OUTPUT_DISPLAY%
 echo   JSON:     %JSON_FILE%
 echo   ComfyUI:  %COMFYUI_URL%
 echo   Port:     %LOOPER_PORT%
@@ -125,19 +131,19 @@ python comfyui_looper\main.py ^
     --comfyui-url "%COMFYUI_URL%" ^
     -w %WORKFLOW_TYPE% ^
     %INPUT_FLAG% ^
-    -o "%OUTPUT_FOLDER%" ^
+    %OUTPUT_FLAG% ^
     -j "%JSON_FILE%"
 
 goto :eof
 
 :usage
-echo Usage: %~nx0 -o ^<output_folder^> -j ^<json_file^> [options]
+echo Usage: %~nx0 -j ^<json_file^> [options]
 echo.
 echo Required:
-echo   -o ^<path^>     Output folder
 echo   -j ^<path^>     Workflow JSON file
 echo.
 echo Options:
+echo   -o ^<path^>     Output folder (default: data\^<workflow_name^>_^<timestamp^>)
 echo   -i ^<path^>     Input image (if omitted, first frame uses txt2img)
 echo   -w ^<type^>     Workflow type (default: sdxl)
 echo   -u ^<url^>      ComfyUI server URL (default: %COMFYUI_URL%)
@@ -150,5 +156,6 @@ echo   -h            Show this help
 echo.
 echo Examples:
 echo   %~nx0 -i photo.png -o output\run1 -j data\evolution.json -w flux1d
+echo   %~nx0 -j data\evolution.json                   (auto-named output folder)
 echo   %~nx0 -o output\run1 -j data\evolution.json   (no input image, txt2img)
 exit /b 1
