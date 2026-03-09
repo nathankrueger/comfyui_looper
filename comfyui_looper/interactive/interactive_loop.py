@@ -135,7 +135,14 @@ def _handle_restart(
     state.set_current_iteration(redo_iter)
 
     # Copy the previous image as the new input
-    image_store.copy_image_to_path(get_loop_img_filename(restart_from - 1), loop_img_path)
+    prev_filename = get_loop_img_filename(restart_from - 1)
+    if image_store.has_image(prev_filename):
+        image_store.copy_image_to_path(prev_filename, loop_img_path)
+    elif no_input_image and restart_from == 1:
+        # txt2img mode: frame 0 was never saved, create a blank image
+        engine.create_blank_image_for_model([loop_img_path])
+    else:
+        raise FileNotFoundError(f"Cannot restart: {prev_filename} not found in image store")
 
     # Regenerate with a new seed
     log_file.write(f"[RESTART from image {restart_from}]\n")
