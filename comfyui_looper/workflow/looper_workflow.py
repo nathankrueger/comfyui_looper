@@ -40,7 +40,15 @@ class WorkflowEngine:
         """
         Used to appropriately resize images for a given model
         """
-        
+
+        # override me
+        pass
+
+    def create_blank_image_for_model(self, output_paths: list[str]):
+        """
+        Creates a blank image sized for the model. Used when no input image is provided.
+        """
+
         # override me
         pass
 
@@ -68,7 +76,8 @@ def looper_main(
     animation_file: str | None,
     animation_type: str,
     animation_params: dict[str, str],
-    log_file: IO[str]
+    log_file: IO[str],
+    no_input_image: bool = False,
 ):
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
@@ -82,6 +91,8 @@ def looper_main(
             
             # load settings from JSON
             loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
+            if iter == 0 and no_input_image:
+                loopsettings.denoise_amt = 1.0
             transforms = loopsettings.transforms
             seed = loopsettings.seed
 

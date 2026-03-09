@@ -16,14 +16,14 @@ VENV_DIR=".venv"
 
 usage() {
     cat <<EOF
-Usage: $0 -i <input_img> -o <output_folder> -j <json_file> [options]
+Usage: $0 -o <output_folder> -j <json_file> [options]
 
 Required:
-  -i <path>     Input image
   -o <path>     Output folder
   -j <path>     Workflow JSON file
 
 Options:
+  -i <path>     Input image (if omitted, first frame uses txt2img)
   -w <type>     Workflow type (default: sdxl)
   -u <url>      ComfyUI server URL (default: $COMFYUI_URL)
   -s <seconds>  Seconds to wait for ComfyUI to start (default: $COMFYUI_WAIT)
@@ -33,8 +33,9 @@ Options:
   -v <path>     Python venv directory (default: $VENV_DIR)
   -h            Show this help
 
-Example:
+Examples:
   $0 -i photo.png -o output/run1 -j data/evolution.json -w flux1d
+  $0 -o output/run1 -j data/evolution.json   # no input image (txt2img)
 EOF
     exit 1
 }
@@ -57,8 +58,8 @@ while getopts "i:o:j:w:u:s:P:M:L:v:h" opt; do
 done
 
 # --- Validate required args ---
-if [ -z "$INPUT_IMG" ] || [ -z "$OUTPUT_FOLDER" ] || [ -z "$JSON_FILE" ]; then
-    echo "Error: -i, -o, and -j are required."
+if [ -z "$OUTPUT_FOLDER" ] || [ -z "$JSON_FILE" ]; then
+    echo "Error: -o and -j are required."
     echo ""
     usage
 fi
@@ -119,10 +120,16 @@ else
     fi
 fi
 
+# --- Build optional flags ---
+INPUT_FLAG=""
+if [ -n "$INPUT_IMG" ]; then
+    INPUT_FLAG="-i $INPUT_IMG"
+fi
+
 # --- Launch looper in interactive mode ---
 echo "Starting comfyui_looper in interactive mode..."
 echo "  Workflow: $WORKFLOW_TYPE"
-echo "  Input:    $INPUT_IMG"
+echo "  Input:    ${INPUT_IMG:-<none (txt2img)>}"
 echo "  Output:   $OUTPUT_FOLDER"
 echo "  JSON:     $JSON_FILE"
 echo "  ComfyUI:  $COMFYUI_URL"
@@ -133,6 +140,6 @@ python comfyui_looper/main.py \
     --port "$LOOPER_PORT" \
     --comfyui-url "$COMFYUI_URL" \
     -w "$WORKFLOW_TYPE" \
-    -i "$INPUT_IMG" \
+    $INPUT_FLAG \
     -o "$OUTPUT_FOLDER" \
     -j "$JSON_FILE"

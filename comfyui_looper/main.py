@@ -25,7 +25,7 @@ def get_output_folder(output_folder_arg: str, total_reps: int, current_rep: int)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Loop hallucinate', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=get_transform_help_string())
-    parser.add_argument('-i', '--input_img', type=str, required=True)
+    parser.add_argument('-i', '--input_img', type=str, required=False, default=None)
     parser.add_argument('-o', '--output_folder', type=str, required=True)
     parser.add_argument('-j', '--json_file', type=str, required=True)
     parser.add_argument('-w', '--workflow_type', default='sdxl', choices=list(get_all_workflows()))
@@ -66,7 +66,11 @@ if __name__ == "__main__":
         starting_point_filename = str(Path(output_folder) / get_loop_img_filename(0))
 
         workflow_engine = create_workflow(args.workflow_type, client)
-        workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
+        no_input_image = args.input_img is None
+        if no_input_image:
+            workflow_engine.create_blank_image_for_model([LOOP_IMG, starting_point_filename])
+        else:
+            workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
 
         # Get total iterations for state initialization
         sm_temp = SettingsManager(args.json_file, animation_params)
@@ -90,6 +94,7 @@ if __name__ == "__main__":
                     animation_params=animation_params,
                     log_file=log_file,
                     state=loop_state,
+                    no_input_image=no_input_image,
                 )
             except Exception as e:
                 print(f"Loop thread error: {e}")
@@ -116,7 +121,11 @@ if __name__ == "__main__":
             log_filename = get_log_filename(LOG_BASENAME)
             with open(os.path.join(output_folder, log_filename), 'w', encoding='utf-8') as log_file:
                 workflow_engine = create_workflow(args.workflow_type, client)
-                workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
+                no_input_image = args.input_img is None
+                if no_input_image:
+                    workflow_engine.create_blank_image_for_model([LOOP_IMG, starting_point_filename])
+                else:
+                    workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG, starting_point_filename])
 
                 looper_main(
                     engine=workflow_engine,
@@ -126,5 +135,6 @@ if __name__ == "__main__":
                     animation_file=args.animation_filename,
                     animation_type=args.animation_type,
                     animation_params=animation_params,
-                    log_file=log_file
+                    log_file=log_file,
+                    no_input_image=no_input_image,
                 )

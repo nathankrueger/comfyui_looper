@@ -33,9 +33,14 @@ def _run_iteration(
     state: LoopState,
     prev_seed: int | None,
     force_new_seed: bool = False,
+    no_input_image: bool = False,
 ) -> int:
     """Run a single iteration. Returns the seed used."""
     loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
+
+    # First iteration with no input image: force full denoise (txt2img)
+    if iter == 0 and no_input_image:
+        loopsettings.denoise_amt = 1.0
 
     # Apply one-shot frame overrides from the UI
     frame_overrides = state.get_and_clear_frame_overrides()
@@ -94,6 +99,7 @@ def _handle_restart(
     output_folder: str,
     log_file: IO[str],
     state: LoopState,
+    no_input_image: bool = False,
 ) -> tuple[int, int]:
     """
     Restart from a viewed image index (1-based file index).
@@ -138,6 +144,7 @@ def _handle_restart(
         state=state,
         prev_seed=None,
         force_new_seed=True,
+        no_input_image=no_input_image,
     )
 
     # Pause — user must approve or restart again
@@ -157,6 +164,7 @@ def interactive_looper_main(
     animation_params: dict[str, str],
     log_file: IO[str],
     state: LoopState,
+    no_input_image: bool = False,
 ):
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
@@ -185,6 +193,7 @@ def interactive_looper_main(
                         output_folder=output_folder,
                         log_file=log_file,
                         state=state,
+                        no_input_image=no_input_image,
                     )
                     continue
 
@@ -203,6 +212,7 @@ def interactive_looper_main(
                     log_file=log_file,
                     state=state,
                     prev_seed=prev_seed,
+                    no_input_image=no_input_image,
                 )
 
                 state.mark_iteration_complete()

@@ -58,6 +58,16 @@ class APIWorkflowEngine(WorkflowEngine):
         for output_path in output_paths:
             resize_image_match_area(input_path, output_path, area, modulo)
 
+    def create_blank_image_for_model(self, output_paths: list[str]):
+        area = self.config["area"]
+        modulo = self.config["latent_reduction"]
+        side = int(math.sqrt(area))
+        side = side - (side % modulo)
+        img = Image.new("RGB", (side, side), (0, 0, 0))
+        for output_path in output_paths:
+            os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+            img.save(output_path, compress_level=0)
+
     def setup(self):
         self.client.check_server()
 

@@ -32,13 +32,12 @@ goto usage
 :done_args
 
 :: --- Validate required args ---
-if "%INPUT_IMG%"=="" goto missing_args
 if "%OUTPUT_FOLDER%"=="" goto missing_args
 if "%JSON_FILE%"=="" goto missing_args
 goto args_ok
 
 :missing_args
-echo Error: -i, -o, and -j are required.
+echo Error: -o and -j are required.
 echo.
 goto usage
 
@@ -103,9 +102,17 @@ echo Proceeding without launching ComfyUI...
 :: --- Launch looper ---
 :start_looper
 echo.
+:: --- Build optional input flag ---
+set INPUT_FLAG=
+set INPUT_DISPLAY=^<none (txt2img)^>
+if not "%INPUT_IMG%"=="" (
+    set INPUT_FLAG=-i "%INPUT_IMG%"
+    set INPUT_DISPLAY=%INPUT_IMG%
+)
+
 echo Starting comfyui_looper in interactive mode...
 echo   Workflow: %WORKFLOW_TYPE%
-echo   Input:    %INPUT_IMG%
+echo   Input:    %INPUT_DISPLAY%
 echo   Output:   %OUTPUT_FOLDER%
 echo   JSON:     %JSON_FILE%
 echo   ComfyUI:  %COMFYUI_URL%
@@ -117,21 +124,21 @@ python comfyui_looper\main.py ^
     --port %LOOPER_PORT% ^
     --comfyui-url "%COMFYUI_URL%" ^
     -w %WORKFLOW_TYPE% ^
-    -i "%INPUT_IMG%" ^
+    %INPUT_FLAG% ^
     -o "%OUTPUT_FOLDER%" ^
     -j "%JSON_FILE%"
 
 goto :eof
 
 :usage
-echo Usage: %~nx0 -i ^<input_img^> -o ^<output_folder^> -j ^<json_file^> [options]
+echo Usage: %~nx0 -o ^<output_folder^> -j ^<json_file^> [options]
 echo.
 echo Required:
-echo   -i ^<path^>     Input image
 echo   -o ^<path^>     Output folder
 echo   -j ^<path^>     Workflow JSON file
 echo.
 echo Options:
+echo   -i ^<path^>     Input image (if omitted, first frame uses txt2img)
 echo   -w ^<type^>     Workflow type (default: sdxl)
 echo   -u ^<url^>      ComfyUI server URL (default: %COMFYUI_URL%)
 echo   -s ^<seconds^>  Seconds to wait for ComfyUI to start (default: %COMFYUI_WAIT%)
@@ -141,6 +148,7 @@ echo   -L ^<port^>     Looper web UI port (default: %LOOPER_PORT%)
 echo   -v ^<path^>     Python venv directory (default: %VENV_DIR%)
 echo   -h            Show this help
 echo.
-echo Example:
+echo Examples:
 echo   %~nx0 -i photo.png -o output\run1 -j data\evolution.json -w flux1d
+echo   %~nx0 -o output\run1 -j data\evolution.json   (no input image, txt2img)
 exit /b 1
