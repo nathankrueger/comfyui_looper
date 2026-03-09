@@ -1,0 +1,352 @@
+{
+    "all_settings": [
+        {
+            // springfield establishing shot
+            "loop_iterations": 60,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "springfield, the simpsons, cartoon town, nuclear power plant cooling towers, blue sky, colorful houses, suburban neighborhood, animated, cartoon style, vibrant, 4k, detailed",
+            "neg_prompt": "blurry, realistic, photograph, overexposed, dark",
+            "denoise_steps": 40,
+            "denoise_amt": "0.3 + (0.4/60)*n",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.6
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                },
+                {
+                    "name": "wave",
+                    "strength": 5,
+                    "period": 40,
+                    "rate": 6
+                }
+            ]
+        },
+        {
+            // homer at moe's tavern
+            "loop_iterations": 60,
+            "prompt": "homer simpson, bald fat man, yellow skin, sitting at bar, drinking beer, moe's tavern, cartoon style, the simpsons, animated, duff beer, neon signs, bar stools, 4k",
+            "neg_prompt": "blurry, realistic, overexposed, deformed hands",
+            "denoise_amt": 0.58,
+            "cfg": "7 + relu(2*sin(0.15*n))",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.15
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "happy, drunk, laughing, celebration",
+                    "neg": "sober, sad, serious",
+                    "strength": "0.3 + 0.3*sin(0.2*n)"
+                }
+            ]
+        },
+        {
+            // homer's donut dream
+            "loop_iterations": 70,
+            "prompt": "giant donut, pink frosting, sprinkles, homer simpson drooling, dreamlike, clouds made of donuts, donut galaxy, psychedelic, dmt, cartoon, the simpsons, swirling colors, sugar, glaze, 4k",
+            "neg_prompt": "blurry, dark, realistic",
+            "denoise_amt": "0.55 + relu(0.1*sin(0.12*n))",
+            "cfg": "8 + 2*sin(0.1*n)",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": "3*sin(0.15*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.07
+                },
+                {
+                    "name": "fisheye",
+                    "strength": 0.25
+                }
+            ]
+        },
+        {
+            // bart skateboarding
+            "loop_iterations": 60,
+            "prompt": "bart simpson, spiky yellow hair, red shirt, blue shorts, skateboarding, graffiti walls, street art, cartoon, the simpsons, rebellious, urban, spray paint, 4k, dynamic, motion blur",
+            "neg_prompt": "blurry, overexposed, realistic, still",
+            "denoise_amt": 0.6,
+            "cfg": 8.0,
+            "transforms": [
+                {
+                    "name": "perspective",
+                    "strength": 10,
+                    "shrink_edge": "top"
+                },
+                {
+                    "name": "zoom_in_right",
+                    "zoom_amt": 0.06
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "speed, energy, punk, radical, cowabunga",
+                    "neg": "calm, still, quiet, boring",
+                    "strength": "0.4 + 0.2*sin(0.25*n)"
+                }
+            ]
+        },
+        {
+            // el barto graffiti night
+            "loop_iterations": 50,
+            "prompt": "el barto, graffiti, spray paint art, neon colors on brick wall, night time, street lights, cartoon vandalism, the simpsons, urban art, stencil art, dripping paint, 4k",
+            "neg_prompt": "blurry, daylight, realistic, clean walls",
+            "denoise_amt": "0.55 + (0.1/50)*n",
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
+                    "squeeze_amt": 0.008
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // marge's hair
+            "loop_iterations": 60,
+            "prompt": "marge simpson, enormous tall blue beehive hair, yellow skin, pearl necklace, green dress, cartoon, the simpsons, hair growing upward, swirling blue tower of hair, psychedelic patterns in hair, dmt, 4k",
+            "neg_prompt": "blurry, realistic, short hair, overexposed",
+            "denoise_amt": "0.55 + relu(0.08*sin(0.1*n))",
+            "cfg": "7 + relu(2*sin(0.12*n))",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.8
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "squeeze_tall",
+                    "squeeze_amt": 0.01
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                },
+                {
+                    "name": "wave",
+                    "strength": 4,
+                    "period": 50,
+                    "rate": 5
+                }
+            ]
+        },
+        {
+            // lisa's saxophone solo
+            "loop_iterations": 70,
+            "prompt": "lisa simpson playing saxophone, jazz club, spotlight, musical notes floating, golden saxophone, cartoon, the simpsons, soulful, blue mood lighting, jazz stage, smoky atmosphere, psychedelic sound waves, 4k",
+            "neg_prompt": "blurry, realistic, overexposed, silent",
+            "denoise_amt": "0.5 + 0.12*sin(0.08*n)",
+            "cfg": "7 + 3*abs(sin(0.1*n))",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": "0.1 + 0.1*sin(0.15*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "music, jazz, soul, blues, melody, rhythm",
+                    "neg": "silence, noise, cacophony",
+                    "strength": "0.4 + 0.3*sin(0.15*n)"
+                }
+            ]
+        },
+        {
+            // krusty the clown
+            "loop_iterations": 60,
+            "prompt": "krusty the clown, big red nose, green wild hair, clown makeup, maniacal laugh, circus, tv studio, cartoon, the simpsons, krusty burger, sideshow bob lurking, comedy, chaotic, 4k",
+            "neg_prompt": "blurry, realistic, serious, dark, scary",
+            "denoise_amt": 0.62,
+            "cfg": "8 + relu(3*sin(0.2*n))",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.9
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": "5*sin(0.2*n)"
+                },
+                {
+                    "name": "fisheye",
+                    "strength": 0.2
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                }
+            ]
+        },
+        {
+            // mr burns nuclear plant
+            "loop_iterations": 70,
+            "prompt": "mr burns, evil old man, hunched, fingers together, excellent, nuclear power plant, glowing green radioactive waste, control room, warning lights, cartoon, the simpsons, ominous, corporate greed, toxic waste barrels, 4k",
+            "neg_prompt": "blurry, realistic, young, friendly, overexposed",
+            "denoise_amt": "0.58 + relu(0.07*sin(0.1*n))",
+            "cfg": "7 + 2*sin(0.08*n)",
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.04
+                },
+                {
+                    "name": "perspective",
+                    "strength": 8,
+                    "shrink_edge": "top"
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "evil, power, wealth, darkness, green glow, radiation",
+                    "neg": "good, kind, generous, natural, healthy",
+                    "strength": "0.2 + 0.4*sin(0.12*n)"
+                }
+            ]
+        },
+        {
+            // treehouse of horror
+            "loop_iterations": 80,
+            "prompt": "treehouse of horror, the simpsons halloween, zombies, ghosts, haunted springfield, cartoon horror, jack o lanterns, full moon, bats, skeletons, evil kang and kodos aliens, tentacles, dmt, psychedelic nightmare, 4k",
+            "neg_prompt": "blurry, realistic, daylight, cute, friendly",
+            "denoise_amt": "0.6 + relu(0.1*sin(0.08*n))",
+            "cfg": "8 + relu(4*sin(0.1*n))",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.2
+                },
+                {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 0.7
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": "0.15 + 0.1*sin(0.12*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.07
+                },
+                {
+                    "name": "wave",
+                    "strength": "3 + 5*abs(sin(0.08*n))",
+                    "period": 25,
+                    "rate": 10
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "horror, spooky, nightmare, aliens, monsters, demons",
+                    "neg": "happy, safe, calm, peaceful",
+                    "strength": "0.5 + 0.3*sin(0.15*n)"
+                }
+            ]
+        },
+        {
+            // itchy and scratchy
+            "loop_iterations": 50,
+            "prompt": "itchy and scratchy show, cartoon violence, cat and mouse, explosions, cartoon, the simpsons, tv within tv, slapstick, chaotic, colorful, animated mayhem, dynamite, anvils, 4k",
+            "neg_prompt": "blurry, realistic, calm, peaceful",
+            "denoise_amt": 0.65,
+            "cfg": "9 + relu(3*sin(0.25*n))",
+            "transforms": [
+                {
+                    "name": "squeeze_wide",
+                    "squeeze_amt": "0.005 + 0.005*sin(0.3*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.08
+                },
+                {
+                    "name": "rotate",
+                    "angle": "3*sin(0.3*n)"
+                }
+            ]
+        },
+        {
+            // couch gag finale
+            "loop_iterations": 60,
+            "prompt": "simpsons family sitting on couch, homer marge bart lisa maggie, living room, tv on, iconic couch gag, cartoon, the simpsons, family portrait, colorful, warm, psychedelic couch morphing, dmt, kaleidoscope, fractals, 4k",
+            "neg_prompt": "blurry, realistic, empty room, overexposed",
+            "denoise_amt": "0.5 + (0.2/60)*n",
+            "cfg": "7 + relu(2*sin(0.1*n))",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": "0.1 + 0.15*sin(0.1*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": "0.04 + 0.04*sin(0.08*n)"
+                },
+                {
+                    "name": "rotate",
+                    "angle": "2*sin(0.05*n)"
+                }
+            ]
+        }
+    ],
+    "version": 1
+}
