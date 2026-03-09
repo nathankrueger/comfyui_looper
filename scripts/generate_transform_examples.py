@@ -15,7 +15,7 @@ from comfyui_looper.image_processing.transforms import Transform, TRANSFORM_LIBR
 from comfyui_looper.image_processing.animator import make_gif
 
 INPUT_IMAGE = Path(SCRIPT_DIR).parent / 'data' / 'img' / 'simpsons_couch.png'
-OUTPUT_DIR = Path(SCRIPT_DIR).parent / 'data' / 'transform_examples'
+OUTPUT_DIR = Path(SCRIPT_DIR).parent / 'output' / 'transform_examples'
 NUM_FRAMES = 30
 
 # Define example configs for each new transform
