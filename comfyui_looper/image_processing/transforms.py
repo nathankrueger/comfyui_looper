@@ -1,7 +1,7 @@
 from os.path import abspath, dirname
 import sys
 from typing import Any
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageEnhance
 from dataclasses import dataclass
 import numpy as np
 import math
@@ -671,6 +671,247 @@ class PerspectiveTransformation(Transform):
         # resize back to initial size
         resized_result = Image.fromarray(result).resize((image_width, image_height))
         return resized_result
+
+class SpiralTransform(Transform):
+    NAME = 'spiral'
+    REQUIRED_PARAMS = {'strength'}
+    EVAL_PARAMS = {'strength'}
+
+    def transform(self, img: Image) -> Image:
+        strength: float = self.params['strength']
+        if strength == 0.0:
+            return img
+
+        width, height = img.size
+        center_x, center_y = width / 2, height / 2
+        max_radius = math.sqrt(center_x**2 + center_y**2)
+
+        image = np.array(img)
+        y, x = np.mgrid[0:height, 0:width]
+
+        dx = x - center_x
+        dy = y - center_y
+        radius = np.sqrt(dx**2 + dy**2)
+        angle = np.arctan2(dy, dx)
+
+        # rotation amount proportional to distance from center
+        twist = strength * radius / max_radius
+        new_angle = angle + twist
+
+        x_new = (center_x + radius * np.cos(new_angle)).astype(np.float32)
+        y_new = (center_y + radius * np.sin(new_angle)).astype(np.float32)
+
+        result = cv2.remap(image, x_new, y_new, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        return Image.fromarray(result)
+
+class PanTransform(Transform):
+    NAME = 'pan'
+    REQUIRED_PARAMS = {'dx', 'dy'}
+    EVAL_PARAMS = {'dx', 'dy'}
+
+    def transform(self, img: Image) -> Image:
+        dx: int = int(self.params['dx'])
+        dy: int = int(self.params['dy'])
+        if dx == 0 and dy == 0:
+            return img
+
+        image = np.array(img)
+        result = np.roll(image, dy, axis=0)
+        result = np.roll(result, dx, axis=1)
+        return Image.fromarray(result)
+
+class MirrorTransform(Transform):
+    NAME = 'mirror'
+    REQUIRED_PARAMS = {'mode'}
+    EVAL_PARAMS = set()
+
+    def transform(self, img: Image) -> Image:
+        width, height = img.size
+        mode = self.params['mode']
+        image = np.array(img)
+
+        match mode:
+            case 'left_to_right':
+                half = image[:, :width//2, :]
+                image[:, width//2:, :] = half[:, ::-1, :]
+            case 'right_to_left':
+                half = image[:, width//2:, :]
+                image[:, :width//2, :] = half[:, ::-1, :]
+            case 'top_to_bottom':
+                half = image[:height//2, :, :]
+                image[height//2:, :, :] = half[::-1, :, :]
+            case 'bottom_to_top':
+                half = image[height//2:, :, :]
+                image[:height//2, :, :] = half[::-1, :, :]
+            case _:
+                raise Exception(f"Illegal value for mirror mode: {mode}")
+
+        return Image.fromarray(image)
+
+class KaleidoscopeTransform(Transform):
+    NAME = 'kaleidoscope'
+    REQUIRED_PARAMS = {'segments'}
+    EVAL_PARAMS = {'segments'}
+
+    def transform(self, img: Image) -> Image:
+        segments: int = int(self.params['segments'])
+        if segments < 2:
+            return img
+
+        width, height = img.size
+        center_x, center_y = width / 2, height / 2
+        image = np.array(img)
+
+        y, x = np.mgrid[0:height, 0:width]
+        dx = x - center_x
+        dy = y - center_y
+
+        angle = np.arctan2(dy, dx)
+        radius = np.sqrt(dx**2 + dy**2)
+
+        # map all angles into one wedge, then mirror alternating wedges
+        wedge_angle = 2 * math.pi / segments
+        wedge_index = np.floor(angle / wedge_angle).astype(int)
+        local_angle = angle - wedge_index * wedge_angle
+
+        # mirror odd-numbered wedges for seamless tiling
+        odd_mask = (wedge_index % 2) == 1
+        local_angle[odd_mask] = wedge_angle - local_angle[odd_mask]
+
+        x_new = (center_x + radius * np.cos(local_angle)).astype(np.float32)
+        y_new = (center_y + radius * np.sin(local_angle)).astype(np.float32)
+
+        result = cv2.remap(image, x_new, y_new, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        return Image.fromarray(result)
+
+class HueShiftTransform(Transform):
+    NAME = 'hue_shift'
+    REQUIRED_PARAMS = {'shift_deg'}
+    EVAL_PARAMS = {'shift_deg'}
+
+    def transform(self, img: Image) -> Image:
+        shift_deg: float = self.params['shift_deg']
+        if shift_deg == 0.0:
+            return img
+
+        image = np.array(img)
+        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        # OpenCV hue range is 0-179
+        shift_amount = int((shift_deg / 360.0) * 180) % 180
+        hsv[:, :, 0] = (hsv[:, :, 0].astype(int) + shift_amount) % 180
+        result = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+        return Image.fromarray(result)
+
+class ColorChannelOffsetTransform(Transform):
+    NAME = 'color_channel_offset'
+    REQUIRED_PARAMS = {'r_offset', 'g_offset', 'b_offset'}
+    EVAL_PARAMS = {'r_offset', 'g_offset', 'b_offset'}
+
+    def transform(self, img: Image) -> Image:
+        r_offset: int = int(self.params['r_offset'])
+        g_offset: int = int(self.params['g_offset'])
+        b_offset: int = int(self.params['b_offset'])
+        if r_offset == 0 and g_offset == 0 and b_offset == 0:
+            return img
+
+        image = np.array(img)
+        result = np.zeros_like(image)
+        result[:, :, 0] = np.roll(image[:, :, 0], r_offset, axis=1)
+        result[:, :, 1] = np.roll(image[:, :, 1], g_offset, axis=1)
+        result[:, :, 2] = np.roll(image[:, :, 2], b_offset, axis=1)
+        return Image.fromarray(result)
+
+class ContrastBrightnessTransform(Transform):
+    NAME = 'contrast_brightness'
+    REQUIRED_PARAMS = {'contrast', 'brightness'}
+    EVAL_PARAMS = {'contrast', 'brightness'}
+
+    def transform(self, img: Image) -> Image:
+        contrast: float = self.params['contrast']
+        brightness: float = self.params['brightness']
+        if contrast == 1.0 and brightness == 0.0:
+            return img
+
+        result = ImageEnhance.Contrast(img).enhance(contrast)
+        result = ImageEnhance.Brightness(result).enhance(1.0 + brightness)
+        return result
+
+class RippleTransform(Transform):
+    NAME = 'ripple'
+    REQUIRED_PARAMS = {'amplitude', 'wavelength'}
+    EVAL_PARAMS = {'amplitude', 'wavelength', 'phase'}
+
+    def transform(self, img: Image) -> Image:
+        amplitude: float = self.params['amplitude']
+        wavelength: float = self.params['wavelength']
+        phase: float = self.params.get('phase', 0.0)
+        if amplitude == 0.0:
+            return img
+
+        width, height = img.size
+        center_x, center_y = width / 2, height / 2
+        image = np.array(img)
+
+        y, x = np.mgrid[0:height, 0:width]
+        dx = x - center_x
+        dy = y - center_y
+        radius = np.sqrt(dx**2 + dy**2)
+
+        # radial displacement
+        displacement = amplitude * np.sin(2 * math.pi * radius / wavelength + phase)
+        angle = np.arctan2(dy, dx)
+
+        x_new = (x + displacement * np.cos(angle)).astype(np.float32)
+        y_new = (y + displacement * np.sin(angle)).astype(np.float32)
+
+        result = cv2.remap(image, x_new, y_new, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        return Image.fromarray(result)
+
+class PixelateTransform(Transform):
+    NAME = 'pixelate'
+    REQUIRED_PARAMS = {'block_size'}
+    EVAL_PARAMS = {'block_size'}
+
+    def transform(self, img: Image) -> Image:
+        block_size: int = int(self.params['block_size'])
+        if block_size <= 1:
+            return img
+
+        width, height = img.size
+        small_w = max(1, width // block_size)
+        small_h = max(1, height // block_size)
+
+        result = img.resize((small_w, small_h), Image.NEAREST)
+        result = result.resize((width, height), Image.NEAREST)
+        return result
+
+class ElasticTransform(Transform):
+    NAME = 'elastic'
+    REQUIRED_PARAMS = {'strength', 'smoothness'}
+    EVAL_PARAMS = {'strength', 'smoothness', 'seed'}
+
+    def transform(self, img: Image) -> Image:
+        from scipy.ndimage import gaussian_filter
+
+        strength: float = self.params['strength']
+        smoothness: float = self.params['smoothness']
+        seed: int = int(self.params.get('seed', 0))
+        if strength == 0.0:
+            return img
+
+        width, height = img.size
+        image = np.array(img)
+
+        rng = np.random.RandomState(seed)
+        dx = gaussian_filter((rng.rand(height, width) * 2 - 1), smoothness) * strength
+        dy = gaussian_filter((rng.rand(height, width) * 2 - 1), smoothness) * strength
+
+        y, x = np.mgrid[0:height, 0:width]
+        x_new = (x + dx).astype(np.float32)
+        y_new = (y + dy).astype(np.float32)
+
+        result = cv2.remap(image, x_new, y_new, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        return Image.fromarray(result)
 
 def elaborate_transform_expr(transform_expr: str | float, auto_params: AutomaticTransformParams):
         """
