@@ -491,7 +491,8 @@
 
             const bar = document.getElementById('status-bar');
             bar.className = 'status-' + data.status;
-            let info = 'Iter ' + data.current_iteration + '/' + data.total_iterations +
+            const displayIter = (data.status === 'completed') ? data.total_iterations : data.current_iteration;
+            let info = 'Iter ' + displayIter + '/' + data.total_iterations +
                 ' \u00b7 Image ' + latestIndex;
             if (data.error) info += ' \u00b7 ' + data.error;
             let timeInfo = '';
