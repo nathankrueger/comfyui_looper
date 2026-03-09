@@ -32,6 +32,7 @@ class LoopState:
         self._settings_manager = None
         self._iteration_timestamps: list[float] = []
         self._iter_start_time: Optional[float] = None
+        self._stop_event = threading.Event()  # starts unset (not stopped)
 
     # --- Status ---
 
@@ -222,6 +223,14 @@ class LoopState:
                 'eta_secs': round(eta_secs, 1),
                 'elapsed_secs': round(elapsed_secs, 1),
             }
+
+    # --- Stop ---
+
+    def request_stop(self):
+        self._stop_event.set()
+
+    def is_stop_requested(self) -> bool:
+        return self._stop_event.is_set()
 
     # --- Settings manager reference ---
 

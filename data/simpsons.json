@@ -24,10 +24,10 @@
                     "zoom_amt": 0.06
                 },
                 {
-                    "name": "wave",
-                    "strength": 5,
-                    "period": 40,
-                    "rate": 6
+                    "name": "ripple",
+                    "amplitude": 4,
+                    "wavelength": 50,
+                    "phase": "0.4*n"
                 }
             ]
         },
@@ -77,6 +77,10 @@
                 {
                     "name": "rotate",
                     "angle": "3*sin(0.15*n)"
+                },
+                {
+                    "name": "hue_shift",
+                    "shift_deg": "3*n"
                 },
                 {
                     "name": "zoom_in",
@@ -154,14 +158,12 @@
                     "squeeze_amt": 0.01
                 },
                 {
-                    "name": "zoom_in",
-                    "zoom_amt": 0.06
+                    "name": "spiral",
+                    "strength": "0.8*sin(0.1*n)"
                 },
                 {
-                    "name": "wave",
-                    "strength": 4,
-                    "period": 50,
-                    "rate": 5
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
                 }
             ]
         },
@@ -173,6 +175,10 @@
             "denoise_amt": "0.5 + 0.12*sin(0.08*n)",
             "cfg": "7 + 3*abs(sin(0.1*n))",
             "transforms": [
+                {
+                    "name": "kaleidoscope",
+                    "segments": "4 + floor(2*abs(sin(0.08*n)))"
+                },
                 {
                     "name": "fisheye",
                     "strength": "0.1 + 0.1*sin(0.15*n)"
@@ -275,14 +281,19 @@
                     "strength": "0.15 + 0.1*sin(0.12*n)"
                 },
                 {
-                    "name": "zoom_in",
-                    "zoom_amt": 0.07
+                    "name": "elastic",
+                    "strength": "20 + 15*abs(sin(0.08*n))",
+                    "smoothness": 4
                 },
                 {
-                    "name": "wave",
-                    "strength": "3 + 5*abs(sin(0.08*n))",
-                    "period": 25,
-                    "rate": 10
+                    "name": "color_channel_offset",
+                    "r_offset": "3*sin(0.2*n)",
+                    "g_offset": 0,
+                    "b_offset": "-3*sin(0.2*n)"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.07
                 }
             ],
             "con_deltas": [
@@ -333,6 +344,10 @@
                 }
             ],
             "transforms": [
+                {
+                    "name": "mirror",
+                    "mode": "left_to_right"
+                },
                 {
                     "name": "fisheye",
                     "strength": "0.1 + 0.15*sin(0.1*n)"

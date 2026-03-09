@@ -6,14 +6,18 @@ from PIL import Image, ImageOps
 import numpy as np
 import torch
 
+def tensor_to_pil(image) -> Image.Image:
+    """Convert a tensor (from VAE decode) to a PIL Image."""
+    i = 255. * image.cpu().numpy()
+    return Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+
 def save_tensor_to_images(image, output_filenames: list[str], png_info=None):
     first_image_path = None
     for output_filename in output_filenames:
         if len(output_folder := os.path.dirname(output_filename)) > 0:
             os.makedirs(output_folder, exist_ok=True)
         if first_image_path is None:
-            i = 255. * image.cpu().numpy()
-            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            img = tensor_to_pil(image)
             img.save(output_filename, pnginfo=png_info, compress_level=0)
             first_image_path = output_filename
         else:

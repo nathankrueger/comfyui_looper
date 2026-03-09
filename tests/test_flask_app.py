@@ -4,13 +4,50 @@ import pytest
 from PIL import Image
 
 from interactive.loop_state import LoopState, LoopStatus
+from interactive.app_state import AppState
 from interactive.flask_app import create_app
+from utils.image_store import FilesystemImageStore
+
+
+class _TestAppState:
+    """Minimal AppState-like wrapper for tests that wraps a pre-existing LoopState."""
+
+    def __init__(self, loop_state: LoopState, image_store=None, json_name: str = 'test.json'):
+        self._loop_state = loop_state
+        self._image_store = image_store
+        self._json_name = json_name
+
+    def is_loop_running(self):
+        return self._loop_state is not None
+
+    def get_loop_state(self):
+        return self._loop_state
+
+    def get_current_json_name(self):
+        return self._json_name
+
+    def get_current_json_file(self):
+        return self._json_name
+
+    def get_current_output_folder(self):
+        return self._loop_state.get_output_folder() if self._loop_state else None
+
+    def get_image_store(self):
+        return self._image_store
+
+    def start_loop(self, json_file, output_folder=None):
+        raise NotImplementedError("Not used in tests")
+
+    def stop_loop(self):
+        self._loop_state = None
 
 
 @pytest.fixture
 def app_and_state(tmp_path):
     state = LoopState(total_iterations=10, output_folder=str(tmp_path))
-    app = create_app(state)
+    image_store = FilesystemImageStore(str(tmp_path))
+    app_state = _TestAppState(state, image_store=image_store)
+    app = create_app(app_state)
     app.config['TESTING'] = True
     return app, state, tmp_path
 
@@ -27,6 +64,7 @@ class TestStatusEndpoint:
             assert data['latest_image_index'] == 0
             assert data['current_iteration'] == 0
             assert data['error'] is None
+            assert data['json_name'] == 'test.json'
 
     def test_reflects_state_changes(self, app_and_state):
         app, state, _ = app_and_state

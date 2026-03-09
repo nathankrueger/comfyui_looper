@@ -94,7 +94,8 @@ class Transform:
             assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
             for key in tdict_params:
                 assert key not in AUTOMATIC_SEQUENCE_PARAMS
-                if key not in TRANSFORM_LIBRARY[t_name].get_required_params():
+                all_known_params = TRANSFORM_LIBRARY[t_name].get_eval_params() | TRANSFORM_LIBRARY[t_name].get_required_params()
+                if key not in all_known_params:
                     print(f"Warning, ignored transform param: {key} for transform {t_name}")
 
 class ZoomInTransform(Transform):

@@ -1,69 +1,63 @@
 #!/bin/bash
 set -e
 
-# --- Defaults (tunable via flags) ---
+# --- Defaults for script-only flags ---
 WINDOWS_HOST_IP=$(ip route show default | awk '{print $3}')
 COMFYUI_PYTHON="/mnt/e/ComfyUI_windows_portable/python_embeded/python.exe"
 COMFYUI_MAIN="/mnt/e/ComfyUI_windows_portable/ComfyUI/main.py"
 COMFYUI_URL="http://${WINDOWS_HOST_IP}:8188"
 COMFYUI_WAIT=10
 LOOPER_PORT=5000
-WORKFLOW_TYPE="sdxl"
-INPUT_IMG=""
-OUTPUT_FOLDER=""
-JSON_FILE=""
 VENV_DIR=".venv"
 
 usage() {
     cat <<EOF
-Usage: $0 -j <json_file> [options]
+Usage: $0 [script-options] [-- main.py options]
 
-Required:
-  -j <path>     Workflow JSON file
-
-Options:
-  -o <path>     Output folder (default: data/<workflow_name>_<timestamp>)
-  -i <path>     Input image (if omitted, first frame uses txt2img)
-  -w <type>     Workflow type (default: sdxl)
-  -u <url>      ComfyUI server URL (default: $COMFYUI_URL)
-  -s <seconds>  Seconds to wait for ComfyUI to start (default: $COMFYUI_WAIT)
+Script options (parsed by this script):
   -P <path>     ComfyUI python.exe path (default: $COMFYUI_PYTHON)
   -M <path>     ComfyUI main.py path (default: $COMFYUI_MAIN)
-  -L <port>    Looper web UI port (default: $LOOPER_PORT)
+  -u <url>      ComfyUI server URL (default: $COMFYUI_URL)
+  -s <seconds>  Seconds to wait for ComfyUI to start (default: $COMFYUI_WAIT)
+  -L <port>     Looper web UI port (default: $LOOPER_PORT)
   -v <path>     Python venv directory (default: $VENV_DIR)
   -h            Show this help
 
+All other flags are forwarded to main.py (run with --help to see them):
+  -j <path>     Workflow JSON file
+  -o <path>     Output folder
+  -i <path>     Input image
+  -w <type>     Workflow type (default: sdxl)
+  -z            Use zip storage
+  ...and more. Run: python comfyui_looper/main.py --help
+
 Examples:
-  $0 -i photo.png -o output/run1 -j data/evolution.json -w flux1d
+  $0                                         # opens workflow picker
   $0 -j data/evolution.json                  # auto-named output folder
-  $0 -o output/run1 -j data/evolution.json   # no input image (txt2img)
+  $0 -i photo.png -o output/run1 -j data/evolution.json -w flux1d
+  $0 -L 8080 -s 60 -- -j data/test.json -z  # script flags, then main.py flags
 EOF
     exit 1
 }
 
-while getopts "i:o:j:w:u:s:P:M:L:v:h" opt; do
-    case $opt in
-        i) INPUT_IMG="$OPTARG" ;;
-        o) OUTPUT_FOLDER="$OPTARG" ;;
-        j) JSON_FILE="$OPTARG" ;;
-        w) WORKFLOW_TYPE="$OPTARG" ;;
-        u) COMFYUI_URL="$OPTARG" ;;
-        s) COMFYUI_WAIT="$OPTARG" ;;
-        P) COMFYUI_PYTHON="$OPTARG" ;;
-        M) COMFYUI_MAIN="$OPTARG" ;;
-        L) LOOPER_PORT="$OPTARG" ;;
-        v) VENV_DIR="$OPTARG" ;;
-        h) usage ;;
-        *) usage ;;
+# --- Two-tier arg parsing ---
+# Script-only flags: -P, -M, -u, -s, -L, -v, -h
+# Everything else is collected into PASSTHROUGH for main.py
+PASSTHROUGH=()
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -P) COMFYUI_PYTHON="$2"; shift 2 ;;
+        -M) COMFYUI_MAIN="$2"; shift 2 ;;
+        -u) COMFYUI_URL="$2"; shift 2 ;;
+        -s) COMFYUI_WAIT="$2"; shift 2 ;;
+        -L) LOOPER_PORT="$2"; shift 2 ;;
+        -v) VENV_DIR="$2"; shift 2 ;;
+        -h) usage ;;
+        --) shift; PASSTHROUGH+=("$@"); break ;;
+        *)  PASSTHROUGH+=("$1"); shift ;;
     esac
 done
-
-# --- Validate required args ---
-if [ -z "$JSON_FILE" ]; then
-    echo "Error: -j is required."
-    echo ""
-    usage
-fi
 
 # --- Activate venv ---
 if [ -f "$VENV_DIR/bin/activate" ]; then
@@ -121,31 +115,15 @@ else
     fi
 fi
 
-# --- Build optional flags ---
-INPUT_FLAG=""
-if [ -n "$INPUT_IMG" ]; then
-    INPUT_FLAG="-i $INPUT_IMG"
-fi
-
-OUTPUT_FLAG=""
-if [ -n "$OUTPUT_FOLDER" ]; then
-    OUTPUT_FLAG="-o $OUTPUT_FOLDER"
-fi
-
 # --- Launch looper in interactive mode ---
 echo "Starting comfyui_looper in interactive mode..."
-echo "  Workflow: $WORKFLOW_TYPE"
-echo "  Input:    ${INPUT_IMG:-<none (txt2img)>}"
-echo "  Output:   ${OUTPUT_FOLDER:-<auto>}"
-echo "  JSON:     $JSON_FILE"
 echo "  ComfyUI:  $COMFYUI_URL"
+echo "  Port:     $LOOPER_PORT"
+echo "  Args:     ${PASSTHROUGH[*]:-(none)}"
 echo ""
 
 python comfyui_looper/main.py \
     --interactive \
     --port "$LOOPER_PORT" \
     --comfyui-url "$COMFYUI_URL" \
-    -w "$WORKFLOW_TYPE" \
-    $INPUT_FLAG \
-    $OUTPUT_FLAG \
-    -j "$JSON_FILE"
+    "${PASSTHROUGH[@]}"

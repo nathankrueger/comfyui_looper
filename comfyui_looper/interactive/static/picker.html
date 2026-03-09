@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Looper — Workflow Picker</title>
+    <link rel="icon" type="image/png" href="/static/net.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { background: #1a1a2e; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            color: #e0e0e0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; padding: 24px 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        h1 {
+            font-size: 1.5em; margin-bottom: 4px; color: #e0e0e0;
+            display: flex; align-items: center; gap: 10px;
+        }
+        h1 img { width: 28px; height: 28px; }
+        .subtitle { font-size: 0.85em; color: #888; margin-bottom: 24px; }
+
+        .card {
+            width: 100%; max-width: 600px;
+            background: #16213e; border-radius: 10px; padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .card h2 {
+            font-size: 1.1em; color: #a5b4fc; margin: 0;
+        }
+        .section-label {
+            font-size: 0.75em; font-weight: 700; color: #7c3aed;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 12px 0 6px 0; padding-bottom: 4px;
+            border-bottom: 1px solid #334155;
+        }
+        .section-label:first-child { margin-top: 0; }
+
+        .workflow-list { list-style: none; padding: 0; }
+        .workflow-item {
+            padding: 10px 12px; border-radius: 8px;
+            background: #0f172a; margin-bottom: 8px;
+        }
+        .workflow-item:hover { background: #1e293b; }
+        .workflow-row {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .workflow-info {
+            display: flex; flex-direction: column; gap: 2px;
+            min-width: 0; flex: 1;
+        }
+        .workflow-name {
+            font-weight: 600; font-size: 0.95em; color: #e0e0e0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .workflow-meta { font-size: 0.8em; color: #888; }
+        .workflow-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+
+        button {
+            padding: 8px 16px; border: none; border-radius: 6px;
+            font-size: 0.9em; cursor: pointer; font-weight: 600;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(0px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-start { background: #16a34a; color: white; }
+        .btn-clone { background: #334155; color: #e0e0e0; font-size: 0.8em; padding: 6px 10px; }
+        .btn-edit { background: #2563eb; color: white; font-size: 0.8em; padding: 6px 10px; }
+        .btn-delete { background: #7f1d1d; color: #fca5a5; font-size: 0.8em; padding: 6px 10px; }
+        .btn-create { background: #7c3aed; color: white; font-size: 0.85em; padding: 6px 14px; }
+        .btn-cancel { background: #334155; color: #e0e0e0; }
+        .btn-save { background: #16a34a; color: white; }
+        .btn-format { background: #334155; color: #e0e0e0; font-size: 0.8em; padding: 6px 10px; }
+        .btn-sm { font-size: 0.8em; padding: 6px 10px; }
+
+        /* Inline editor */
+        .inline-editor {
+            margin-top: 10px; padding-top: 10px;
+            border-top: 1px solid #334155;
+        }
+        .editor-name-row {
+            display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+        }
+        .editor-name-row label {
+            font-size: 0.85em; font-weight: 600; color: #aaa; flex-shrink: 0;
+        }
+        .editor-name-row input {
+            flex: 1; padding: 6px 10px; border-radius: 6px;
+            border: 1px solid #334155; background: #0f172a; color: #e0e0e0;
+            font-size: 0.85em; outline: none;
+        }
+        .editor-name-row input:focus { border-color: #7c3aed; }
+        .editor-name-row input::placeholder { color: #555; }
+
+        .editor-wrap {
+            position: relative; display: flex;
+            border: 1px solid #334155; border-radius: 6px;
+            background: #0f172a; overflow: auto;
+            min-height: 300px; height: 50vh;
+            resize: vertical;
+        }
+        .editor-wrap.focus { border-color: #7c3aed; }
+        .editor-wrap.invalid { border-color: #ef4444; background: #1a0f0f; }
+        .line-numbers {
+            flex-shrink: 0; min-width: 48px; padding: 10px 8px 10px 8px;
+            background: #0a0f1a; color: #555; text-align: right;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.85em; line-height: 1.4;
+            overflow: hidden; user-select: none;
+            border-right: 1px solid #1e293b;
+            white-space: pre;
+        }
+        .json-editor {
+            flex: 1; width: 100%; min-height: 100%;
+            padding: 10px; border: none; border-radius: 0;
+            background: transparent; color: #e0e0e0;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.85em; line-height: 1.4;
+            resize: none; outline: none;
+            tab-size: 4; overflow-y: auto;
+            white-space: pre; overflow-wrap: normal;
+        }
+
+        .editor-toolbar {
+            display: flex; gap: 8px; justify-content: space-between;
+            align-items: center; margin-top: 8px;
+        }
+        .editor-status { font-size: 0.8em; color: #888; }
+        .editor-status.error { color: #f87171; }
+        .editor-status.ok { color: #4ade80; }
+
+        .error-msg { color: #f87171; font-size: 0.85em; margin-top: 8px; }
+        .success-msg { color: #4ade80; font-size: 0.85em; margin-top: 8px; }
+        .loading { text-align: center; padding: 24px; color: #888; }
+
+        /* Image picker */
+        .img-selection {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 8px;
+            background: #0f172a; margin-bottom: 10px;
+        }
+        .img-selection img {
+            width: 60px; height: 60px; object-fit: cover; border-radius: 6px;
+            border: 2px solid #334155;
+        }
+        .img-selection-info { flex: 1; min-width: 0; }
+        .img-selection-name {
+            font-weight: 600; font-size: 0.9em;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .img-selection-source { font-size: 0.75em; color: #888; }
+        .img-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .img-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 8px; max-height: 300px; overflow-y: auto;
+            padding: 8px 0;
+        }
+        .img-grid-item {
+            cursor: pointer; border-radius: 6px; overflow: hidden;
+            border: 2px solid transparent; transition: border-color 0.15s;
+            aspect-ratio: 1; position: relative;
+        }
+        .img-grid-item:hover { border-color: #7c3aed; }
+        .img-grid-item.selected { border-color: #16a34a; }
+        .img-grid-item img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .img-grid-item .img-label {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.7); color: #e0e0e0;
+            font-size: 0.6em; padding: 2px 4px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        #app-links {
+            width: 100%; max-width: 600px; text-align: center;
+            margin: 16px 0 0 0; font-size: 0.8em;
+        }
+        #app-links a {
+            color: #7c3aed; text-decoration: none; transition: color 0.15s ease;
+        }
+        #app-links a:hover { color: #a78bfa; }
+    </style>
+</head>
+<body>
+    <h1><img src="/static/net.png" alt=""> ComfyUI Looper</h1>
+    <p class="subtitle">Select a workflow to start</p>
+
+    <!-- Starting Image Card -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Starting Image</h2>
+        </div>
+        <div id="img-current" class="img-selection">
+            <div class="img-selection-info">
+                <div class="img-selection-name">None (txt2img mode)</div>
+                <div class="img-selection-source">First frame will be generated from text prompt</div>
+            </div>
+            <div class="img-actions">
+                <button class="btn-clone" onclick="toggleImageBrowser()">Browse</button>
+                <button class="btn-clone" onclick="triggerUpload()">Upload</button>
+            </div>
+        </div>
+        <input type="file" id="img-upload" accept="image/*" style="display:none;" onchange="handleUpload(this)">
+        <div id="img-browser" style="display:none;">
+            <div id="img-grid" class="img-grid">
+                <div class="loading">Loading images...</div>
+            </div>
+        </div>
+        <div id="img-feedback"></div>
+    </div>
+
+    <!-- Workflows Card -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Workflows</h2>
+            <button class="btn-create" onclick="newWorkflow()">+ New</button>
+        </div>
+        <div id="new-editor-container"></div>
+        <div id="workflow-list-container">
+            <div class="loading">Loading workflows...</div>
+        </div>
+    </div>
+
+    <div id="app-links">
+        <a href="https://github.com/nathankrueger/comfyui_looper" target="_blank">GitHub</a>
+    </div>
+
+    <script>
+    let workflows = [];
+    let selectedInputImg = null; // null = txt2img, string = image path
+    let activeEditorId = null;   // track which editor is open
+
+    // ===== Workflows =====
+
+    async function loadWorkflows() {
+        const container = document.getElementById('workflow-list-container');
+        try {
+            const resp = await fetch('/api/workflows');
+            const data = await resp.json();
+            workflows = data.workflows || [];
+
+            if (workflows.length === 0) {
+                container.innerHTML = '<div class="loading">No workflow JSON files found in data/</div>';
+                return;
+            }
+
+            const builtIn = workflows.filter(w => w.source === 'built-in');
+            const user = workflows.filter(w => w.source === 'user');
+
+            container.innerHTML = '';
+
+            if (builtIn.length > 0) {
+                const label = document.createElement('div');
+                label.className = 'section-label';
+                label.textContent = 'Built-in';
+                container.appendChild(label);
+                container.appendChild(buildWorkflowList(builtIn));
+            }
+
+            if (user.length > 0) {
+                const label = document.createElement('div');
+                label.className = 'section-label';
+                label.textContent = 'User';
+                container.appendChild(label);
+                container.appendChild(buildWorkflowList(user));
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="error-msg">Failed to load workflows: ' + e.message + '</div>';
+        }
+    }
+
+    function buildWorkflowList(items) {
+        const ul = document.createElement('ul');
+        ul.className = 'workflow-list';
+        items.forEach(w => {
+            const li = document.createElement('li');
+            li.className = 'workflow-item';
+            li.id = 'wf-' + encodeURIComponent(w.path);
+
+            const row = document.createElement('div');
+            row.className = 'workflow-row';
+
+            const info = document.createElement('div');
+            info.className = 'workflow-info';
+            const name = document.createElement('div');
+            name.className = 'workflow-name';
+            name.textContent = w.name;
+            const meta = document.createElement('div');
+            meta.className = 'workflow-meta';
+            meta.textContent = w.total_iterations != null
+                ? w.total_iterations + ' iterations'
+                : 'unable to parse';
+            info.appendChild(name);
+            info.appendChild(meta);
+
+            const actions = document.createElement('div');
+            actions.className = 'workflow-actions';
+
+            const startBtn = document.createElement('button');
+            startBtn.className = 'btn-start btn-sm';
+            startBtn.textContent = 'Start';
+            startBtn.onclick = () => startWorkflow(w);
+            actions.appendChild(startBtn);
+
+            const cloneBtn = document.createElement('button');
+            cloneBtn.className = 'btn-clone';
+            cloneBtn.textContent = 'Clone';
+            cloneBtn.onclick = () => cloneWorkflow(w);
+            actions.appendChild(cloneBtn);
+
+            if (w.source === 'user') {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-edit';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => editWorkflow(w);
+                actions.appendChild(editBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete';
+                delBtn.textContent = 'Del';
+                delBtn.onclick = () => deleteWorkflow(w);
+                actions.appendChild(delBtn);
+            }
+
+            row.appendChild(info);
+            row.appendChild(actions);
+            li.appendChild(row);
+            ul.appendChild(li);
+        });
+        return ul;
+    }
+
+    async function startWorkflow(w) {
+        document.querySelectorAll('.btn-start').forEach(b => { b.disabled = true; b.textContent = '...'; });
+        try {
+            const body = { json_file: w.path };
+            // selectedInputImg: null = force txt2img (empty string), undefined/not set = CLI default
+            // Since the picker always shows, we always send the selection
+            body.input_img = selectedInputImg || '';
+            const resp = await fetch('/api/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to start');
+            window.location.href = '/';
+        } catch (e) {
+            document.querySelectorAll('.btn-start').forEach(b => { b.disabled = false; b.textContent = 'Start'; });
+            alert('Error starting workflow: ' + e.message);
+        }
+    }
+
+    // ===== Inline Editor Helpers =====
+
+    function closeActiveEditor() {
+        if (activeEditorId) {
+            const el = document.getElementById(activeEditorId);
+            if (el) el.remove();
+            activeEditorId = null;
+        }
+        // Also clear new-editor
+        document.getElementById('new-editor-container').innerHTML = '';
+    }
+
+    function createEditorHTML(id, opts) {
+        // opts: { showName, nameValue, namePlaceholder, content, saveLabel, onSave, onCancel }
+        const div = document.createElement('div');
+        div.className = 'inline-editor';
+        div.id = id;
+
+        let html = '';
+        if (opts.showName) {
+            html += `<div class="editor-name-row">
+                <label>Name</label>
+                <input type="text" id="${id}-name" placeholder="${opts.namePlaceholder || 'my_workflow'}" value="${opts.nameValue || ''}">
+            </div>`;
+        }
+        html += `<div class="editor-wrap" id="${id}-wrap">
+                <div class="line-numbers" id="${id}-lines">1</div>
+                <textarea class="json-editor" id="${id}-textarea" spellcheck="false">${escapeHtml(opts.content || '')}</textarea>
+            </div>
+            <div class="editor-toolbar">
+                <span id="${id}-status" class="editor-status"></span>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-format" onclick="formatEditor('${id}')">Format</button>
+                    <button class="btn-cancel" onclick="closeActiveEditor()">Cancel</button>
+                    <button class="btn-save" id="${id}-save">${opts.saveLabel || 'Save'}</button>
+                </div>
+            </div>
+            <div id="${id}-feedback"></div>`;
+        div.innerHTML = html;
+
+        // Wire up events after insertion
+        setTimeout(() => {
+            const textarea = document.getElementById(id + '-textarea');
+            const saveBtn = document.getElementById(id + '-save');
+            const wrap = document.getElementById(id + '-wrap');
+            if (textarea) {
+                textarea.addEventListener('input', () => {
+                    validateEditorField(id);
+                    updateLineNumbers(id);
+                });
+                textarea.addEventListener('scroll', () => syncLineScroll(id));
+                textarea.addEventListener('focus', () => wrap && wrap.classList.add('focus'));
+                textarea.addEventListener('blur', () => wrap && wrap.classList.remove('focus'));
+                textarea.addEventListener('keydown', handleTabKey);
+                updateLineNumbers(id);
+                validateEditorField(id);
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', opts.onSave);
+            }
+        }, 0);
+
+        return div;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function handleTabKey(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const ta = e.target;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            ta.value = ta.value.substring(0, start) + '    ' + ta.value.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + 4;
+            ta.dispatchEvent(new Event('input'));
+        }
+    }
+
+    function updateLineNumbers(id) {
+        const textarea = document.getElementById(id + '-textarea');
+        const gutter = document.getElementById(id + '-lines');
+        if (!textarea || !gutter) return;
+        const count = (textarea.value.match(/\n/g) || []).length + 1;
+        const lines = [];
+        for (let i = 1; i <= count; i++) lines.push(i);
+        gutter.textContent = lines.join('\n');
+    }
+
+    function syncLineScroll(id) {
+        const textarea = document.getElementById(id + '-textarea');
+        const gutter = document.getElementById(id + '-lines');
+        if (!textarea || !gutter) return;
+        gutter.scrollTop = textarea.scrollTop;
+    }
+
+    function stripJsonComments(str) {
+        return str.replace(/^\s*\/\/.*$/gm, '');
+    }
+
+    function validateEditorField(id) {
+        const textarea = document.getElementById(id + '-textarea');
+        const wrap = document.getElementById(id + '-wrap');
+        const status = document.getElementById(id + '-status');
+        if (!textarea || !status) return true;
+        try {
+            JSON.parse(stripJsonComments(textarea.value));
+            if (wrap) wrap.classList.remove('invalid');
+            status.textContent = 'Valid JSON';
+            status.className = 'editor-status ok';
+            return true;
+        } catch (e) {
+            if (wrap) wrap.classList.remove('invalid');
+            status.textContent = e.message;
+            status.className = 'editor-status error';
+            return true;
+        }
+    }
+
+    function formatEditor(id) {
+        const textarea = document.getElementById(id + '-textarea');
+        if (!textarea) return;
+        try {
+            const parsed = JSON.parse(stripJsonComments(textarea.value));
+            textarea.value = JSON.stringify(parsed, null, 4);
+            updateLineNumbers(id);
+            validateEditorField(id);
+        } catch (e) {
+            // Can't format invalid JSON
+        }
+    }
+
+    // ===== Edit Workflow =====
+
+    async function editWorkflow(w) {
+        closeActiveEditor();
+        const editorId = 'editor-edit';
+        const li = document.getElementById('wf-' + encodeURIComponent(w.path));
+        if (!li) return;
+
+        try {
+            const resp = await fetch('/api/workflows/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: w.path }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to read');
+
+            let content = data.content;
+
+            const editor = createEditorHTML(editorId, {
+                showName: false,
+                content: content,
+                saveLabel: 'Save',
+                onSave: async () => {
+                    const textarea = document.getElementById(editorId + '-textarea');
+                    const feedback = document.getElementById(editorId + '-feedback');
+                    if (!validateEditorField(editorId)) {
+                        feedback.innerHTML = '<div class="error-msg">Fix JSON errors before saving.</div>';
+                        return;
+                    }
+                    try {
+                        const r = await fetch('/api/workflows/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: w.path, content: textarea.value }),
+                        });
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.error || 'Save failed');
+                        closeActiveEditor();
+                        loadWorkflows();
+                    } catch (e) {
+                        feedback.innerHTML = '<div class="error-msg">' + e.message + '</div>';
+                    }
+                },
+            });
+
+            li.appendChild(editor);
+            activeEditorId = editorId;
+        } catch (e) {
+            alert('Failed to load workflow: ' + e.message);
+        }
+    }
+
+    // ===== Clone Workflow =====
+
+    async function cloneWorkflow(w) {
+        closeActiveEditor();
+        const editorId = 'editor-clone';
+        const li = document.getElementById('wf-' + encodeURIComponent(w.path));
+        if (!li) return;
+
+        try {
+            const resp = await fetch('/api/workflows/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: w.path }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to read');
+
+            let content = data.content;
+
+            const baseName = w.name.replace(/\.json$/, '') + '_copy';
+
+            const editor = createEditorHTML(editorId, {
+                showName: true,
+                nameValue: baseName,
+                namePlaceholder: 'new_workflow_name',
+                content: content,
+                saveLabel: 'Save as New',
+                onSave: async () => {
+                    const nameInput = document.getElementById(editorId + '-name');
+                    const textarea = document.getElementById(editorId + '-textarea');
+                    const feedback = document.getElementById(editorId + '-feedback');
+                    const name = nameInput.value.trim();
+                    if (!name) {
+                        feedback.innerHTML = '<div class="error-msg">Please enter a name.</div>';
+                        return;
+                    }
+                    if (!validateEditorField(editorId)) {
+                        feedback.innerHTML = '<div class="error-msg">Fix JSON errors before saving.</div>';
+                        return;
+                    }
+                    try {
+                        const r = await fetch('/api/workflows/clone', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ source: w.path, name: name, content: textarea.value }),
+                        });
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.error || 'Clone failed');
+                        closeActiveEditor();
+                        loadWorkflows();
+                    } catch (e) {
+                        feedback.innerHTML = '<div class="error-msg">' + e.message + '</div>';
+                    }
+                },
+            });
+
+            li.appendChild(editor);
+            activeEditorId = editorId;
+        } catch (e) {
+            alert('Failed to load workflow: ' + e.message);
+        }
+    }
+
+    // ===== New Workflow =====
+
+    function newWorkflow() {
+        closeActiveEditor();
+        const editorId = 'editor-new';
+        const container = document.getElementById('new-editor-container');
+
+        const editor = createEditorHTML(editorId, {
+            showName: true,
+            nameValue: '',
+            namePlaceholder: 'my_new_workflow',
+            content: '',
+            saveLabel: 'Create',
+            onSave: async () => {
+                const nameInput = document.getElementById(editorId + '-name');
+                const textarea = document.getElementById(editorId + '-textarea');
+                const feedback = document.getElementById(editorId + '-feedback');
+                const name = nameInput.value.trim();
+                if (!name) {
+                    feedback.innerHTML = '<div class="error-msg">Please enter a name.</div>';
+                    return;
+                }
+                if (!textarea.value.trim()) {
+                    feedback.innerHTML = '<div class="error-msg">Please enter JSON content.</div>';
+                    return;
+                }
+                if (!validateEditorField(editorId)) {
+                    feedback.innerHTML = '<div class="error-msg">Fix JSON errors before saving.</div>';
+                    return;
+                }
+                try {
+                    const r = await fetch('/api/workflows/clone', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, content: textarea.value }),
+                    });
+                    const d = await r.json();
+                    if (!r.ok) throw new Error(d.error || 'Create failed');
+                    closeActiveEditor();
+                    loadWorkflows();
+                } catch (e) {
+                    feedback.innerHTML = '<div class="error-msg">' + e.message + '</div>';
+                }
+            },
+        });
+
+        container.appendChild(editor);
+        activeEditorId = editorId;
+    }
+
+    // ===== Delete Workflow =====
+
+    async function deleteWorkflow(w) {
+        if (!confirm('Delete "' + w.name + '"? This cannot be undone.')) return;
+        try {
+            const resp = await fetch('/api/workflows', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: w.path }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Delete failed');
+            loadWorkflows();
+        } catch (e) {
+            alert('Failed to delete: ' + e.message);
+        }
+    }
+
+    // ===== Image Picker =====
+
+    function updateImageDisplay() {
+        const container = document.getElementById('img-current');
+        if (!selectedInputImg) {
+            container.innerHTML = `
+                <div class="img-selection-info">
+                    <div class="img-selection-name">None (txt2img mode)</div>
+                    <div class="img-selection-source">First frame will be generated from text prompt</div>
+                </div>
+                <div class="img-actions">
+                    <button class="btn-clone" onclick="toggleImageBrowser()">Browse</button>
+                    <button class="btn-clone" onclick="triggerUpload()">Upload</button>
+                </div>`;
+        } else {
+            const name = selectedInputImg.split('/').pop();
+            container.innerHTML = `
+                <img src="/api/images/file?path=${encodeURIComponent(selectedInputImg)}" alt="">
+                <div class="img-selection-info">
+                    <div class="img-selection-name">${escapeHtml(name)}</div>
+                    <div class="img-selection-source">Starting image selected</div>
+                </div>
+                <div class="img-actions">
+                    <button class="btn-clone" onclick="toggleImageBrowser()">Browse</button>
+                    <button class="btn-clone" onclick="triggerUpload()">Upload</button>
+                    <button class="btn-delete" onclick="clearImage()">Clear</button>
+                </div>`;
+        }
+    }
+
+    function clearImage() {
+        selectedInputImg = null;
+        updateImageDisplay();
+        document.getElementById('img-browser').style.display = 'none';
+    }
+
+    function triggerUpload() {
+        document.getElementById('img-upload').click();
+    }
+
+    async function handleUpload(input) {
+        if (!input.files || !input.files[0]) return;
+        const feedback = document.getElementById('img-feedback');
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        try {
+            const resp = await fetch('/api/images/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Upload failed');
+            selectedInputImg = data.path;
+            updateImageDisplay();
+            feedback.innerHTML = '<div class="success-msg">Uploaded: ' + data.name + '</div>';
+            // Refresh browser if visible
+            if (document.getElementById('img-browser').style.display !== 'none') {
+                loadImages();
+            }
+        } catch (e) {
+            feedback.innerHTML = '<div class="error-msg">' + e.message + '</div>';
+        }
+        input.value = '';
+    }
+
+    async function toggleImageBrowser() {
+        const browser = document.getElementById('img-browser');
+        if (browser.style.display === 'none') {
+            browser.style.display = '';
+            await loadImages();
+        } else {
+            browser.style.display = 'none';
+        }
+    }
+
+    async function loadImages() {
+        const grid = document.getElementById('img-grid');
+        grid.innerHTML = '<div class="loading">Loading...</div>';
+        try {
+            const resp = await fetch('/api/images');
+            const data = await resp.json();
+            const images = data.images || [];
+
+            if (images.length === 0) {
+                grid.innerHTML = '<div class="loading" style="grid-column:1/-1;">No images found in data/img/</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            images.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'img-grid-item' + (selectedInputImg === img.path ? ' selected' : '');
+                item.onclick = () => {
+                    selectedInputImg = img.path;
+                    updateImageDisplay();
+                    // Update selection highlights
+                    grid.querySelectorAll('.img-grid-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                };
+                item.innerHTML = `<img src="/api/images/file?path=${encodeURIComponent(img.path)}" alt="${escapeHtml(img.name)}" loading="lazy">
+                    <div class="img-label">${escapeHtml(img.name)}</div>`;
+                grid.appendChild(item);
+            });
+        } catch (e) {
+            grid.innerHTML = '<div class="error-msg">Failed to load images</div>';
+        }
+    }
+
+    // ===== Polling =====
+
+    async function checkRunning() {
+        try {
+            const resp = await fetch('/api/app-status');
+            const data = await resp.json();
+            if (data.loop_running) window.location.href = '/';
+        } catch (e) {}
+    }
+
+    loadWorkflows();
+    setInterval(checkRunning, 3000);
+    </script>
+</body>
+</html>

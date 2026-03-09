@@ -8,7 +8,8 @@ from PIL.PngImagePlugin import PngInfo
 from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
 from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
-from utils.util import save_tensor_to_images, get_loop_img_filename
+from utils.image_store import ImageStore
+from utils.util import save_tensor_to_images, tensor_to_pil, get_loop_img_filename
 from workflow.looper_workflow import WorkflowEngine
 from interactive.loop_state import LoopState, LoopStatus
 
@@ -31,6 +32,7 @@ def _run_iteration(
     output_folder: str,
     log_file: IO[str],
     state: LoopState,
+    image_store: ImageStore,
     prev_seed: int | None,
     force_new_seed: bool = False,
     no_input_image: bool = False,
@@ -72,14 +74,20 @@ def _run_iteration(
 
     loopsettings_json = loopsettings.to_json(indent=4)
     image_index = iter + 1
-    output_image_filename = os.path.join(output_folder, get_loop_img_filename(image_index))
     pnginfo = PngInfo()
     pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
+
+    # save the working loop image to disk
     save_tensor_to_images(
-        output_filenames=[loop_img_path, output_image_filename],
+        output_filenames=[loop_img_path],
         image=vae_decode_result[0],
         png_info=pnginfo
     )
+
+    # save the numbered archive image via the store
+    output_image_filename = get_loop_img_filename(image_index)
+    pil_img = tensor_to_pil(vae_decode_result[0])
+    image_store.write_image(output_image_filename, pil_img, png_info=pnginfo)
 
     state.set_latest_image_index(image_index)
     state.store_settings(iter, loopsettings_json)
@@ -99,6 +107,7 @@ def _handle_restart(
     output_folder: str,
     log_file: IO[str],
     state: LoopState,
+    image_store: ImageStore,
     no_input_image: bool = False,
 ) -> tuple[int, int]:
     """
@@ -115,10 +124,8 @@ def _handle_restart(
     state.clear_timestamps_from(redo_iter)
 
     # Delete images from restart_from onward
-    for idx in range(restart_from, total_iter + 1):
-        img_path = os.path.join(output_folder, get_loop_img_filename(idx))
-        if os.path.exists(img_path):
-            os.remove(img_path)
+    filenames_to_delete = [get_loop_img_filename(idx) for idx in range(restart_from, total_iter + 1)]
+    image_store.delete_images(filenames_to_delete)
 
     # Clear cached settings from redo_iter onward
     state.clear_settings_from(redo_iter)
@@ -128,8 +135,7 @@ def _handle_restart(
     state.set_current_iteration(redo_iter)
 
     # Copy the previous image as the new input
-    input_image_path = os.path.join(output_folder, get_loop_img_filename(restart_from - 1))
-    shutil.copy(input_image_path, loop_img_path)
+    image_store.copy_image_to_path(get_loop_img_filename(restart_from - 1), loop_img_path)
 
     # Regenerate with a new seed
     log_file.write(f"[RESTART from image {restart_from}]\n")
@@ -142,6 +148,7 @@ def _handle_restart(
         output_folder=output_folder,
         log_file=log_file,
         state=state,
+        image_store=image_store,
         prev_seed=None,
         force_new_seed=True,
         no_input_image=no_input_image,
@@ -164,6 +171,7 @@ def interactive_looper_main(
     animation_params: dict[str, str],
     log_file: IO[str],
     state: LoopState,
+    image_store: ImageStore = None,
     no_input_image: bool = False,
 ):
     sm = SettingsManager(json_file, animation_params)
@@ -178,8 +186,18 @@ def interactive_looper_main(
             iter = 0
 
             while iter < total_iter:
+                # Check for stop (reset/picker return)
+                if state.is_stop_requested():
+                    state.set_status(LoopStatus.STOPPED)
+                    return
+
                 # Check for pause
                 state.wait_if_paused()
+
+                # Check stop again after unpausing
+                if state.is_stop_requested():
+                    state.set_status(LoopStatus.STOPPED)
+                    return
 
                 # Check for restart request
                 restart_from = state.get_and_clear_restart_request()
@@ -193,6 +211,7 @@ def interactive_looper_main(
                         output_folder=output_folder,
                         log_file=log_file,
                         state=state,
+                        image_store=image_store,
                         no_input_image=no_input_image,
                     )
                     continue
@@ -211,6 +230,7 @@ def interactive_looper_main(
                     output_folder=output_folder,
                     log_file=log_file,
                     state=state,
+                    image_store=image_store,
                     prev_seed=prev_seed,
                     no_input_image=no_input_image,
                 )
@@ -220,12 +240,17 @@ def interactive_looper_main(
 
         state.set_status(LoopStatus.STOPPED)
         if animation_file is not None:
-            make_animation(
-                type=animation_type,
-                input_folder=output_folder,
-                output_animation=os.path.join(output_folder, animation_file),
-                params=animation_params
-            )
+            anim_folder, needs_cleanup = image_store.get_paths_for_animation()
+            try:
+                make_animation(
+                    type=animation_type,
+                    input_folder=anim_folder,
+                    output_animation=os.path.join(output_folder, animation_file),
+                    params=animation_params
+                )
+            finally:
+                if needs_cleanup:
+                    shutil.rmtree(anim_folder, ignore_errors=True)
 
     except Exception as e:
         state.set_error(str(e))

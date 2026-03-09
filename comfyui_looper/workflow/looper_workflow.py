@@ -8,8 +8,10 @@ from PIL.PngImagePlugin import PngInfo
 from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
 from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
+from utils.image_store import ImageStore
 from utils.util import (
     save_tensor_to_images,
+    tensor_to_pil,
     get_loop_img_filename,
 )
 
@@ -78,6 +80,7 @@ def looper_main(
     animation_params: dict[str, str],
     log_file: IO[str],
     no_input_image: bool = False,
+    image_store: ImageStore = None,
 ):
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
@@ -124,24 +127,36 @@ def looper_main(
 
             # save the images -- loop filename, and requested output
             loopsettings_json = loopsettings.to_json(indent=4)
-            output_image_filename = os.path.join(output_folder, get_loop_img_filename(iter+1))
             pnginfo = PngInfo()
             pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
+
+            # always save the working loop image to disk
             save_tensor_to_images(
-                output_filenames=[loop_img_path, output_image_filename],
+                output_filenames=[loop_img_path],
                 image=vae_decode_result[0],
                 png_info=pnginfo
             )
 
+            # save the numbered archive image via the store
+            output_image_filename = get_loop_img_filename(iter+1)
+            pil_img = tensor_to_pil(vae_decode_result[0])
+            image_store.write_image(output_image_filename, pil_img, png_info=pnginfo)
+
             # add entry to the logfile
-            log_file.write(f"{output_image_filename}:\n{loopsettings_json}\n\n")
+            log_file.write(f"{get_loop_img_filename(iter+1)}:\n{loopsettings_json}\n\n")
             log_file.flush()
 
     # save animation
     if animation_file is not None:
-        make_animation(
-            type=animation_type,
-            input_folder=output_folder,
-            output_animation=os.path.join(output_folder, animation_file),
-            params=animation_params
-        )
+        anim_folder, needs_cleanup = image_store.get_paths_for_animation()
+        try:
+            make_animation(
+                type=animation_type,
+                input_folder=anim_folder,
+                output_animation=os.path.join(output_folder, animation_file),
+                params=animation_params
+            )
+        finally:
+            if needs_cleanup:
+                import shutil
+                shutil.rmtree(anim_folder, ignore_errors=True)

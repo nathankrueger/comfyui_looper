@@ -1,46 +1,38 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: --- Defaults ---
+:: --- Defaults for script-only flags ---
 set COMFYUI_PYTHON=
 set COMFYUI_MAIN=
 set COMFYUI_URL=http://localhost:8188
 set COMFYUI_WAIT=30
 set LOOPER_PORT=5000
-set WORKFLOW_TYPE=sdxl
-set INPUT_IMG=
-set OUTPUT_FOLDER=
-set JSON_FILE=
 set VENV_DIR=.venv
+set PASSTHROUGH=
 
 :: --- Parse arguments ---
 :parse_args
 if "%~1"=="" goto done_args
-if /i "%~1"=="-i" (set INPUT_IMG=%~2& shift & shift & goto parse_args)
-if /i "%~1"=="-o" (set OUTPUT_FOLDER=%~2& shift & shift & goto parse_args)
-if /i "%~1"=="-j" (set JSON_FILE=%~2& shift & shift & goto parse_args)
-if /i "%~1"=="-w" (set WORKFLOW_TYPE=%~2& shift & shift & goto parse_args)
-if /i "%~1"=="-u" (set COMFYUI_URL=%~2& shift & shift & goto parse_args)
-if /i "%~1"=="-s" (set COMFYUI_WAIT=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-P" (set COMFYUI_PYTHON=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-M" (set COMFYUI_MAIN=%~2& shift & shift & goto parse_args)
+if /i "%~1"=="-u" (set COMFYUI_URL=%~2& shift & shift & goto parse_args)
+if /i "%~1"=="-s" (set COMFYUI_WAIT=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-L" (set LOOPER_PORT=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-v" (set VENV_DIR=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-h" goto usage
-echo Unknown option: %~1
-goto usage
+if /i "%~1"=="--" (shift & goto collect_rest)
+:: Unknown flag — collect into passthrough
+set PASSTHROUGH=!PASSTHROUGH! %1
+shift
+goto parse_args
+
+:collect_rest
+if "%~1"=="" goto done_args
+set PASSTHROUGH=!PASSTHROUGH! %1
+shift
+goto collect_rest
+
 :done_args
-
-:: --- Validate required args ---
-if "%JSON_FILE%"=="" goto missing_args
-goto args_ok
-
-:missing_args
-echo Error: -j is required.
-echo.
-goto usage
-
-:args_ok
 
 :: --- Activate venv ---
 if exist "%VENV_DIR%\Scripts\activate.bat" (
@@ -101,61 +93,43 @@ echo Proceeding without launching ComfyUI...
 :: --- Launch looper ---
 :start_looper
 echo.
-:: --- Build optional flags ---
-set INPUT_FLAG=
-set INPUT_DISPLAY=^<none (txt2img)^>
-if not "%INPUT_IMG%"=="" (
-    set INPUT_FLAG=-i "%INPUT_IMG%"
-    set INPUT_DISPLAY=%INPUT_IMG%
-)
-
-set OUTPUT_FLAG=
-set OUTPUT_DISPLAY=^<auto^>
-if not "%OUTPUT_FOLDER%"=="" (
-    set OUTPUT_FLAG=-o "%OUTPUT_FOLDER%"
-    set OUTPUT_DISPLAY=%OUTPUT_FOLDER%
-)
-
 echo Starting comfyui_looper in interactive mode...
-echo   Workflow: %WORKFLOW_TYPE%
-echo   Input:    %INPUT_DISPLAY%
-echo   Output:   %OUTPUT_DISPLAY%
-echo   JSON:     %JSON_FILE%
 echo   ComfyUI:  %COMFYUI_URL%
 echo   Port:     %LOOPER_PORT%
+echo   Args:     %PASSTHROUGH%
 echo.
 
 python comfyui_looper\main.py ^
     --interactive ^
     --port %LOOPER_PORT% ^
     --comfyui-url "%COMFYUI_URL%" ^
-    -w %WORKFLOW_TYPE% ^
-    %INPUT_FLAG% ^
-    %OUTPUT_FLAG% ^
-    -j "%JSON_FILE%"
+    %PASSTHROUGH%
 
 goto :eof
 
 :usage
-echo Usage: %~nx0 -j ^<json_file^> [options]
+echo Usage: %~nx0 [script-options] [-- main.py options]
 echo.
-echo Required:
-echo   -j ^<path^>     Workflow JSON file
-echo.
-echo Options:
-echo   -o ^<path^>     Output folder (default: data\^<workflow_name^>_^<timestamp^>)
-echo   -i ^<path^>     Input image (if omitted, first frame uses txt2img)
-echo   -w ^<type^>     Workflow type (default: sdxl)
-echo   -u ^<url^>      ComfyUI server URL (default: %COMFYUI_URL%)
-echo   -s ^<seconds^>  Seconds to wait for ComfyUI to start (default: %COMFYUI_WAIT%)
+echo Script options (parsed by this script):
 echo   -P ^<path^>     ComfyUI python.exe path
 echo   -M ^<path^>     ComfyUI main.py path
+echo   -u ^<url^>      ComfyUI server URL (default: %COMFYUI_URL%)
+echo   -s ^<seconds^>  Seconds to wait for ComfyUI to start (default: %COMFYUI_WAIT%)
 echo   -L ^<port^>     Looper web UI port (default: %LOOPER_PORT%)
 echo   -v ^<path^>     Python venv directory (default: %VENV_DIR%)
 echo   -h            Show this help
 echo.
+echo All other flags are forwarded to main.py (run with --help to see them):
+echo   -j ^<path^>     Workflow JSON file
+echo   -o ^<path^>     Output folder
+echo   -i ^<path^>     Input image
+echo   -w ^<type^>     Workflow type (default: sdxl)
+echo   -z            Use zip storage
+echo   ...and more. Run: python comfyui_looper\main.py --help
+echo.
 echo Examples:
-echo   %~nx0 -i photo.png -o output\run1 -j data\evolution.json -w flux1d
+echo   %~nx0                                          (opens workflow picker)
 echo   %~nx0 -j data\evolution.json                   (auto-named output folder)
-echo   %~nx0 -o output\run1 -j data\evolution.json   (no input image, txt2img)
+echo   %~nx0 -i photo.png -o output\run1 -j data\evolution.json -w flux1d
+echo   %~nx0 -L 8080 -s 60 -- -j data\test.json -z   (script flags, then main.py flags)
 exit /b 1

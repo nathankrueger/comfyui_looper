@@ -104,6 +104,8 @@
         .btn-resume  { background: #16a34a; color: white; }
         .btn-pause   { background: #d97706; color: white; }
         .btn-export  { background: #7c3aed; color: white; }
+        .btn-reset-loop { background: #991b1b; color: white; min-width: 48px; padding: 10px 12px; }
+        #json-name { color: #7c3aed; font-size: 0.95em; margin-right: 6px; }
         button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
         button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
         button:active:not(:disabled) { transform: translateY(0px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -254,8 +256,8 @@
 <body>
     <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
     <div id="image-container">
-        <img id="main-image" src="" alt="Generated image">
-        <div id="image-label">Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></div>
+        <img id="main-image" src="" alt="Generated image" hidden>
+        <div id="image-label"><span id="json-name"></span>Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></div>
     </div>
     <div id="controls">
         <button class="btn-nav" id="btn-back">&laquo;&laquo;</button>
@@ -265,6 +267,7 @@
         <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
         <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
         <button class="btn-export" id="btn-export">&#128190; Export</button>
+        <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9762;</button>
     </div>
     <div id="settings-panel">
         <div id="settings-tabs">
@@ -358,6 +361,7 @@
     </div>
 
     <div id="app-links"><a href="https://github.com/nathankrueger/comfyui_looper" target="_blank" rel="noopener">GitHub</a></div>
+
 
     <div class="modal-overlay" id="export-modal">
         <div class="modal">
@@ -472,6 +476,14 @@
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
 
+            // Update JSON name display
+            const jsonNameEl = document.getElementById('json-name');
+            if (data.json_name) {
+                jsonNameEl.textContent = data.json_name + ' \u2014 ';
+            } else {
+                jsonNameEl.textContent = '';
+            }
+
             const bar = document.getElementById('status-bar');
             bar.className = 'status-' + data.status;
             let info = 'Iter ' + data.current_iteration + '/' + data.total_iterations +
@@ -499,6 +511,9 @@
                 viewIndex = latestIndex;
                 loadImage();
                 loadSettings();
+            } else if (document.getElementById('main-image').hidden && data.status === 'running') {
+                loadImage();
+                loadSettings();
             }
 
             // Always update the label so the "/ M" total stays current
@@ -522,6 +537,8 @@
     function loadImage() {
         const img = document.getElementById('main-image');
         img.src = '/api/image/' + viewIndex + '?t=' + Date.now();
+        img.onload = () => { img.hidden = false; };
+        img.onerror = () => { img.hidden = true; };
         updateFrameLabel();
     }
 
@@ -653,6 +670,11 @@
     document.getElementById('btn-restart').addEventListener('click', doRestart);
     document.getElementById('btn-resume').addEventListener('click', doResume);
     document.getElementById('btn-pause').addEventListener('click', doPause);
+    document.getElementById('btn-reset-loop').addEventListener('click', async function() {
+        if (!confirm('Stop the current loop and return to the workflow picker?\n\nYour output images are saved in the output folder.')) return;
+        await fetch('/api/reset', { method: 'POST' });
+        window.location.href = '/';
+    });
 
     // --- Frame input ---
     (function() {
@@ -930,6 +952,10 @@
 
     // --- Override system ---
 
+    function stripJsonComments(str) {
+        return str.replace(/^\s*\/\/.*$/gm, '');
+    }
+
     const SLIDER_FIELDS = ['denoise_amt', 'denoise_steps', 'cfg'];
     const TEXT_FIELDS = ['prompt', 'neg_prompt', 'checkpoint'];
     const JSON_FIELDS = ['loras', 'transforms', 'canny', 'con_deltas'];
@@ -1052,7 +1078,7 @@
         if (mode === 'frame') {
             // Parse elaborated JSON from View tab
             try {
-                const settings = JSON.parse(document.getElementById('settings-content').textContent);
+                const settings = JSON.parse(stripJsonComments(document.getElementById('settings-content').textContent));
                 if (settings.prompt != null) document.getElementById('ovr-prompt').value = settings.prompt;
                 if (settings.neg_prompt != null) document.getElementById('ovr-neg_prompt').value = settings.neg_prompt;
                 if (settings.denoise_amt != null) {
@@ -1121,7 +1147,7 @@
                 const raw = document.getElementById('ovr-' + f).value.trim();
                 if (!raw) continue;
                 try {
-                    overrides[f] = JSON.parse(raw);
+                    overrides[f] = JSON.parse(stripJsonComments(raw));
                 } catch (e) {
                     errorEl.textContent = f + ': invalid JSON — ' + e.message;
                     errorEl.style.display = '';
