@@ -93,13 +93,14 @@ class LoopState:
     # --- Pause/resume ---
 
     def pause(self):
+        self._pause_event.clear()
         with self._lock:
             self._status = LoopStatus.PAUSED
-        self._pause_event.clear()
 
     def resume(self):
         with self._lock:
-            self._status = LoopStatus.RUNNING
+            if self._status == LoopStatus.PAUSED:
+                self._status = LoopStatus.RUNNING
         self._pause_event.set()
 
     def wait_if_paused(self):
@@ -108,8 +109,14 @@ class LoopState:
     # --- Restart ---
 
     def request_restart(self, from_image_index: int):
+        """Set a restart request and ensure the loop thread is unblocked to process it."""
         with self._lock:
             self._restart_request = from_image_index
+            # Move out of PAUSED so the loop thread proceeds after waking.
+            if self._status == LoopStatus.PAUSED:
+                self._status = LoopStatus.RUNNING
+        # Unblock the pause event so the loop thread can pick up the request.
+        self._pause_event.set()
 
     def get_and_clear_restart_request(self) -> Optional[int]:
         with self._lock:

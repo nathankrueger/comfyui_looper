@@ -359,10 +359,6 @@ def create_app(app_state: AppState) -> Flask:
             return jsonify({'error': 'from_image_index must be >= 1'}), 400
 
         state.request_restart(from_image_index)
-        # If paused, unblock the loop thread so it can process the restart
-        if state.get_status() == LoopStatus.PAUSED:
-            state.resume()
-
         return jsonify({'status': 'restart_requested', 'from_image_index': from_image_index})
 
     @app.route('/api/export', methods=['POST'])

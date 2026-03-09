@@ -117,8 +117,7 @@ def _handle_restart(
     1. Delete image files from restart_from onward
     2. Copy image (restart_from - 1) to looper.png
     3. Regenerate iteration (restart_from - 1) with a new seed
-    4. Pause the loop
-    5. Return (next_iter, prev_seed)
+    4. Return (next_iter, prev_seed)
     """
     redo_iter = restart_from - 1
     state.clear_frame_overrides()
@@ -162,10 +161,7 @@ def _handle_restart(
         no_input_image=no_input_image,
     )
 
-    # Pause — user must approve or restart again
-    state.pause()
-
-    # Next iteration to run when resumed
+    # Next iteration to run
     return (redo_iter + 1, new_seed)
 
 
@@ -201,15 +197,10 @@ def interactive_looper_main(
                         state.set_status(LoopStatus.STOPPED)
                         return
 
-                    # Check for pause
-                    state.wait_if_paused()
-
-                    # Check stop again after unpausing
-                    if state.is_stop_requested():
-                        state.set_status(LoopStatus.STOPPED)
-                        return
-
-                    # Check for restart request
+                    # Check for restart request before anything else so
+                    # restarts are processed immediately — including after
+                    # being woken from pause (request_restart unblocks the
+                    # pause event)
                     restart_from = state.get_and_clear_restart_request()
                     if restart_from is not None:
                         iter, prev_seed = _handle_restart(
@@ -224,6 +215,13 @@ def interactive_looper_main(
                             image_store=image_store,
                             no_input_image=no_input_image,
                         )
+                        continue
+
+                    # Block while paused. Also wakes on restart request
+                    # (which sets the event); we just continue back to the
+                    # top where the restart check will pick it up.
+                    if state.get_status() == LoopStatus.PAUSED:
+                        state.wait_if_paused()
                         continue
 
                     # Normal iteration
