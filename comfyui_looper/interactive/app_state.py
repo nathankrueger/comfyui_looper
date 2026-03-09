@@ -88,7 +88,6 @@ class AppState:
             no_input_image = effective_input_img is None
             if no_input_image:
                 engine.create_blank_image_for_model([LOOP_IMG])
-                image_store.import_from_path(LOOP_IMG, get_loop_img_filename(0))
             else:
                 engine.resize_images_for_model(effective_input_img, [LOOP_IMG])
                 image_store.import_from_path(LOOP_IMG, get_loop_img_filename(0))

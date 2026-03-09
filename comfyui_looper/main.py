@@ -1,4 +1,6 @@
 import os
+import sys
+import signal
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -92,8 +94,22 @@ if __name__ == "__main__":
 
         app = create_app(app_state)
 
-        from waitress import serve
-        serve(app, host='0.0.0.0', port=args.port)
+        from waitress import create_server
+        server = create_server(app, host='0.0.0.0', port=args.port)
+
+        def shutdown_handler(signum, frame):
+            print("\nShutting down...")
+            try:
+                app_state.stop_loop()
+            except Exception:
+                pass
+            server.close()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, shutdown_handler)
+        signal.signal(signal.SIGTERM, shutdown_handler)
+
+        server.run()
     else:
         for rep in range(args.passes):
             output_folder = os.path.abspath(get_output_folder(args.output_folder, args.passes, rep))
@@ -116,7 +132,7 @@ if __name__ == "__main__":
                     workflow_engine.create_blank_image_for_model([LOOP_IMG])
                 else:
                     workflow_engine.resize_images_for_model(args.input_img, [LOOP_IMG])
-                image_store.import_from_path(LOOP_IMG, get_loop_img_filename(0))
+                    image_store.import_from_path(LOOP_IMG, get_loop_img_filename(0))
 
                 looper_main(
                     engine=workflow_engine,

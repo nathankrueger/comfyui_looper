@@ -511,7 +511,8 @@
                 viewIndex = latestIndex;
                 loadImage();
                 loadSettings();
-            } else if (document.getElementById('main-image').hidden && data.status === 'running') {
+            } else if (document.getElementById('main-image').hidden && data.status === 'running' && latestIndex > 0) {
+                viewIndex = latestIndex;
                 loadImage();
                 loadSettings();
             }
