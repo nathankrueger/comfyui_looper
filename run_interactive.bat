@@ -8,6 +8,7 @@ set COMFYUI_URL=http://localhost:8188
 set COMFYUI_WAIT=30
 set LOOPER_PORT=8080
 set VENV_DIR=.venv
+set KEEP_COMFYUI=0
 set PASSTHROUGH=
 
 :: --- Parse arguments ---
@@ -19,6 +20,7 @@ if /i "%~1"=="-u" (set COMFYUI_URL=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-s" (set COMFYUI_WAIT=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-L" (set LOOPER_PORT=%~2& shift & shift & goto parse_args)
 if /i "%~1"=="-v" (set VENV_DIR=%~2& shift & shift & goto parse_args)
+if /i "%~1"=="-k" (set KEEP_COMFYUI=1& shift & goto parse_args)
 if /i "%~1"=="-h" goto usage
 if /i "%~1"=="--" (shift & goto collect_rest)
 :: Unknown flag — collect into passthrough
@@ -67,6 +69,7 @@ if not exist "%COMFYUI_MAIN%" (
 )
 
 echo Launching ComfyUI...
+set COMFYUI_LAUNCHED=1
 start "" "%COMFYUI_PYTHON%" "%COMFYUI_MAIN%" --listen 0.0.0.0
 
 echo Waiting up to %COMFYUI_WAIT%s for ComfyUI to start...
@@ -105,6 +108,24 @@ python comfyui_looper\main.py ^
     --comfyui-url "%COMFYUI_URL%" ^
     %PASSTHROUGH%
 
+:: --- Cleanup after looper exits ---
+echo.
+echo Cleaning up...
+
+if not "%COMFYUI_LAUNCHED%"=="1" goto cleanup_done
+if "%KEEP_COMFYUI%"=="1" (
+    echo   Keeping ComfyUI running.
+    goto cleanup_done
+)
+
+:: Find and kill ComfyUI python process listening on port 8188
+echo   Stopping ComfyUI...
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8188.*LISTENING"') do (
+    taskkill /PID %%p /F >nul 2>&1
+)
+
+:cleanup_done
+echo Done.
 goto :eof
 
 :usage
@@ -117,6 +138,7 @@ echo   -u ^<url^>      ComfyUI server URL (default: %COMFYUI_URL%)
 echo   -s ^<seconds^>  Seconds to wait for ComfyUI to start (default: %COMFYUI_WAIT%)
 echo   -L ^<port^>     Looper web UI port (default: %LOOPER_PORT%)
 echo   -v ^<path^>     Python venv directory (default: %VENV_DIR%)
+echo   -k            Keep ComfyUI running on exit (don't kill it during cleanup)
 echo   -h            Show this help
 echo.
 echo All other flags are forwarded to main.py (run with --help to see them):

@@ -10,6 +10,7 @@ is_wsl() {
 COMFYUI_WAIT=10
 LOOPER_PORT=8080
 VENV_DIR=".venv"
+KEEP_COMFYUI=false
 
 if is_wsl; then
     WINDOWS_HOST_IP=$(ip route show default | awk '{print $3}')
@@ -33,6 +34,7 @@ Script options (parsed by this script):
   -s <seconds>  Seconds to wait for ComfyUI to start (WSL only, default: $COMFYUI_WAIT)
   -L <port>     Looper web UI port (default: $LOOPER_PORT)
   -v <path>     Python venv directory (default: $VENV_DIR)
+  -k            Keep ComfyUI running on exit (don't kill it during cleanup)
   -h            Show this help
 
 All other flags are forwarded to main.py (run with --help to see them):
@@ -66,6 +68,7 @@ while [ $# -gt 0 ]; do
         -s) COMFYUI_WAIT="$2"; shift 2 ;;
         -L) LOOPER_PORT="$2"; shift 2 ;;
         -v) VENV_DIR="$2"; shift 2 ;;
+        -k) KEEP_COMFYUI=true; shift ;;
         -h) usage ;;
         --) shift; PASSTHROUGH+=("$@"); break ;;
         *)  PASSTHROUGH+=("$1"); shift ;;
@@ -133,6 +136,34 @@ else
     exit 1
 fi
 
+# --- Cleanup on exit ---
+cleanup() {
+    echo ""
+    echo "Cleaning up..."
+
+    # Kill the looper (main.py) — sends SIGTERM so its own shutdown_handler runs,
+    # which stops the loop thread, closes the waitress server, etc.
+    if [ -n "$LOOPER_PID" ] && kill -0 "$LOOPER_PID" 2>/dev/null; then
+        echo "  Stopping looper (PID $LOOPER_PID)..."
+        kill "$LOOPER_PID" 2>/dev/null
+        wait "$LOOPER_PID" 2>/dev/null
+    fi
+
+    # Kill ComfyUI if we launched it (unless -k was passed)
+    if [ "$KEEP_COMFYUI" = true ]; then
+        if [ -n "$COMFYUI_PID" ] && kill -0 "$COMFYUI_PID" 2>/dev/null; then
+            echo "  Keeping ComfyUI running (PID $COMFYUI_PID)"
+        fi
+    elif [ -n "$COMFYUI_PID" ] && kill -0 "$COMFYUI_PID" 2>/dev/null; then
+        echo "  Stopping ComfyUI (PID $COMFYUI_PID)..."
+        kill "$COMFYUI_PID" 2>/dev/null
+        wait "$COMFYUI_PID" 2>/dev/null
+    fi
+
+    echo "Done."
+}
+trap cleanup EXIT
+
 # --- Launch looper in interactive mode ---
 echo "Starting comfyui_looper in interactive mode..."
 echo "  ComfyUI:  $COMFYUI_URL"
@@ -144,4 +175,6 @@ python comfyui_looper/main.py \
     --interactive \
     --port "$LOOPER_PORT" \
     --comfyui-url "$COMFYUI_URL" \
-    "${PASSTHROUGH[@]}"
+    "${PASSTHROUGH[@]}" &
+LOOPER_PID=$!
+wait "$LOOPER_PID"
