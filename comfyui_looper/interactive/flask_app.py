@@ -311,7 +311,7 @@ def create_app(app_state: AppState) -> Flask:
             return jsonify({'scenes': []})
         scenes = []
         for ls in sm.workflow.all_settings:
-            scenes.append(ls.offset + 1)
+            scenes.append({'start': ls.offset + 1, 'length': ls.loop_iterations})
         return jsonify({'scenes': scenes})
 
     @app.route('/api/image/<int:index>')

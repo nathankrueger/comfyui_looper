@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="/static/net.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { background: #1a1a2e; }
+        html { background: #1a1a2e; overflow-x: hidden; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
@@ -15,6 +15,7 @@
             display: flex; flex-direction: column; align-items: center;
             min-height: 100vh; padding: 16px 12px;
             -webkit-overflow-scrolling: touch;
+            overflow-x: hidden; width: 100%;
         }
         /* Scrollbar styling */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -65,19 +66,38 @@
         }
         /* Image */
         #image-container {
-            width: 100%; max-width: 800px; text-align: center;
-            margin-bottom: 16px;
+            width: 100%; text-align: center;
+            margin-bottom: 16px; position: relative;
+        }
+        #image-wrapper {
+            position: relative; display: inline-block;
+            max-width: 100%;
         }
         #image-container img {
-            max-width: 100%; height: auto; border-radius: 10px;
+            width: 100%; height: auto; border-radius: 10px;
             border: 2px solid #334155;
             box-shadow: 0 4px 24px rgba(124,58,237,0.15), 0 2px 8px rgba(0,0,0,0.3);
             transition: opacity 0.3s ease;
+            display: block;
         }
+        #resize-handle {
+            position: absolute; bottom: 6px; right: 6px;
+            width: 22px; height: 22px; cursor: nwse-resize;
+            background: rgba(124,58,237,0.6); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s;
+            z-index: 10;
+        }
+        #resize-handle::after {
+            content: ''; width: 10px; height: 10px;
+            border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+        }
+        #image-wrapper:hover #resize-handle { opacity: 1; }
         #image-label {
             margin-top: 8px; font-size: 0.9em; color: #888;
             font-variant-numeric: tabular-nums;
             display: flex; align-items: center; justify-content: center; gap: 4px;
+            overflow-x: auto; max-width: 100%;
         }
         #frame-input {
             width: 5em; text-align: center; font-size: 1em;
@@ -94,6 +114,17 @@
             justify-content: center; margin-bottom: 16px;
             width: 100%; max-width: 800px;
         }
+        #nav-group, #action-group {
+            display: flex; gap: 8px; justify-content: center;
+        }
+        @media (max-width: 500px) {
+            #controls { gap: 6px; }
+            #nav-group, #action-group { width: 100%; }
+            #nav-group { order: 0; }
+            #action-group { order: 1; flex-wrap: wrap; }
+            #action-group button { flex: 1; min-width: 0; padding: 10px 8px; font-size: 0.9em; }
+            #action-group .btn-reset-loop { flex: 0 0 auto; }
+        }
         button {
             padding: 10px 20px; border: none; border-radius: 8px;
             font-size: 1em; cursor: pointer; font-weight: 600;
@@ -109,7 +140,30 @@
         .btn-pause   { background: #d97706; color: white; }
         .btn-export  { background: #7c3aed; color: white; }
         .btn-reset-loop { background: #991b1b; color: white; min-width: 48px; padding: 10px 12px; }
-        #json-name { color: #7c3aed; font-size: 0.95em; margin-right: 6px; }
+        #frame-table {
+            border-collapse: separate; border-spacing: 0;
+            margin: 0 auto;
+            border: 1px solid rgba(124,58,237,0.25);
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(30,41,59,0.5);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+            max-width: 100%;
+        }
+        #frame-table td {
+            padding: 6px 14px;
+            white-space: nowrap;
+        }
+        #frame-table td:not(:last-child) {
+            border-right: 1px solid rgba(124,58,237,0.2);
+        }
+        @media (max-width: 500px) {
+            #frame-table td { padding: 5px 8px; font-size: 0.85em; }
+            #frame-input { width: 3.5em; font-size: 0.9em; }
+        }
+        #json-name { color: #a78bfa; font-size: 0.9em; font-weight: 500; }
+        #scene-pos { color: #a78bfa; font-size: 0.85em; letter-spacing: 0.5px; }
+        #scene-label { color: #64748b; font-size: 0.8em; margin-right: 4px; }
         button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
         button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
         button:active:not(:disabled) { transform: translateY(0px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -260,20 +314,33 @@
 <body>
     <div id="status-bar"><span class="status-dot"></span><span class="status-text">Loading...</span></div>
     <div id="image-container">
-        <img id="main-image" src="" alt="Generated image" hidden>
-        <div id="image-label"><span id="json-name"></span>Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></div>
+        <div id="image-wrapper">
+            <img id="main-image" src="" alt="Generated image" hidden>
+            <div id="resize-handle"></div>
+        </div>
+        <div id="image-label">
+            <table id="frame-table"><tr>
+                <td><span id="json-name"></span></td>
+                <td>Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></td>
+                <td><span id="scene-label">Scene</span> <span id="scene-pos"></span></td>
+            </tr></table>
+        </div>
     </div>
     <div id="controls">
-        <button class="btn-nav" id="btn-back">&lsaquo;</button>
-        <button class="btn-nav-scene" id="btn-scene-back">&laquo;</button>
-        <button class="btn-nav-scene" id="btn-scene-forward">&raquo;</button>
-        <button class="btn-nav" id="btn-forward">&rsaquo;</button>
-        <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
-        <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
-        <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
-        <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
-        <button class="btn-export" id="btn-export">&#128190; Export</button>
-        <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9762;</button>
+        <div id="nav-group">
+            <button class="btn-nav" id="btn-back">&lsaquo;</button>
+            <button class="btn-nav-scene" id="btn-scene-back">&laquo;</button>
+            <button class="btn-nav-scene" id="btn-scene-forward">&raquo;</button>
+            <button class="btn-nav" id="btn-forward">&rsaquo;</button>
+        </div>
+        <div id="action-group">
+            <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
+            <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
+            <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
+            <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
+            <button class="btn-export" id="btn-export">&#128190; Export</button>
+            <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9762;</button>
+        </div>
     </div>
     <div id="settings-panel">
         <div id="settings-tabs">
@@ -452,7 +519,7 @@
     let isLiveMode = true;
     let loopStatus = '';
     let minImageIndex = 0;
-    let sceneStarts = [];
+    let scenes = [];  // [{start, length}, ...]
     const POLL_MS = 1500;
 
     // --- API helpers ---
@@ -483,7 +550,7 @@
             const data = await statusResp.json();
             const progress = await progressResp.json();
             const scenesData = await scenesResp.json();
-            sceneStarts = scenesData.scenes || [];
+            scenes = scenesData.scenes || [];
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
             minImageIndex = data.has_input_image ? 0 : 1;
@@ -491,7 +558,7 @@
             // Update JSON name display
             const jsonNameEl = document.getElementById('json-name');
             if (data.json_name) {
-                jsonNameEl.textContent = data.json_name + ' \u2014 ';
+                jsonNameEl.textContent = data.json_name;
             } else {
                 jsonNameEl.textContent = '';
             }
@@ -546,6 +613,19 @@
             fi.classList.remove('invalid');
         }
         document.getElementById('frame-total').textContent = latestIndex;
+
+        // Scene position indicator
+        var sp = document.getElementById('scene-pos');
+        var found = false;
+        for (var i = scenes.length - 1; i >= 0; i--) {
+            if (viewIndex >= scenes[i].start) {
+                var posInScene = viewIndex - scenes[i].start + 1;
+                sp.textContent = '(' + posInScene + ' / ' + scenes[i].length + ')';
+                found = true;
+                break;
+            }
+        }
+        if (!found) sp.textContent = '';
     }
 
     function loadImage() {
@@ -592,8 +672,8 @@
     function goSceneBack() {
         // Jump to the largest scene start that is less than viewIndex
         let target = -1;
-        for (let i = sceneStarts.length - 1; i >= 0; i--) {
-            if (sceneStarts[i] < viewIndex) { target = sceneStarts[i]; break; }
+        for (let i = scenes.length - 1; i >= 0; i--) {
+            if (scenes[i].start < viewIndex) { target = scenes[i].start; break; }
         }
         if (target >= minImageIndex) {
             viewIndex = target;
@@ -607,8 +687,8 @@
     function goSceneForward() {
         // Jump to the smallest scene start that is greater than viewIndex
         let target = -1;
-        for (let i = 0; i < sceneStarts.length; i++) {
-            if (sceneStarts[i] > viewIndex) { target = sceneStarts[i]; break; }
+        for (let i = 0; i < scenes.length; i++) {
+            if (scenes[i].start > viewIndex) { target = scenes[i].start; break; }
         }
         if (target >= 0 && target <= latestIndex) {
             viewIndex = target;
@@ -653,8 +733,8 @@
         document.getElementById('btn-back').disabled = (viewIndex <= minImageIndex);
         document.getElementById('btn-forward').disabled = (viewIndex >= latestIndex);
         // Scene buttons: disable if no scene to jump to in that direction
-        const hasPrevScene = sceneStarts.some(s => s < viewIndex && s >= minImageIndex);
-        const hasNextScene = sceneStarts.some(s => s > viewIndex && s <= latestIndex);
+        const hasPrevScene = scenes.some(s => s.start < viewIndex && s.start >= minImageIndex);
+        const hasNextScene = scenes.some(s => s.start > viewIndex && s.start <= latestIndex);
         document.getElementById('btn-scene-back').disabled = !hasPrevScene;
         document.getElementById('btn-scene-forward').disabled = !hasNextScene;
         document.getElementById('btn-restart').disabled = (viewIndex < 1 || loopStatus === 'stopped');
@@ -1260,6 +1340,44 @@
 
     setInterval(fetchStatus, POLL_MS);
     fetchStatus();
+
+    // --- Resizable image ---
+    (function() {
+        var wrapper = document.getElementById('image-wrapper');
+        var handle = document.getElementById('resize-handle');
+        var KEY = 'looper-img-width';
+        var saved = localStorage.getItem(KEY);
+        // Default: 90vw on mobile, 800px on desktop
+        var defaultW = window.innerWidth <= 768 ? Math.round(window.innerWidth * 0.9) : 800;
+        if (saved) wrapper.style.width = saved + 'px';
+        else wrapper.style.width = defaultW + 'px';
+
+        var startX, startW;
+        function onPointerDown(e) {
+            e.preventDefault();
+            startX = e.clientX || (e.touches && e.touches[0].clientX);
+            startW = wrapper.offsetWidth;
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchmove', onPointerMove, {passive: false});
+            document.addEventListener('touchend', onPointerUp);
+        }
+        function onPointerMove(e) {
+            e.preventDefault();
+            var cx = e.clientX || (e.touches && e.touches[0].clientX);
+            var newW = Math.max(200, Math.min(startW + (cx - startX) * 2, window.innerWidth - 24));
+            wrapper.style.width = newW + 'px';
+        }
+        function onPointerUp() {
+            localStorage.setItem(KEY, wrapper.offsetWidth);
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchmove', onPointerMove);
+            document.removeEventListener('touchend', onPointerUp);
+        }
+        handle.addEventListener('mousedown', onPointerDown);
+        handle.addEventListener('touchstart', onPointerDown, {passive: false});
+    })();
     </script>
 </body>
 </html>
