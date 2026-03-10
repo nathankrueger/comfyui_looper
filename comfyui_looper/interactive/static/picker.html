@@ -35,7 +35,13 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             transition: max-width 0.2s ease;
         }
-        .card.editor-active { max-width: 95vw; }
+        @media (min-width: 700px) {
+            .card.editor-active { max-width: 95vw; }
+        }
+        @media (max-width: 699px) {
+            body { padding: 12px 4px; }
+            .card { padding: 12px 8px; }
+        }
         .card-header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 12px;
@@ -116,8 +122,7 @@
             border: 1px solid #334155; border-radius: 6px;
             background: #0f172a; overflow: hidden;
             min-height: 200px; height: 50vh;
-            min-width: 100%;
-            resize: both;
+            resize: vertical;
         }
         .editor-wrap::-webkit-resizer { background: #0f172a; }
         .editor-wrap.focus { border-color: #7c3aed; }
