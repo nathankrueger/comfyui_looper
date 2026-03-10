@@ -1,24 +1,36 @@
 #!/bin/bash
 set -e
 
+# --- Platform detection ---
+is_wsl() {
+    [ -f /proc/version ] && grep -qi 'microsoft\|wsl' /proc/version
+}
+
 # --- Defaults for script-only flags ---
-WINDOWS_HOST_IP=$(ip route show default | awk '{print $3}')
-COMFYUI_PYTHON="/mnt/e/ComfyUI_windows_portable/python_embeded/python.exe"
-COMFYUI_MAIN="/mnt/e/ComfyUI_windows_portable/ComfyUI/main.py"
-COMFYUI_URL="http://${WINDOWS_HOST_IP}:8188"
 COMFYUI_WAIT=10
 LOOPER_PORT=8080
 VENV_DIR=".venv"
+
+if is_wsl; then
+    WINDOWS_HOST_IP=$(ip route show default | awk '{print $3}')
+    COMFYUI_PYTHON="/mnt/e/ComfyUI_windows_portable/python_embeded/python.exe"
+    COMFYUI_MAIN="/mnt/e/ComfyUI_windows_portable/ComfyUI/main.py"
+    COMFYUI_URL="http://${WINDOWS_HOST_IP}:8188"
+else
+    COMFYUI_PYTHON=""
+    COMFYUI_MAIN=""
+    COMFYUI_URL="http://localhost:8188"
+fi
 
 usage() {
     cat <<EOF
 Usage: $0 [script-options] [-- main.py options]
 
 Script options (parsed by this script):
-  -P <path>     ComfyUI python.exe path (default: $COMFYUI_PYTHON)
-  -M <path>     ComfyUI main.py path (default: $COMFYUI_MAIN)
   -u <url>      ComfyUI server URL (default: $COMFYUI_URL)
-  -s <seconds>  Seconds to wait for ComfyUI to start (default: $COMFYUI_WAIT)
+  -P <path>     ComfyUI python.exe path (WSL only, default: $COMFYUI_PYTHON)
+  -M <path>     ComfyUI main.py path (WSL only, default: $COMFYUI_MAIN)
+  -s <seconds>  Seconds to wait for ComfyUI to start (WSL only, default: $COMFYUI_WAIT)
   -L <port>     Looper web UI port (default: $LOOPER_PORT)
   -v <path>     Python venv directory (default: $VENV_DIR)
   -h            Show this help
@@ -36,6 +48,7 @@ Examples:
   $0 -j data/evolution.json                  # auto-named output folder
   $0 -i photo.png -o output/run1 -j data/evolution.json -w flux1d
   $0 -L 8080 -s 60 -- -j data/test.json -z  # script flags, then main.py flags
+  $0 -u http://192.168.1.100:8188            # point at remote ComfyUI (Mac/Pi/etc.)
 EOF
     exit 1
 }
@@ -78,7 +91,7 @@ check_comfyui() {
 
 if check_comfyui; then
     echo "ComfyUI is already running at $COMFYUI_URL"
-else
+elif is_wsl; then
     echo "ComfyUI not detected at $COMFYUI_URL, launching..."
 
     if [ ! -f "$COMFYUI_PYTHON" ]; then
@@ -113,6 +126,11 @@ else
             echo "Warning: ComfyUI not responding after ${COMFYUI_WAIT}s. Proceeding anyway..."
         fi
     fi
+else
+    echo "Error: ComfyUI not reachable at $COMFYUI_URL"
+    echo "Ensure ComfyUI is running on your remote machine and pass -u <url>"
+    echo "Example: $0 -u http://192.168.1.100:8188"
+    exit 1
 fi
 
 # --- Launch looper in interactive mode ---
