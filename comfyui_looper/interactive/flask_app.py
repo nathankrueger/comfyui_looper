@@ -14,6 +14,11 @@ from utils.json_spec import EMPTY_OBJECT, EMPTY_LIST, LoraFilter, Canny, ConDelt
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
 
 
+def _strip_json_comments(text: str) -> str:
+    """Remove single-line // comments from JSON text (same as SettingsManager)."""
+    return re.sub(r'^\s*//.*$', '', text, flags=re.MULTILINE)
+
+
 def _loop_img_filename(idx: int) -> str:
     return f"loop_img_{idx:06}.png"
 
@@ -139,7 +144,7 @@ def create_app(app_state: AppState) -> Flask:
         if content is not None:
             # Validate JSON
             try:
-                json_mod.loads(content)
+                json_mod.loads(_strip_json_comments(content))
             except json_mod.JSONDecodeError as e:
                 return jsonify({'error': f'Invalid JSON: {e}'}), 400
             with open(dest_path, 'w', encoding='utf-8') as f:
@@ -189,7 +194,7 @@ def create_app(app_state: AppState) -> Flask:
         if not os.path.isfile(abs_path):
             return jsonify({'error': 'File not found'}), 404
         try:
-            json_mod.loads(content)
+            json_mod.loads(_strip_json_comments(content))
         except json_mod.JSONDecodeError as e:
             return jsonify({'error': f'Invalid JSON: {e}'}), 400
         with open(abs_path, 'w', encoding='utf-8') as f:
