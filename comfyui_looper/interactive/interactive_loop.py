@@ -249,7 +249,7 @@ def interactive_looper_main(
                         )
                         state.set_warning(None)
                         break  # Success
-                    except (ConnectionError, OSError) as e:
+                    except Exception as e:
                         msg = f"Connection lost, retrying in {backoff}s..."
                         logger.warning("Iteration %d: %s — %s", iter, msg, e)
                         log_file.write(f"[WARNING] {msg} {e}\n")

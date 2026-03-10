@@ -1,8 +1,10 @@
 import io
 import json
+import socket
 import time
 import uuid
 import logging
+import platform
 import requests
 import websocket
 
@@ -10,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECS = 2
+
+# TCP keepalive settings — detect dead connections quickly after sleep/wake
+KEEPALIVE_IDLE_SECS = 10   # seconds before first keepalive probe
+KEEPALIVE_INTERVAL_SECS = 5  # seconds between probes
+KEEPALIVE_COUNT = 3          # probes before declaring dead
 
 
 class ComfyUIClient:
@@ -49,6 +56,8 @@ class ComfyUIClient:
         condition where the completion message arrives before we start listening.
 
         If the WebSocket connection drops (e.g. laptop sleep), retries with backoff.
+        TCP keepalive is enabled so the OS detects dead connections quickly after
+        sleep/wake instead of hanging for minutes.
         """
         last_exc = None
         for attempt in range(1, MAX_RETRIES + 1):
@@ -58,10 +67,13 @@ class ComfyUIClient:
                 ws = websocket.create_connection(
                     f"{ws_url}/ws?clientId={self.client_id}", timeout=600
                 )
+                self._enable_keepalive(ws)
                 prompt_id = self._queue_prompt(workflow)
                 self._wait_for_completion(ws, prompt_id)
                 return self.get_history(prompt_id)
-            except (websocket.WebSocketException, OSError, ConnectionError) as e:
+            except RuntimeError:
+                raise  # ComfyUI execution error — don't retry
+            except Exception as e:
                 last_exc = e
                 logger.warning(
                     "WebSocket connection failed (attempt %d/%d): %s. Retrying...",
@@ -84,6 +96,25 @@ class ComfyUIClient:
             f"Lost connection to ComfyUI after {MAX_RETRIES} attempts: {last_exc}"
         )
 
+    @staticmethod
+    def _enable_keepalive(ws):
+        """Enable TCP keepalive on a WebSocket so the OS detects dead connections
+        quickly after sleep/wake, instead of hanging on recv() for minutes."""
+        try:
+            sock = ws.sock
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            if platform.system() == "Darwin":
+                # macOS: TCP_KEEPALIVE is the idle time before first probe
+                sock.setsockopt(socket.IPPROTO_TCP, 0x10, KEEPALIVE_IDLE_SECS)  # TCP_KEEPALIVE
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, KEEPALIVE_INTERVAL_SECS)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, KEEPALIVE_COUNT)
+            elif platform.system() == "Linux":
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, KEEPALIVE_IDLE_SECS)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, KEEPALIVE_INTERVAL_SECS)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, KEEPALIVE_COUNT)
+        except OSError as e:
+            logger.debug("Could not set TCP keepalive: %s", e)
+
     def _queue_prompt(self, workflow: dict) -> str:
         """Submit a workflow to the prompt queue. Returns the prompt_id."""
         payload = {"prompt": workflow, "client_id": self.client_id}
@@ -95,34 +126,25 @@ class ComfyUIClient:
     def _wait_for_completion(self, ws, prompt_id: str):
         """Block until the given prompt finishes executing, using an already-connected WebSocket.
 
-        Raises websocket.WebSocketException or OSError on connection loss (handled
-        by execute_workflow's retry loop), and RuntimeError on ComfyUI execution errors
-        or timeouts.
+        Raises RuntimeError for ComfyUI execution errors (non-retryable).
+        All other exceptions (connection loss, JSON errors, timeouts) propagate
+        to execute_workflow's retry loop.
         """
-        try:
-            while True:
-                message = json.loads(ws.recv())
-                msg_type = message.get("type")
+        while True:
+            message = json.loads(ws.recv())
+            msg_type = message.get("type")
 
-                if msg_type == "executing":
-                    data = message.get("data", {})
-                    if data.get("prompt_id") == prompt_id and data.get("node") is None:
-                        # Execution complete
-                        break
+            if msg_type == "executing":
+                data = message.get("data", {})
+                if data.get("prompt_id") == prompt_id and data.get("node") is None:
+                    break  # Execution complete
 
-                elif msg_type == "execution_error":
-                    data = message.get("data", {})
-                    if data.get("prompt_id") == prompt_id:
-                        raise RuntimeError(
-                            f"ComfyUI execution error: {data.get('exception_message', 'unknown error')}"
-                        )
-        except websocket.WebSocketTimeoutException:
-            raise RuntimeError(
-                f"Timed out waiting for ComfyUI to complete prompt {prompt_id}. "
-                "The server may be overloaded or unreachable."
-            )
-        except (websocket.WebSocketException, OSError):
-            raise  # Let execute_workflow's retry loop handle connection errors
+            elif msg_type == "execution_error":
+                data = message.get("data", {})
+                if data.get("prompt_id") == prompt_id:
+                    raise RuntimeError(
+                        f"ComfyUI execution error: {data.get('exception_message', 'unknown error')}"
+                    )
 
     def get_history(self, prompt_id: str) -> dict:
         """Get execution history/results for a prompt."""

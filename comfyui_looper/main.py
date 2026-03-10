@@ -1,9 +1,16 @@
 import os
 import sys
 import signal
+import logging
 import argparse
 from datetime import datetime
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%H:%M:%S',
+)
 
 from workflow.engine_factory import get_all_workflows, create_workflow
 from workflow.looper_workflow import looper_main

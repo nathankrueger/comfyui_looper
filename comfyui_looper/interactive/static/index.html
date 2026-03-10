@@ -711,7 +711,8 @@
 
     async function doRestart() {
         if (viewIndex < 1) return;
-        if (!confirm('Restart from image ' + viewIndex + '?\n\nThis will delete image ' +
+        if (viewIndex < latestIndex &&
+            !confirm('Restart from image ' + viewIndex + '?\n\nThis will delete image ' +
             viewIndex + ' and all images after it, then regenerate with a new seed.')) {
             return;
         }

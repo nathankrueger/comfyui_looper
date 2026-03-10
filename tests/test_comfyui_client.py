@@ -148,11 +148,12 @@ class TestWaitForCompletion:
             client._wait_for_completion(mock_ws, "abc-123")
 
     def test_raises_on_websocket_timeout(self, client):
+        """WebSocketTimeoutException now propagates raw (retryable by execute_workflow)."""
         import websocket as ws_module
         mock_ws = MagicMock()
         mock_ws.recv.side_effect = ws_module.WebSocketTimeoutException()
 
-        with pytest.raises(RuntimeError, match="Timed out"):
+        with pytest.raises(ws_module.WebSocketTimeoutException):
             client._wait_for_completion(mock_ws, "abc-123")
 
 
