@@ -31,6 +31,7 @@ class LoopState:
         self._export_error: Optional[str] = None
         self._export_file: Optional[str] = None
         self._frame_overrides: dict[str, Any] = {}
+        self._warning: Optional[str] = None
         self._settings_manager = None
         self._iteration_timestamps: list[float] = []
         self._iter_start_time: Optional[float] = None
@@ -134,6 +135,16 @@ class LoopState:
     def get_error(self) -> Optional[str]:
         with self._lock:
             return self._error
+
+    # --- Warning (transient, non-fatal) ---
+
+    def set_warning(self, warning: Optional[str]):
+        with self._lock:
+            self._warning = warning
+
+    def get_warning(self) -> Optional[str]:
+        with self._lock:
+            return self._warning
 
     # --- Export ---
 

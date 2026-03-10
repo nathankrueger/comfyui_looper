@@ -80,6 +80,7 @@
             transition: opacity 0.3s ease;
             display: block;
         }
+        #image-container img[hidden] { display: none; }
         #resize-handle {
             position: absolute; bottom: 6px; right: 6px;
             width: 22px; height: 22px; cursor: nwse-resize;
@@ -569,6 +570,7 @@
             let info = 'Iter ' + displayIter + '/' + data.total_iterations +
                 ' \u00b7 Image ' + latestIndex;
             if (data.error) info += ' \u00b7 ' + data.error;
+            if (data.warning) info += ' \u00b7 \u26a0 ' + data.warning;
             let timeInfo = '';
             if (data.status === 'running' && progress.avg_secs != null) {
                 timeInfo = ' \u00b7 ~' + formatDuration(progress.avg_secs) + '/iter' +

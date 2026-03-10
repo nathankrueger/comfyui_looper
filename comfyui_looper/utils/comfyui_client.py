@@ -47,18 +47,42 @@ class ComfyUIClient:
 
         The websocket is connected BEFORE submitting the prompt to avoid a race
         condition where the completion message arrives before we start listening.
-        """
-        ws_url = self.server_url.replace("http://", "ws://").replace("https://", "wss://")
-        ws = websocket.create_connection(
-            f"{ws_url}/ws?clientId={self.client_id}", timeout=600
-        )
 
-        try:
-            prompt_id = self._queue_prompt(workflow)
-            self._wait_for_completion(ws, prompt_id)
-            return self.get_history(prompt_id)
-        finally:
-            ws.close()
+        If the WebSocket connection drops (e.g. laptop sleep), retries with backoff.
+        """
+        last_exc = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            ws = None
+            try:
+                ws_url = self.server_url.replace("http://", "ws://").replace("https://", "wss://")
+                ws = websocket.create_connection(
+                    f"{ws_url}/ws?clientId={self.client_id}", timeout=600
+                )
+                prompt_id = self._queue_prompt(workflow)
+                self._wait_for_completion(ws, prompt_id)
+                return self.get_history(prompt_id)
+            except (websocket.WebSocketException, OSError, ConnectionError) as e:
+                last_exc = e
+                logger.warning(
+                    "WebSocket connection failed (attempt %d/%d): %s. Retrying...",
+                    attempt, MAX_RETRIES, e,
+                )
+                if attempt < MAX_RETRIES:
+                    time.sleep(RETRY_BACKOFF_SECS * attempt)
+                    # Verify server is reachable before retrying
+                    try:
+                        self.check_server()
+                    except ConnectionError:
+                        pass  # Will retry anyway
+            finally:
+                if ws is not None:
+                    try:
+                        ws.close()
+                    except Exception:
+                        pass
+        raise ConnectionError(
+            f"Lost connection to ComfyUI after {MAX_RETRIES} attempts: {last_exc}"
+        )
 
     def _queue_prompt(self, workflow: dict) -> str:
         """Submit a workflow to the prompt queue. Returns the prompt_id."""
@@ -69,7 +93,12 @@ class ComfyUIClient:
         return resp.json()["prompt_id"]
 
     def _wait_for_completion(self, ws, prompt_id: str):
-        """Block until the given prompt finishes executing, using an already-connected WebSocket."""
+        """Block until the given prompt finishes executing, using an already-connected WebSocket.
+
+        Raises websocket.WebSocketException or OSError on connection loss (handled
+        by execute_workflow's retry loop), and RuntimeError on ComfyUI execution errors
+        or timeouts.
+        """
         try:
             while True:
                 message = json.loads(ws.recv())
@@ -92,6 +121,8 @@ class ComfyUIClient:
                 f"Timed out waiting for ComfyUI to complete prompt {prompt_id}. "
                 "The server may be overloaded or unreachable."
             )
+        except (websocket.WebSocketException, OSError):
+            raise  # Let execute_workflow's retry loop handle connection errors
 
     def get_history(self, prompt_id: str) -> dict:
         """Get execution history/results for a prompt."""

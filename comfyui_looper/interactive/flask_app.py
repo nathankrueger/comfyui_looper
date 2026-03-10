@@ -297,6 +297,7 @@ def create_app(app_state: AppState) -> Flask:
             'total_iterations': state.get_total_iterations(),
             'latest_image_index': state.get_latest_image_index(),
             'error': state.get_error(),
+            'warning': state.get_warning(),
             'json_name': app_state.get_current_json_name(),
             'has_input_image': state.has_input_image(),
         })

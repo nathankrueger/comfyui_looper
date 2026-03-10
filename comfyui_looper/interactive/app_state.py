@@ -1,10 +1,13 @@
 import os
+import logging
 import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from interactive.loop_state import LoopState
+
+logger = logging.getLogger(__name__)
 from interactive.interactive_loop import interactive_looper_main
 from workflow.engine_factory import create_workflow
 from utils.json_spec import SettingsManager
@@ -122,7 +125,7 @@ class AppState:
                         no_input_image=no_input_image,
                     )
                 except Exception as e:
-                    print(f"Loop thread error: {e}")
+                    logger.error("Loop thread error: %s", e, exc_info=True)
                 finally:
                     try:
                         log_file.close()

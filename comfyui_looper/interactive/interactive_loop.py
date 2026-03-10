@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+import logging
 from typing import IO
 from dataclasses import fields
 from PIL.PngImagePlugin import PngInfo
@@ -12,6 +13,11 @@ from utils.image_store import ImageStore
 from utils.util import get_loop_img_filename
 from workflow.looper_workflow import WorkflowEngine
 from interactive.loop_state import LoopState, LoopStatus
+
+logger = logging.getLogger(__name__)
+
+RECONNECT_BACKOFF_SECS = 10
+RECONNECT_MAX_BACKOFF_SECS = 60
 
 
 def _apply_engine_defaults(engine: WorkflowEngine, loopsettings: LoopSettings):
@@ -223,19 +229,39 @@ def interactive_looper_main(
                 state.set_status(LoopStatus.RUNNING)
                 state.mark_iteration_start()
 
-                prev_seed = _run_iteration(
-                    engine=engine,
-                    sm=sm,
-                    iter=iter,
-                    total_iter=total_iter,
-                    loop_img_path=loop_img_path,
-                    output_folder=output_folder,
-                    log_file=log_file,
-                    state=state,
-                    image_store=image_store,
-                    prev_seed=prev_seed,
-                    no_input_image=no_input_image,
-                )
+                # Retry indefinitely on connection errors (e.g. laptop sleep).
+                # Keeps trying until ComfyUI comes back or the user stops.
+                backoff = RECONNECT_BACKOFF_SECS
+                while True:
+                    try:
+                        prev_seed = _run_iteration(
+                            engine=engine,
+                            sm=sm,
+                            iter=iter,
+                            total_iter=total_iter,
+                            loop_img_path=loop_img_path,
+                            output_folder=output_folder,
+                            log_file=log_file,
+                            state=state,
+                            image_store=image_store,
+                            prev_seed=prev_seed,
+                            no_input_image=no_input_image,
+                        )
+                        state.set_warning(None)
+                        break  # Success
+                    except (ConnectionError, OSError) as e:
+                        msg = f"Connection lost, retrying in {backoff}s..."
+                        logger.warning("Iteration %d: %s — %s", iter, msg, e)
+                        log_file.write(f"[WARNING] {msg} {e}\n")
+                        log_file.flush()
+                        state.set_warning(msg)
+                        # Wait with stop-request checking
+                        for _ in range(backoff):
+                            if state.is_stop_requested():
+                                state.set_status(LoopStatus.STOPPED)
+                                return
+                            time.sleep(1)
+                        backoff = min(backoff * 2, RECONNECT_MAX_BACKOFF_SECS)
 
                 state.mark_iteration_complete()
                 iter += 1
