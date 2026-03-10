@@ -10,7 +10,7 @@ ComfyUI Looper generates psychedelic looping animations by repeatedly feeding im
 
 ### Run tests
 ```bash
-pytest
+./run_tests.sh
 ```
 
 ### Run a single test

@@ -301,6 +301,19 @@ def create_app(app_state: AppState) -> Flask:
             'has_input_image': state.has_input_image(),
         })
 
+    @app.route('/api/scenes')
+    def api_scenes():
+        state = _require_loop_state()
+        if state is None:
+            return jsonify({'scenes': []})
+        sm = state.get_settings_manager()
+        if sm is None:
+            return jsonify({'scenes': []})
+        scenes = []
+        for ls in sm.workflow.all_settings:
+            scenes.append(ls.offset + 1)
+        return jsonify({'scenes': scenes})
+
     @app.route('/api/image/<int:index>')
     def api_image(index: int):
         state = _require_loop_state()

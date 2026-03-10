@@ -102,6 +102,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .btn-nav     { background: #334155; color: #e0e0e0; min-width: 48px; padding: 10px 12px; }
+        .btn-nav-scene { background: #475569; color: #e0e0e0; min-width: 48px; padding: 10px 12px; }
         .btn-sync    { background: #2563eb; color: white; }
         .btn-restart { background: #dc2626; color: white; }
         .btn-resume  { background: #16a34a; color: white; }
@@ -263,8 +264,10 @@
         <div id="image-label"><span id="json-name"></span>Image <input id="frame-input" type="text" value="0"> / <span id="frame-total">0</span></div>
     </div>
     <div id="controls">
-        <button class="btn-nav" id="btn-back">&laquo;&laquo;</button>
-        <button class="btn-nav" id="btn-forward">&raquo;&raquo;</button>
+        <button class="btn-nav" id="btn-back">&lsaquo;</button>
+        <button class="btn-nav-scene" id="btn-scene-back">&laquo;</button>
+        <button class="btn-nav-scene" id="btn-scene-forward">&raquo;</button>
+        <button class="btn-nav" id="btn-forward">&rsaquo;</button>
         <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
         <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
         <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
@@ -449,6 +452,7 @@
     let isLiveMode = true;
     let loopStatus = '';
     let minImageIndex = 0;
+    let sceneStarts = [];
     const POLL_MS = 1500;
 
     // --- API helpers ---
@@ -471,12 +475,15 @@
 
     async function fetchStatus() {
         try {
-            const [statusResp, progressResp] = await Promise.all([
+            const [statusResp, progressResp, scenesResp] = await Promise.all([
                 fetch('/api/status'),
                 fetch('/api/progress'),
+                fetch('/api/scenes'),
             ]);
             const data = await statusResp.json();
             const progress = await progressResp.json();
+            const scenesData = await scenesResp.json();
+            sceneStarts = scenesData.scenes || [];
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
             minImageIndex = data.has_input_image ? 0 : 1;
@@ -582,6 +589,36 @@
         }
     }
 
+    function goSceneBack() {
+        // Jump to the largest scene start that is less than viewIndex
+        let target = -1;
+        for (let i = sceneStarts.length - 1; i >= 0; i--) {
+            if (sceneStarts[i] < viewIndex) { target = sceneStarts[i]; break; }
+        }
+        if (target >= minImageIndex) {
+            viewIndex = target;
+            isLiveMode = false;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
+    function goSceneForward() {
+        // Jump to the smallest scene start that is greater than viewIndex
+        let target = -1;
+        for (let i = 0; i < sceneStarts.length; i++) {
+            if (sceneStarts[i] > viewIndex) { target = sceneStarts[i]; break; }
+        }
+        if (target >= 0 && target <= latestIndex) {
+            viewIndex = target;
+            if (viewIndex === latestIndex) isLiveMode = true;
+            loadImage();
+            loadSettings();
+            updateButtons();
+        }
+    }
+
     function doSync() {
         viewIndex = latestIndex;
         isLiveMode = true;
@@ -615,6 +652,11 @@
     function updateButtons() {
         document.getElementById('btn-back').disabled = (viewIndex <= minImageIndex);
         document.getElementById('btn-forward').disabled = (viewIndex >= latestIndex);
+        // Scene buttons: disable if no scene to jump to in that direction
+        const hasPrevScene = sceneStarts.some(s => s < viewIndex && s >= minImageIndex);
+        const hasNextScene = sceneStarts.some(s => s > viewIndex && s <= latestIndex);
+        document.getElementById('btn-scene-back').disabled = !hasPrevScene;
+        document.getElementById('btn-scene-forward').disabled = !hasNextScene;
         document.getElementById('btn-restart').disabled = (viewIndex < 1 || loopStatus === 'stopped');
 
         const isPaused = (loopStatus === 'paused');
@@ -673,6 +715,8 @@
 
     setupHoldRepeat(document.getElementById('btn-back'), goBack);
     setupHoldRepeat(document.getElementById('btn-forward'), goForward);
+    document.getElementById('btn-scene-back').addEventListener('click', goSceneBack);
+    document.getElementById('btn-scene-forward').addEventListener('click', goSceneForward);
     document.getElementById('btn-sync').addEventListener('click', doSync);
     document.getElementById('btn-restart').addEventListener('click', doRestart);
     document.getElementById('btn-resume').addEventListener('click', doResume);

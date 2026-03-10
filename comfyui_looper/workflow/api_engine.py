@@ -1,5 +1,6 @@
 import os
 import math
+import uuid
 import tempfile
 from PIL import Image, ImageOps
 
@@ -70,43 +71,45 @@ class APIWorkflowEngine(WorkflowEngine):
         self.client.check_server()
 
     def compute_iteration(self, image: Image.Image, loopsettings: LoopSettings) -> Image.Image:
-        # 1. Save image to temp PNG
+        uid = uuid.uuid4().hex[:8]
         temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, "looper_upload.png")
-        image.save(temp_path, compress_level=0)
+        temp_path = os.path.join(temp_dir, f"looper_upload_{uid}.png")
+        result_path = os.path.join(temp_dir, f"looper_result_{uid}.png")
 
-        # 2. Upload to ComfyUI server
-        server_filename = self.client.upload_image(temp_path)
+        try:
+            # 1. Save image to temp PNG
+            image.save(temp_path, compress_level=0)
 
-        # 3. Build workflow JSON
-        workflow = self.builder_fn(server_filename, loopsettings, self.DEFAULT_SETTING_DICT)
+            # 2. Upload to ComfyUI server
+            server_filename = self.client.upload_image(temp_path)
 
-        # 4. Execute workflow
-        history = self.client.execute_workflow(workflow)
+            # 3. Build workflow JSON
+            workflow = self.builder_fn(server_filename, loopsettings, self.DEFAULT_SETTING_DICT)
 
-        # 5. Find output image in history
-        output_images = self.client.get_output_images(history)
-        if not output_images:
-            raise RuntimeError("ComfyUI returned no output images")
+            # 4. Execute workflow
+            history = self.client.execute_workflow(workflow)
 
-        # 6. Download output image
-        out_info = output_images[0]
-        result_path = os.path.join(temp_dir, "looper_result.png")
-        self.client.download_image(
-            filename=out_info["filename"],
-            subfolder=out_info.get("subfolder", ""),
-            image_type=out_info.get("type", "output"),
-            save_path=result_path,
-        )
+            # 5. Find output image in history
+            output_images = self.client.get_output_images(history)
+            if not output_images:
+                raise RuntimeError("ComfyUI returned no output images")
 
-        # 7. Load result image
-        result_img = Image.open(result_path)
-        result_img = ImageOps.exif_transpose(result_img)
-        result_img = result_img.convert("RGB")
+            # 6. Download output image
+            out_info = output_images[0]
+            self.client.download_image(
+                filename=out_info["filename"],
+                subfolder=out_info.get("subfolder", ""),
+                image_type=out_info.get("type", "output"),
+                save_path=result_path,
+            )
 
-        # Clean up temp files
-        for p in [temp_path, result_path]:
-            if os.path.exists(p):
-                os.remove(p)
+            # 7. Load result image
+            result_img = Image.open(result_path)
+            result_img = ImageOps.exif_transpose(result_img)
+            result_img = result_img.convert("RGB")
 
-        return result_img
+            return result_img
+        finally:
+            for p in [temp_path, result_path]:
+                if os.path.exists(p):
+                    os.remove(p)

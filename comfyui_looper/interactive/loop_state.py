@@ -93,8 +93,8 @@ class LoopState:
     # --- Pause/resume ---
 
     def pause(self):
-        self._pause_event.clear()
         with self._lock:
+            self._pause_event.clear()
             self._status = LoopStatus.PAUSED
 
     def resume(self):

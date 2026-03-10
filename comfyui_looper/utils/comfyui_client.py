@@ -1,8 +1,15 @@
 import io
 import json
+import time
 import uuid
+import logging
 import requests
 import websocket
+
+logger = logging.getLogger(__name__)
+
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECS = 2
 
 
 class ComfyUIClient:
@@ -28,30 +35,41 @@ class ComfyUIClient:
         with open(local_path, "rb") as f:
             files = {"image": (filename, f, "image/png")}
             data = {"overwrite": "true"}
-            resp = requests.post(f"{self.server_url}/upload/image", files=files, data=data, timeout=30)
-            resp.raise_for_status()
+            resp = self._request_with_retry(
+                "POST", f"{self.server_url}/upload/image", files=files, data=data, timeout=30
+            )
 
         result = resp.json()
         return result["name"]
 
     def execute_workflow(self, workflow: dict) -> dict:
-        """Submit a workflow, wait for completion via WebSocket, return output metadata."""
-        prompt_id = self._queue_prompt(workflow)
-        self._wait_for_completion(prompt_id)
-        return self.get_history(prompt_id)
+        """Submit a workflow, wait for completion via WebSocket, return output metadata.
+
+        The websocket is connected BEFORE submitting the prompt to avoid a race
+        condition where the completion message arrives before we start listening.
+        """
+        ws_url = self.server_url.replace("http://", "ws://").replace("https://", "wss://")
+        ws = websocket.create_connection(
+            f"{ws_url}/ws?clientId={self.client_id}", timeout=600
+        )
+
+        try:
+            prompt_id = self._queue_prompt(workflow)
+            self._wait_for_completion(ws, prompt_id)
+            return self.get_history(prompt_id)
+        finally:
+            ws.close()
 
     def _queue_prompt(self, workflow: dict) -> str:
         """Submit a workflow to the prompt queue. Returns the prompt_id."""
         payload = {"prompt": workflow, "client_id": self.client_id}
-        resp = requests.post(f"{self.server_url}/prompt", json=payload, timeout=30)
-        resp.raise_for_status()
+        resp = self._request_with_retry(
+            "POST", f"{self.server_url}/prompt", json=payload, timeout=30
+        )
         return resp.json()["prompt_id"]
 
-    def _wait_for_completion(self, prompt_id: str):
-        """Block until the given prompt finishes executing, using WebSocket."""
-        ws_url = self.server_url.replace("http://", "ws://").replace("https://", "wss://")
-        ws = websocket.create_connection(f"{ws_url}/ws?clientId={self.client_id}", timeout=600)
-
+    def _wait_for_completion(self, ws, prompt_id: str):
+        """Block until the given prompt finishes executing, using an already-connected WebSocket."""
         try:
             while True:
                 message = json.loads(ws.recv())
@@ -69,20 +87,25 @@ class ComfyUIClient:
                         raise RuntimeError(
                             f"ComfyUI execution error: {data.get('exception_message', 'unknown error')}"
                         )
-        finally:
-            ws.close()
+        except websocket.WebSocketTimeoutException:
+            raise RuntimeError(
+                f"Timed out waiting for ComfyUI to complete prompt {prompt_id}. "
+                "The server may be overloaded or unreachable."
+            )
 
     def get_history(self, prompt_id: str) -> dict:
         """Get execution history/results for a prompt."""
-        resp = requests.get(f"{self.server_url}/history/{prompt_id}", timeout=30)
-        resp.raise_for_status()
+        resp = self._request_with_retry(
+            "GET", f"{self.server_url}/history/{prompt_id}", timeout=30
+        )
         return resp.json().get(prompt_id, {})
 
     def download_image(self, filename: str, subfolder: str, image_type: str, save_path: str):
         """Download a generated image from ComfyUI server to a local path."""
         params = {"filename": filename, "subfolder": subfolder, "type": image_type}
-        resp = requests.get(f"{self.server_url}/view", params=params, timeout=30, stream=True)
-        resp.raise_for_status()
+        resp = self._request_with_retry(
+            "GET", f"{self.server_url}/view", params=params, timeout=30, stream=True
+        )
 
         with open(save_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=8192):
@@ -96,3 +119,26 @@ class ComfyUIClient:
                 for img in node_output["images"]:
                     images.append(img)
         return images
+
+    def _request_with_retry(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Make an HTTP request with retry logic for transient network errors."""
+        last_exc = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                resp = requests.request(method, url, **kwargs)
+                resp.raise_for_status()
+                return resp
+            except (requests.ConnectionError, requests.Timeout) as e:
+                last_exc = e
+                if attempt < MAX_RETRIES:
+                    wait = RETRY_BACKOFF_SECS * attempt
+                    logger.warning(
+                        "Request to %s failed (attempt %d/%d): %s. Retrying in %ds...",
+                        url, attempt, MAX_RETRIES, e, wait,
+                    )
+                    time.sleep(wait)
+            except requests.HTTPError:
+                raise  # Don't retry on 4xx/5xx
+        raise ConnectionError(
+            f"Failed to connect to ComfyUI after {MAX_RETRIES} attempts: {last_exc}"
+        )
