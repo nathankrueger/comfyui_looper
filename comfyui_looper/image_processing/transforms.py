@@ -5,7 +5,6 @@ from PIL import Image, ImageOps, ImageEnhance
 from dataclasses import dataclass
 import numpy as np
 import math
-import torch
 import cv2
 
 try:
@@ -955,7 +954,7 @@ def get_elaborated_transform_values(transforms: list[dict[str, Any]], auto_param
             elaborated_transforms.append(elab_tdict)
     return elaborated_transforms
 
-def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], auto_params: AutomaticTransformParams) -> tuple[torch.Tensor, list[dict[str, Any]]]:
+def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]], auto_params: AutomaticTransformParams) -> tuple[Image.Image, list[dict[str, Any]]]:
     i = Image.open(image_path)
     i = ImageOps.exif_transpose(i)
     image = i.convert("RGB")
@@ -969,8 +968,6 @@ def load_image_with_transforms(image_path: str, transforms: list[dict[str, Any]]
             auto_params=auto_params
         )
 
-    image = np.array(image).astype(np.float32) / 255.0
-    image = torch.from_numpy(image)[None,]
     return image, elaborated_transforms
 
 TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in all_subclasses(Transform)}

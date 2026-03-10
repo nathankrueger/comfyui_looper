@@ -1,8 +1,6 @@
 import os
 import math
 import tempfile
-import numpy as np
-import torch
 from PIL import Image, ImageOps
 
 from workflow.looper_workflow import WorkflowEngine
@@ -71,13 +69,11 @@ class APIWorkflowEngine(WorkflowEngine):
     def setup(self):
         self.client.check_server()
 
-    def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings) -> torch.Tensor:
-        # 1. Save tensor to temp PNG
+    def compute_iteration(self, image: Image.Image, loopsettings: LoopSettings) -> Image.Image:
+        # 1. Save image to temp PNG
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, "looper_upload.png")
-        i = 255.0 * image_tensor[0].cpu().numpy()
-        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-        img.save(temp_path, compress_level=0)
+        image.save(temp_path, compress_level=0)
 
         # 2. Upload to ComfyUI server
         server_filename = self.client.upload_image(temp_path)
@@ -103,16 +99,14 @@ class APIWorkflowEngine(WorkflowEngine):
             save_path=result_path,
         )
 
-        # 7. Load as tensor and return (matching ComfyUI's [B, H, W, C] float32 format)
+        # 7. Load result image
         result_img = Image.open(result_path)
         result_img = ImageOps.exif_transpose(result_img)
         result_img = result_img.convert("RGB")
-        result_array = np.array(result_img).astype(np.float32) / 255.0
-        result_tensor = torch.from_numpy(result_array).unsqueeze(0)
 
         # Clean up temp files
         for p in [temp_path, result_path]:
             if os.path.exists(p):
                 os.remove(p)
 
-        return result_tensor
+        return result_img

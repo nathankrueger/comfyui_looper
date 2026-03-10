@@ -1,7 +1,6 @@
 import os
 import shutil
 import time
-import torch
 from typing import IO
 from dataclasses import fields
 from PIL.PngImagePlugin import PngInfo
@@ -10,7 +9,7 @@ from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
 from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
 from utils.image_store import ImageStore
-from utils.util import save_tensor_to_images, tensor_to_pil, get_loop_img_filename
+from utils.util import get_loop_img_filename
 from workflow.looper_workflow import WorkflowEngine
 from interactive.loop_state import LoopState, LoopStatus
 
@@ -65,13 +64,13 @@ def _run_iteration(
         n=iter, offset=loopsettings.offset,
         total_n=total_iter, wavefile=sm.get_wavefile()
     )
-    image_tensor, loopsettings.transforms = load_image_with_transforms(
+    image, loopsettings.transforms = load_image_with_transforms(
         image_path=loop_img_path,
         transforms=transforms,
         auto_params=auto_params
     )
 
-    vae_decode_result = engine.compute_iteration(image_tensor, loopsettings)
+    result_image = engine.compute_iteration(image, loopsettings)
 
     loopsettings_json = loopsettings.to_json(indent=4)
     image_index = iter + 1
@@ -79,16 +78,12 @@ def _run_iteration(
     pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
 
     # save the working loop image to disk
-    save_tensor_to_images(
-        output_filenames=[loop_img_path],
-        image=vae_decode_result[0],
-        png_info=pnginfo
-    )
+    os.makedirs(os.path.dirname(loop_img_path) or '.', exist_ok=True)
+    result_image.save(loop_img_path, pnginfo=pnginfo, compress_level=0)
 
     # save the numbered archive image via the store
     output_image_filename = get_loop_img_filename(image_index)
-    pil_img = tensor_to_pil(vae_decode_result[0])
-    image_store.write_image(output_image_filename, pil_img, png_info=pnginfo)
+    image_store.write_image(output_image_filename, result_image, png_info=pnginfo)
 
     state.set_latest_image_index(image_index)
     state.store_settings(iter, loopsettings_json)
@@ -183,106 +178,105 @@ def interactive_looper_main(
     state.set_settings_manager(sm)
 
     try:
-        with torch.inference_mode():
-            engine.setup()
-            prev_seed = None
-            total_iter = sm.get_total_iterations()
-            iter = 0
+        engine.setup()
+        prev_seed = None
+        total_iter = sm.get_total_iterations()
+        iter = 0
 
-            while True:
-                # Run iterations until complete
-                while iter < total_iter:
-                    # Check for stop (reset/picker return)
-                    if state.is_stop_requested():
-                        state.set_status(LoopStatus.STOPPED)
-                        return
+        while True:
+            # Run iterations until complete
+            while iter < total_iter:
+                # Check for stop (reset/picker return)
+                if state.is_stop_requested():
+                    state.set_status(LoopStatus.STOPPED)
+                    return
 
-                    # Check for restart request before anything else so
-                    # restarts are processed immediately — including after
-                    # being woken from pause (request_restart unblocks the
-                    # pause event)
-                    restart_from = state.get_and_clear_restart_request()
-                    if restart_from is not None:
-                        iter, prev_seed = _handle_restart(
-                            restart_from=restart_from,
-                            engine=engine,
-                            sm=sm,
-                            total_iter=total_iter,
-                            loop_img_path=loop_img_path,
-                            output_folder=output_folder,
-                            log_file=log_file,
-                            state=state,
-                            image_store=image_store,
-                            no_input_image=no_input_image,
-                        )
-                        continue
-
-                    # Block while paused. Also wakes on restart request
-                    # (which sets the event); we just continue back to the
-                    # top where the restart check will pick it up.
-                    if state.get_status() == LoopStatus.PAUSED:
-                        state.wait_if_paused()
-                        continue
-
-                    # Normal iteration
-                    state.set_current_iteration(iter)
-                    state.set_status(LoopStatus.RUNNING)
-                    state.mark_iteration_start()
-
-                    prev_seed = _run_iteration(
+                # Check for restart request before anything else so
+                # restarts are processed immediately — including after
+                # being woken from pause (request_restart unblocks the
+                # pause event)
+                restart_from = state.get_and_clear_restart_request()
+                if restart_from is not None:
+                    iter, prev_seed = _handle_restart(
+                        restart_from=restart_from,
                         engine=engine,
                         sm=sm,
-                        iter=iter,
                         total_iter=total_iter,
                         loop_img_path=loop_img_path,
                         output_folder=output_folder,
                         log_file=log_file,
                         state=state,
                         image_store=image_store,
-                        prev_seed=prev_seed,
                         no_input_image=no_input_image,
                     )
+                    continue
 
-                    state.mark_iteration_complete()
-                    iter += 1
+                # Block while paused. Also wakes on restart request
+                # (which sets the event); we just continue back to the
+                # top where the restart check will pick it up.
+                if state.get_status() == LoopStatus.PAUSED:
+                    state.wait_if_paused()
+                    continue
 
-                # All iterations complete
-                state.set_status(LoopStatus.COMPLETED)
-                if animation_file is not None:
-                    anim_folder, needs_cleanup = image_store.get_paths_for_animation()
-                    try:
-                        make_animation(
-                            type=animation_type,
-                            input_folder=anim_folder,
-                            output_animation=os.path.join(output_folder, animation_file),
-                            params=animation_params
-                        )
-                    finally:
-                        if needs_cleanup:
-                            shutil.rmtree(anim_folder, ignore_errors=True)
+                # Normal iteration
+                state.set_current_iteration(iter)
+                state.set_status(LoopStatus.RUNNING)
+                state.mark_iteration_start()
 
-                # Wait for restart requests after completion
-                while not state.is_stop_requested():
-                    restart_from = state.get_and_clear_restart_request()
-                    if restart_from is not None:
-                        iter, prev_seed = _handle_restart(
-                            restart_from=restart_from,
-                            engine=engine,
-                            sm=sm,
-                            total_iter=total_iter,
-                            loop_img_path=loop_img_path,
-                            output_folder=output_folder,
-                            log_file=log_file,
-                            state=state,
-                            image_store=image_store,
-                            no_input_image=no_input_image,
-                        )
-                        break  # Back to the main iteration loop
-                    time.sleep(0.5)
-                else:
-                    # Stop was requested during the wait
-                    state.set_status(LoopStatus.STOPPED)
-                    return
+                prev_seed = _run_iteration(
+                    engine=engine,
+                    sm=sm,
+                    iter=iter,
+                    total_iter=total_iter,
+                    loop_img_path=loop_img_path,
+                    output_folder=output_folder,
+                    log_file=log_file,
+                    state=state,
+                    image_store=image_store,
+                    prev_seed=prev_seed,
+                    no_input_image=no_input_image,
+                )
+
+                state.mark_iteration_complete()
+                iter += 1
+
+            # All iterations complete
+            state.set_status(LoopStatus.COMPLETED)
+            if animation_file is not None:
+                anim_folder, needs_cleanup = image_store.get_paths_for_animation()
+                try:
+                    make_animation(
+                        type=animation_type,
+                        input_folder=anim_folder,
+                        output_animation=os.path.join(output_folder, animation_file),
+                        params=animation_params
+                    )
+                finally:
+                    if needs_cleanup:
+                        shutil.rmtree(anim_folder, ignore_errors=True)
+
+            # Wait for restart requests after completion
+            while not state.is_stop_requested():
+                restart_from = state.get_and_clear_restart_request()
+                if restart_from is not None:
+                    iter, prev_seed = _handle_restart(
+                        restart_from=restart_from,
+                        engine=engine,
+                        sm=sm,
+                        total_iter=total_iter,
+                        loop_img_path=loop_img_path,
+                        output_folder=output_folder,
+                        log_file=log_file,
+                        state=state,
+                        image_store=image_store,
+                        no_input_image=no_input_image,
+                    )
+                    break  # Back to the main iteration loop
+                time.sleep(0.5)
+            else:
+                # Stop was requested during the wait
+                state.set_status(LoopStatus.STOPPED)
+                return
 
     except Exception as e:
         state.set_error(str(e))

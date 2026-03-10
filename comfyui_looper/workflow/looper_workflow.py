@@ -1,19 +1,15 @@
 import os
-import torch
 import tqdm
 from typing import IO, Any
 from dataclasses import fields
+from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 from image_processing.animator import make_animation
 from utils.json_spec import SettingsManager, default_seed, LoopSettings
 from image_processing.transforms import load_image_with_transforms, AutomaticTransformParams
 from utils.image_store import ImageStore
-from utils.util import (
-    save_tensor_to_images,
-    tensor_to_pil,
-    get_loop_img_filename,
-)
+from utils.util import get_loop_img_filename
 
 class WorkflowEngine:
     """
@@ -62,7 +58,7 @@ class WorkflowEngine:
         # override me
         return None
 
-    def compute_iteration(self, image_tensor: torch.Tensor, loopsettings: LoopSettings) -> torch.Tensor:
+    def compute_iteration(self, image: Image.Image, loopsettings: LoopSettings) -> Image.Image:
         """
         Computes the next image based on the loopsettings, and the current image
         """
@@ -85,66 +81,61 @@ def looper_main(
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
 
-    with torch.inference_mode():
-        engine.setup()
-        prev_seed = None
-        total_iter = sm.get_total_iterations()
-        for iter in tqdm.tqdm(range(total_iter)):
-            print()
-            
-            # load settings from JSON
-            loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
-            if iter == 0 and no_input_image:
-                loopsettings.denoise_amt = 1.0
-            transforms = loopsettings.transforms
-            seed = loopsettings.seed
+    engine.setup()
+    prev_seed = None
+    total_iter = sm.get_total_iterations()
+    for iter in tqdm.tqdm(range(total_iter)):
+        print()
 
-            # if a new seed is explicitly set, use it, otherwise always get a new one
-            if seed == prev_seed:
-                seed = default_seed()
-                loopsettings.seed = seed
-            sm.update_seed(iter, seed)
-            prev_seed = seed
+        # load settings from JSON
+        loopsettings = sm.get_elaborated_loopsettings_for_iter(iter)
+        if iter == 0 and no_input_image:
+            loopsettings.denoise_amt = 1.0
+        transforms = loopsettings.transforms
+        seed = loopsettings.seed
 
-            # set defaults as needed
-            for setting in fields(loopsettings):
-                setting_name = setting.name
-                setting_val = loopsettings.__getattribute__(setting_name)
-                if setting_val is None or (isinstance(setting_val, list) and len(setting_val) == 0):
-                    if (setting_val_default := engine.get_default_for_setting(setting_name)) is not None:
-                        loopsettings.__setattr__(setting_name, setting_val_default)
+        # if a new seed is explicitly set, use it, otherwise always get a new one
+        if seed == prev_seed:
+            seed = default_seed()
+            loopsettings.seed = seed
+        sm.update_seed(iter, seed)
+        prev_seed = seed
 
-            # load in image & resize it
-            auto_params = AutomaticTransformParams(n=iter, offset=loopsettings.offset, total_n=total_iter, wavefile=sm.get_wavefile())
-            image_tensor, loopsettings.transforms = load_image_with_transforms(
-                image_path=loop_img_path,
-                transforms=transforms,
-                auto_params=auto_params
-            )
+        # set defaults as needed
+        for setting in fields(loopsettings):
+            setting_name = setting.name
+            setting_val = loopsettings.__getattribute__(setting_name)
+            if setting_val is None or (isinstance(setting_val, list) and len(setting_val) == 0):
+                if (setting_val_default := engine.get_default_for_setting(setting_name)) is not None:
+                    loopsettings.__setattr__(setting_name, setting_val_default)
 
-            # generate the image in a workflow specific manner
-            vae_decode_result = engine.compute_iteration(image_tensor, loopsettings)
+        # load in image & apply transforms
+        auto_params = AutomaticTransformParams(n=iter, offset=loopsettings.offset, total_n=total_iter, wavefile=sm.get_wavefile())
+        image, loopsettings.transforms = load_image_with_transforms(
+            image_path=loop_img_path,
+            transforms=transforms,
+            auto_params=auto_params
+        )
 
-            # save the images -- loop filename, and requested output
-            loopsettings_json = loopsettings.to_json(indent=4)
-            pnginfo = PngInfo()
-            pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
+        # generate the image in a workflow specific manner
+        result_image = engine.compute_iteration(image, loopsettings)
 
-            # always save the working loop image to disk
-            save_tensor_to_images(
-                output_filenames=[loop_img_path],
-                image=vae_decode_result[0],
-                png_info=pnginfo
-            )
+        # save the images -- loop filename, and requested output
+        loopsettings_json = loopsettings.to_json(indent=4)
+        pnginfo = PngInfo()
+        pnginfo.add_text(key='looper_settings', value=loopsettings_json, zip=False)
 
-            # save the numbered archive image via the store
-            output_image_filename = get_loop_img_filename(iter+1)
-            pil_img = tensor_to_pil(vae_decode_result[0])
-            image_store.write_image(output_image_filename, pil_img, png_info=pnginfo)
+        # always save the working loop image to disk
+        os.makedirs(os.path.dirname(loop_img_path) or '.', exist_ok=True)
+        result_image.save(loop_img_path, pnginfo=pnginfo, compress_level=0)
 
-            # add entry to the logfile
-            log_file.write(f"{get_loop_img_filename(iter+1)}:\n{loopsettings_json}\n\n")
-            log_file.flush()
+        # save the numbered archive image via the store
+        output_image_filename = get_loop_img_filename(iter+1)
+        image_store.write_image(output_image_filename, result_image, png_info=pnginfo)
+
+        # add entry to the logfile
+        log_file.write(f"{get_loop_img_filename(iter+1)}:\n{loopsettings_json}\n\n")
+        log_file.flush()
 
     # save animation
     if animation_file is not None:
