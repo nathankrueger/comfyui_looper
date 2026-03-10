@@ -33,7 +33,9 @@
             background: #16213e; border-radius: 10px; padding: 20px;
             margin-bottom: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: max-width 0.2s ease;
         }
+        .card.editor-active { max-width: 95vw; }
         .card-header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 12px;
@@ -114,7 +116,8 @@
             border: 1px solid #334155; border-radius: 6px;
             background: #0f172a; overflow: hidden;
             min-height: 200px; height: 50vh;
-            resize: vertical;
+            min-width: 100%;
+            resize: both;
         }
         .editor-wrap::-webkit-resizer { background: #0f172a; }
         .editor-wrap.focus { border-color: #7c3aed; }
@@ -400,11 +403,17 @@
     function closeActiveEditor() {
         if (activeEditorId) {
             const el = document.getElementById(activeEditorId);
-            if (el) el.remove();
+            if (el) {
+                const card = el.closest('.card');
+                if (card) card.classList.remove('editor-active');
+                el.remove();
+            }
             activeEditorId = null;
         }
         // Also clear new-editor
         document.getElementById('new-editor-container').innerHTML = '';
+        // Remove editor-active from all cards (safety)
+        document.querySelectorAll('.card.editor-active').forEach(c => c.classList.remove('editor-active'));
     }
 
     function createEditorHTML(id, opts) {
@@ -440,6 +449,9 @@
             const textarea = document.getElementById(id + '-textarea');
             const saveBtn = document.getElementById(id + '-save');
             const wrap = document.getElementById(id + '-wrap');
+            // Allow parent card to expand for horizontal resize
+            const card = wrap && wrap.closest('.card');
+            if (card) card.classList.add('editor-active');
             if (textarea) {
                 textarea.addEventListener('input', () => {
                     validateEditorField(id);
