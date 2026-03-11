@@ -1,7 +1,156 @@
+from __future__ import annotations
+
+import json
+import os
 import time
 import threading
+from copy import deepcopy
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.json_spec import LoopSettings, SettingsManager
+
+
+def _remove_json_field(text: str, field_name: str) -> str:
+    """Remove a top-level JSON field and its value from text, preserving other content."""
+    lines = text.split('\n')
+
+    # Find the line containing the field key (skip // comment lines)
+    start = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('//'):
+            continue
+        if f'"{field_name}"' in stripped and ':' in stripped:
+            start = i
+            break
+
+    if start is None:
+        return text
+
+    # Count braces to find the matching closing } of the field value.
+    # Uses a state machine to ignore braces inside JSON string literals.
+    depth = 0
+    end = None
+    found_open = False
+    in_string = False
+    escaped = False
+    for i in range(start, len(lines)):
+        stripped = lines[i].strip()
+        if stripped.startswith('//'):
+            continue
+        for ch in stripped:
+            if escaped:
+                escaped = False
+                continue
+            if ch == '\\':
+                escaped = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if not in_string:
+                if ch == '{':
+                    depth += 1
+                    found_open = True
+                elif ch == '}':
+                    depth -= 1
+                    if found_open and depth == 0:
+                        end = i
+                        break
+        if end is not None:
+            break
+
+    if end is None:
+        return text  # Could not parse, return unchanged
+
+    # Check if the field's closing line has a trailing comma (field is not last)
+    has_trailing_comma = lines[end].rstrip().endswith('},')
+
+    # Remove lines [start, end] inclusive
+    lines = lines[:start] + lines[end + 1:]
+
+    if not has_trailing_comma:
+        # Field was the last one — remove trailing comma from the previous content line
+        for i in range(start - 1, -1, -1):
+            stripped = lines[i].strip()
+            if stripped and not stripped.startswith('//'):
+                if stripped.endswith(','):
+                    lines[i] = lines[i].rstrip()[:-1]
+                break
+
+    return '\n'.join(lines)
+
+
+def _inject_json_field(text: str, field_name: str, value: dict) -> str:
+    """Inject a top-level JSON field before the closing brace, preserving comments."""
+    lines = text.split('\n')
+
+    # Find the last line that is just '}'
+    closing_idx = None
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip() == '}':
+            closing_idx = i
+            break
+
+    if closing_idx is None:
+        raise ValueError("Could not find closing brace in workflow JSON")
+
+    # Find last non-empty, non-comment line before closing brace and add comma
+    for i in range(closing_idx - 1, -1, -1):
+        stripped = lines[i].strip()
+        if stripped and not stripped.startswith('//'):
+            if not stripped.endswith(','):
+                lines[i] = lines[i].rstrip() + ','
+            break
+
+    # Format value with proper indentation
+    value_json = json.dumps(value, indent=4)
+    value_lines = value_json.split('\n')
+    formatted = ['    "' + field_name + '": ' + value_lines[0]]
+    for vl in value_lines[1:]:
+        formatted.append('    ' + vl)
+
+    # Insert before closing brace
+    result = lines[:closing_idx] + formatted + lines[closing_idx:]
+    return '\n'.join(result)
+
+
+def _write_workflow_with_overrides(
+    input_path: str,
+    output_path: str,
+    frame_overrides: dict[int, dict[str, Any]],
+    formula_overrides: dict[int, dict[str, Any]],
+):
+    """Write a copy of the input workflow JSON with override fields added/updated."""
+    from utils.json_spec import serialize_override_value
+
+    # Serialize values and convert int keys to sorted string keys
+    ser_frame = {
+        str(k): {fn: serialize_override_value(v) for fn, v in fields.items()}
+        for k, fields in sorted(frame_overrides.items())
+    } if frame_overrides else {}
+    ser_formula = {
+        str(k): {fn: serialize_override_value(v) for fn, v in fields.items()}
+        for k, fields in sorted(formula_overrides.items())
+    } if formula_overrides else {}
+
+    with open(input_path, 'r', encoding='utf-8') as f:
+        text = f.read()
+
+    # Remove existing override fields (no-op if absent)
+    text = _remove_json_field(text, 'frame_overrides')
+    text = _remove_json_field(text, 'formula_overrides')
+
+    # Inject non-empty override fields
+    if ser_formula:
+        text = _inject_json_field(text, 'formula_overrides', ser_formula)
+    if ser_frame:
+        text = _inject_json_field(text, 'frame_overrides', ser_frame)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(text)
 
 
 class LoopStatus(Enum):
@@ -30,12 +179,18 @@ class LoopState:
         self._export_status: Optional[str] = None
         self._export_error: Optional[str] = None
         self._export_file: Optional[str] = None
-        self._frame_overrides: dict[str, Any] = {}
         self._warning: Optional[str] = None
-        self._settings_manager = None
+        self._settings_manager: Optional[SettingsManager] = None
         self._iteration_timestamps: list[float] = []
         self._iter_start_time: Optional[float] = None
         self._stop_event = threading.Event()  # starts unset (not stopped)
+
+        # Pre-elaborated settings and persistent override tracking
+        self._pre_elaborated: dict[int, LoopSettings] = {}
+        self._overridden_fields: dict[int, dict[str, Any]] = {}
+        self._formula_overrides: dict[int, dict[str, Any]] = {}
+        self._json_file: Optional[str] = None
+        self._animation_params: dict[str, str] = {}
 
     # --- Status ---
 
@@ -75,7 +230,7 @@ class LoopState:
     def has_input_image(self) -> bool:
         return not self._no_input_image
 
-    # --- Settings cache ---
+    # --- Settings cache (View tab JSON strings) ---
 
     def store_settings(self, iter_num: int, settings_json: str):
         with self._lock:
@@ -178,25 +333,147 @@ class LoopState:
             self._export_error = None
             self._export_file = None
 
-    # --- Frame overrides ---
+    # --- Pre-elaborated settings & persistent overrides ---
 
-    def set_frame_overrides(self, overrides: dict[str, Any]):
+    def init_pre_elaborated(self, sm: SettingsManager, json_file: str, animation_params: dict[str, str]):
+        """Pre-elaborate all frame settings from the SettingsManager at loop start."""
         with self._lock:
-            self._frame_overrides = dict(overrides)
+            self._json_file = json_file
+            self._animation_params = dict(animation_params)
+            self._pre_elaborated = {}
+            self._overridden_fields = {}
+            self._formula_overrides = {}
 
-    def get_and_clear_frame_overrides(self) -> dict[str, Any]:
-        with self._lock:
-            overrides = self._frame_overrides
-            self._frame_overrides = {}
-            return overrides
+            # Apply formula overrides from workflow before elaboration
+            # (Workflow.__post_init__ already normalized keys to int and values to typed)
+            if sm.workflow.formula_overrides:
+                for section_idx, field_overrides in sm.workflow.formula_overrides.items():
+                    if section_idx < len(sm.workflow.all_settings):
+                        ls = sm.workflow.all_settings[section_idx]
+                        for field_name, value in field_overrides.items():
+                            setattr(ls, field_name, value)
+                        self._formula_overrides[section_idx] = dict(field_overrides)
 
-    def get_frame_overrides(self) -> dict[str, Any]:
-        with self._lock:
-            return dict(self._frame_overrides)
+            # Elaborate all frames
+            total = sm.get_total_iterations()
+            for i in range(total):
+                self._pre_elaborated[i] = sm.get_elaborated_loopsettings_for_iter(i)
 
-    def clear_frame_overrides(self):
+            # Apply frame overrides from workflow after elaboration
+            if sm.workflow.frame_overrides:
+                for iter_num, field_overrides in sm.workflow.frame_overrides.items():
+                    if iter_num in self._pre_elaborated:
+                        ls = self._pre_elaborated[iter_num]
+                        for field_name, value in field_overrides.items():
+                            setattr(ls, field_name, value)
+                        self._overridden_fields[iter_num] = dict(field_overrides)
+
+    def get_pre_elaborated(self, iter: int) -> LoopSettings:
+        """Return a deep copy of the pre-elaborated settings for a given iteration."""
         with self._lock:
-            self._frame_overrides = {}
+            if iter not in self._pre_elaborated:
+                raise KeyError(f"No pre-elaborated settings for iteration {iter}")
+            return deepcopy(self._pre_elaborated[iter])
+
+    def apply_frame_override(self, iter: int, overrides: dict[str, Any]):
+        """Apply persistent frame overrides to a specific iteration's pre-elaborated settings."""
+        with self._lock:
+            if iter not in self._pre_elaborated:
+                raise KeyError(f"No pre-elaborated settings for iteration {iter}")
+            ls = self._pre_elaborated[iter]
+            if iter not in self._overridden_fields:
+                self._overridden_fields[iter] = {}
+            for field_name, value in overrides.items():
+                setattr(ls, field_name, value)
+                self._overridden_fields[iter][field_name] = value
+
+    def re_elaborate_from(self, iter: int, sm: SettingsManager):
+        """Re-elaborate frames from `iter` onward after a formula override,
+        preserving any per-frame overrides."""
+        with self._lock:
+            total = sm.get_total_iterations()
+            for i in range(iter, total):
+                self._pre_elaborated[i] = sm.get_elaborated_loopsettings_for_iter(i)
+                # Re-apply any frame-level overrides
+                if i in self._overridden_fields:
+                    ls = self._pre_elaborated[i]
+                    for field_name, value in self._overridden_fields[i].items():
+                        setattr(ls, field_name, value)
+            # Clear the View tab cache for affected frames
+            keys_to_remove = [k for k in self._elaborated_settings if k >= iter]
+            for k in keys_to_remove:
+                del self._elaborated_settings[k]
+
+    def reset_all_overrides(self, sm: SettingsManager):
+        """Reset all overrides by re-elaborating everything from a clean SettingsManager."""
+        with self._lock:
+            self._overridden_fields = {}
+            self._formula_overrides = {}
+            total = sm.get_total_iterations()
+            for i in range(total):
+                self._pre_elaborated[i] = sm.get_elaborated_loopsettings_for_iter(i)
+            self._elaborated_settings = {}
+
+    def get_all_overridden_frames(self) -> dict[int, list[str]]:
+        """Return {iteration: [field_names]} for all frames with persistent overrides."""
+        with self._lock:
+            return {k: list(v.keys()) for k, v in self._overridden_fields.items() if v}
+
+    def record_formula_override(self, section_idx: int, overrides: dict[str, Any]):
+        """Record a formula override on a section for persistence tracking."""
+        with self._lock:
+            if section_idx not in self._formula_overrides:
+                self._formula_overrides[section_idx] = {}
+            self._formula_overrides[section_idx].update(overrides)
+
+    def get_all_overridden_sections(self) -> dict[int, list[str]]:
+        """Return {section_idx: [field_names]} for all sections with formula overrides."""
+        with self._lock:
+            return {k: list(v.keys()) for k, v in self._formula_overrides.items() if v}
+
+    def persist_overrides(self):
+        """Write the current overrides to a JSON file in the output folder."""
+        with self._lock:
+            frame_ov = {k: dict(v) for k, v in self._overridden_fields.items() if v}
+            formula_ov = {k: dict(v) for k, v in self._formula_overrides.items() if v}
+            json_file = self._json_file
+            output_folder = self._output_folder
+
+        if not json_file:
+            return
+
+        if not frame_ov and not formula_ov:
+            self.delete_overrides_file()
+            return
+
+        output_path = os.path.join(output_folder, os.path.basename(json_file))
+        _write_workflow_with_overrides(json_file, output_path, frame_ov, formula_ov)
+
+    def delete_overrides_file(self):
+        """Remove the overrides file from the output folder."""
+        with self._lock:
+            json_file = self._json_file
+            output_folder = self._output_folder
+        if not json_file:
+            return
+        path = os.path.join(output_folder, os.path.basename(json_file))
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+    def is_field_overridden(self, iter: int, field: str) -> bool:
+        """Check if a specific field was overridden by the user for a given iteration."""
+        with self._lock:
+            return iter in self._overridden_fields and field in self._overridden_fields[iter]
+
+    def get_json_file(self) -> Optional[str]:
+        with self._lock:
+            return self._json_file
+
+    def get_animation_params(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._animation_params)
 
     # --- Iteration timing ---
 

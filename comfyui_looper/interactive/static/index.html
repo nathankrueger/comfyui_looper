@@ -353,7 +353,7 @@
         </div>
         <div id="tab-override" class="tab-content">
             <div id="override-mode-toggle">
-                <label><input type="radio" name="override-mode" value="frame" checked> Frame only (next iteration)</label>
+                <label><input type="radio" name="override-mode" value="frame" checked> Frame (persistent for this frame)</label>
                 <label><input type="radio" name="override-mode" value="formula"> Formula (entire section)</label>
             </div>
             <div id="override-fields">
@@ -421,14 +421,13 @@
                 </div>
             </div>
             <div class="ovr-json-error" id="ovr-json-error" style="display:none"></div>
-            <div id="override-indicator" style="display:none">
-                Pending frame overrides: <span id="override-list"></span>
-            </div>
+            <div id="override-indicator" style="display:none"></div>
             <div id="formula-pause-hint" style="display:none">
                 Pause the loop before applying formula overrides.
             </div>
             <div id="override-buttons">
-                <button class="btn-nav" id="btn-override-clear">Clear</button>
+                <button class="btn-nav" id="btn-override-clear">Clear Form</button>
+                <button class="btn-restart" id="btn-override-reset" style="font-size:0.85em">Reset All Overrides</button>
                 <button class="btn-sync" id="btn-override-apply">Apply</button>
             </div>
         </div>
@@ -1303,7 +1302,7 @@
                 await fetch('/api/override/frame', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(overrides)
+                    body: JSON.stringify({ iteration: viewIndex - 1, overrides })
                 });
             } else {
                 await fetch('/api/override/formula', {
@@ -1316,13 +1315,29 @@
         } catch (e) { console.error('Override apply failed:', e); }
     }
 
-    async function clearOverrides() {
-        await fetch('/api/overrides', { method: 'DELETE' });
+    function clearOverrideForm() {
         ALL_OVR_FIELDS.forEach(f => {
             document.getElementById('ovr-' + f + '-enable').checked = false;
             document.getElementById('ovr-' + f + '-enable').dispatchEvent(new Event('change'));
         });
-        loadOverrideIndicator();
+    }
+
+    async function resetAllOverrides() {
+        if (!confirm('Reset all overrides (frame and formula) back to the original workflow JSON?')) return;
+        try {
+            // Auto-pause if running — reset requires the loop to be paused
+            if (loopStatus === 'running') {
+                await fetch('/api/pause', { method: 'POST' });
+            }
+            const resp = await fetch('/api/override/reset', { method: 'POST' });
+            if (!resp.ok) {
+                const data = await resp.json();
+                alert(data.error || 'Reset failed');
+                return;
+            }
+            clearOverrideForm();
+            loadOverrideIndicator();
+        } catch (e) { console.error('Reset overrides failed:', e); }
     }
 
     async function loadOverrideIndicator() {
@@ -1330,10 +1345,15 @@
             const resp = await fetch('/api/overrides');
             const data = await resp.json();
             const ind = document.getElementById('override-indicator');
-            const keys = Object.keys(data.frame_overrides || {});
-            if (keys.length > 0) {
+            const overridden = data.overridden_frames || {};
+            const frameKeys = Object.keys(overridden);
+            if (frameKeys.length > 0) {
+                const parts = frameKeys.map(iter => {
+                    const imgIdx = parseInt(iter) + 1;
+                    return 'Frame ' + imgIdx + ': ' + overridden[iter].join(', ');
+                });
                 ind.style.display = '';
-                document.getElementById('override-list').textContent = keys.join(', ');
+                ind.innerHTML = '<b>Persistent overrides:</b><br>' + parts.join('<br>');
             } else {
                 ind.style.display = 'none';
             }
@@ -1341,7 +1361,8 @@
     }
 
     document.getElementById('btn-override-apply').addEventListener('click', applyOverrides);
-    document.getElementById('btn-override-clear').addEventListener('click', clearOverrides);
+    document.getElementById('btn-override-clear').addEventListener('click', clearOverrideForm);
+    document.getElementById('btn-override-reset').addEventListener('click', resetAllOverrides);
 
     // --- Polling ---
 

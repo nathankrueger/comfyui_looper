@@ -162,3 +162,117 @@ def test_settings_manager():
             os.unlink(temp_file.name)
         except:
             pass
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_serdes_workflow_with_overrides():
+    ls = get_loop_settings()
+    w = Workflow(
+        all_settings=[ls],
+        version=1,
+        frame_overrides={1: {'cfg': 20.0}},
+        formula_overrides={0: {'denoise_amt': 0.8}},
+    )
+    # __post_init__ normalizes keys to int and values to typed
+    assert w.frame_overrides == {1: {'cfg': 20.0}}
+    test_json = w.to_json(indent=4)
+    clone = Workflow.schema().loads(test_json)
+    assert clone.frame_overrides == {1: {'cfg': 20.0}}
+    assert clone.formula_overrides == {0: {'denoise_amt': 0.8}}
+    assert clone.version == 1
+    assert len(clone.all_settings) == 1
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_workflow_without_overrides_fields():
+    ls = get_loop_settings()
+    w = Workflow(all_settings=[ls], version=1)
+    test_json = w.to_json(indent=4)
+    clone = Workflow.schema().loads(test_json)
+    assert clone.frame_overrides is None
+    assert clone.formula_overrides is None
+
+
+def test_workflow_loads_from_existing_json():
+    """Existing JSON files (without override fields) still parse correctly."""
+    sm = SettingsManager('data/tests/test_no_lora.json', animation_params={})
+    assert sm.workflow.frame_overrides is None
+    assert sm.workflow.formula_overrides is None
+    assert len(sm.workflow.all_settings) == 2
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+class TestOverrideSerdesRoundtrip:
+    """Verify serialize_override_value -> deserialize_override_value produces identical values."""
+
+    def test_canny_roundtrip(self):
+        original = Canny(low_thresh=0.1, high_thresh=0.5, strength=0.8)
+        serialized = serialize_override_value(original)
+        deserialized = deserialize_override_value('canny', serialized)
+        assert isinstance(deserialized, Canny)
+        assert deserialized == original
+
+    def test_canny_none_roundtrip(self):
+        serialized = serialize_override_value(None)
+        deserialized = deserialize_override_value('canny', serialized)
+        assert deserialized is None
+
+    def test_loras_roundtrip(self):
+        original = [LoraFilter('a.safetensors', 0.5), LoraFilter('b.safetensors', 1.0)]
+        serialized = serialize_override_value(original)
+        deserialized = deserialize_override_value('loras', serialized)
+        assert len(deserialized) == 2
+        assert all(isinstance(l, LoraFilter) for l in deserialized)
+        assert deserialized == original
+
+    def test_con_deltas_roundtrip(self):
+        original = [ConDelta(pos='bright', neg='dark', strength=5.0)]
+        serialized = serialize_override_value(original)
+        deserialized = deserialize_override_value('con_deltas', serialized)
+        assert len(deserialized) == 1
+        assert isinstance(deserialized[0], ConDelta)
+        assert deserialized == original
+
+    def test_transforms_roundtrip(self):
+        original = [{'name': 'zoom_in', 'zoom_amt': 0.5}]
+        serialized = serialize_override_value(original)
+        deserialized = deserialize_override_value('transforms', serialized)
+        assert deserialized == original
+
+    def test_float_roundtrip(self):
+        for key in ('denoise_amt', 'cfg'):
+            serialized = serialize_override_value(0.75)
+            deserialized = deserialize_override_value(key, serialized)
+            assert deserialized == 0.75
+            assert isinstance(deserialized, float)
+
+    def test_int_roundtrip(self):
+        for key in ('denoise_steps', 'seed'):
+            serialized = serialize_override_value(42)
+            deserialized = deserialize_override_value(key, serialized)
+            assert deserialized == 42
+            assert isinstance(deserialized, int)
+
+    def test_string_roundtrip(self):
+        for key in ('prompt', 'neg_prompt', 'checkpoint'):
+            serialized = serialize_override_value('hello world')
+            deserialized = deserialize_override_value(key, serialized)
+            assert deserialized == 'hello world'
+
+    def test_expression_string_roundtrip(self):
+        """Expression strings in numeric fields survive the round-trip."""
+        for key in ('denoise_amt', 'cfg', 'denoise_steps'):
+            expr = '0.3 + 0.01*n'
+            serialized = serialize_override_value(expr)
+            deserialized = deserialize_override_value(key, serialized)
+            assert deserialized == expr
+
+    def test_repeated_roundtrip(self):
+        """Multiple serialize/deserialize cycles produce stable results."""
+        original = Canny(low_thresh=0.2, high_thresh=0.7, strength=0.9)
+        value = original
+        for _ in range(5):
+            serialized = serialize_override_value(value)
+            value = deserialize_override_value('canny', serialized)
+        assert isinstance(value, Canny)
+        assert value == original

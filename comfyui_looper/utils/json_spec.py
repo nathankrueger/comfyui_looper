@@ -127,11 +127,48 @@ class LoopSettings:
             for cd in self.con_deltas:
                 cd.validate()
 
+def serialize_override_value(value: Any) -> Any:
+    """Convert a typed override value to JSON-serializable form."""
+    if hasattr(value, 'to_dict'):
+        return value.to_dict()
+    if isinstance(value, list):
+        return [item.to_dict() if hasattr(item, 'to_dict') else item for item in value]
+    return value
+
+
+def deserialize_override_value(key: str, value: Any) -> Any:
+    """Convert a JSON override value back to the appropriate Python type.
+
+    Delegates to LoopSettings' own dataclass_json schema so that new fields
+    are handled automatically without per-field maintenance.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        result = LoopSettings.schema().load({key: value}, partial=True)
+    return getattr(result, key)
+
+
+def _normalize_overrides(raw: Optional[dict]) -> Optional[dict[int, dict[str, Any]]]:
+    """Convert raw JSON overrides (string keys, raw values) to int keys and typed values."""
+    if raw is None:
+        return None
+    return {
+        int(k): {fn: deserialize_override_value(fn, v) for fn, v in fields_dict.items()}
+        for k, fields_dict in raw.items()
+    }
+
+
 @dataclass_json
 @dataclass
 class Workflow:
     all_settings: list[LoopSettings]
     version: int = CURRENT_WORKFLOW_VERSION
+    frame_overrides: Optional[dict[int, dict[str, Any]]] = None
+    formula_overrides: Optional[dict[int, dict[str, Any]]] = None
+
+    def __post_init__(self):
+        self.frame_overrides = _normalize_overrides(self.frame_overrides)
+        self.formula_overrides = _normalize_overrides(self.formula_overrides)
 
     def get_total_iterations(self) -> int:
         cnt = 0

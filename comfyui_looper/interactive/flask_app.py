@@ -9,7 +9,10 @@ from werkzeug.utils import secure_filename
 from interactive.loop_state import LoopState, LoopStatus
 from interactive.app_state import AppState
 from image_processing.animator import make_animation
-from utils.json_spec import EMPTY_OBJECT, EMPTY_LIST, LoraFilter, Canny, ConDelta, SettingsManager
+from utils.json_spec import (
+    EMPTY_OBJECT, EMPTY_LIST, SettingsManager,
+    serialize_override_value, deserialize_override_value,
+)
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
 
@@ -484,29 +487,11 @@ def create_app(app_state: AppState) -> Flask:
         """Convert a LoopSettings field value to JSON-serializable form."""
         if val is EMPTY_OBJECT or (isinstance(val, list) and val == EMPTY_LIST):
             return None
-        if isinstance(val, (Canny, LoraFilter, ConDelta)):
-            return val.to_dict()
-        if isinstance(val, list):
-            return [item.to_dict() if hasattr(item, 'to_dict') else item for item in val]
-        return val
+        return serialize_override_value(val)
 
     def _deserialize_override(key, value):
         """Convert a JSON override value to the appropriate Python type for setattr."""
-        if key in ('denoise_amt', 'cfg'):
-            return float(value)
-        if key in ('denoise_steps', 'seed'):
-            return int(value)
-        if key in ('prompt', 'neg_prompt', 'checkpoint'):
-            return str(value)
-        if key == 'loras':
-            return [LoraFilter.from_dict(item) for item in value]
-        if key == 'canny':
-            return Canny.from_dict(value) if value else None
-        if key == 'con_deltas':
-            return [ConDelta.from_dict(item) for item in value]
-        if key == 'transforms':
-            return value  # already list of dicts
-        return value
+        return deserialize_override_value(key, value)
 
     @app.route('/api/settings/<int:index>/raw')
     def api_settings_raw(index: int):
@@ -534,13 +519,21 @@ def create_app(app_state: AppState) -> Flask:
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
         data = request.get_json()
+        iteration = data.get('iteration')
+        overrides_raw = data.get('overrides', {})
+        if iteration is None:
+            return jsonify({'error': 'iteration required'}), 400
         overrides = {}
-        for key, value in data.items():
+        for key, value in overrides_raw.items():
             if key not in OVERRIDE_ALLOWED_FIELDS:
                 return jsonify({'error': f'Field {key} not allowed'}), 400
             overrides[key] = _deserialize_override(key, value)
-        state.set_frame_overrides(overrides)
-        return jsonify({'status': 'ok', 'overrides': list(overrides.keys())})
+        try:
+            state.apply_frame_override(iteration, overrides)
+        except KeyError as e:
+            return jsonify({'error': str(e)}), 400
+        state.persist_overrides()
+        return jsonify({'status': 'ok', 'iteration': iteration, 'overrides': list(overrides.keys())})
 
     @app.route('/api/override/formula', methods=['POST'])
     def api_override_formula():
@@ -556,17 +549,23 @@ def create_app(app_state: AppState) -> Flask:
         if sm is None:
             return jsonify({'error': 'Settings manager not ready'}), 503
         _section_idx, loopsetting = sm.get_loopsettings_for_iter(iteration)
+        formula_tracked = {}
         for key, value in overrides.items():
             if key not in OVERRIDE_ALLOWED_FIELDS:
                 return jsonify({'error': f'Field {key} not allowed'}), 400
             # For formula mode: EXPR fields keep strings as expressions,
             # complex types get deserialized to proper objects
             if key in ('loras', 'canny', 'con_deltas', 'transforms'):
-                setattr(loopsetting, key, _deserialize_override(key, value))
+                deserialized = _deserialize_override(key, value)
+                setattr(loopsetting, key, deserialized)
+                formula_tracked[key] = deserialized
             else:
                 # Strings stay as strings (expressions), primitives pass through
                 setattr(loopsetting, key, value)
-        state.clear_settings_from(iteration)
+                formula_tracked[key] = value
+        state.record_formula_override(_section_idx, formula_tracked)
+        state.re_elaborate_from(iteration, sm)
+        state.persist_overrides()
         return jsonify({'status': 'ok', 'section_idx': _section_idx})
 
     @app.route('/api/overrides')
@@ -574,14 +573,29 @@ def create_app(app_state: AppState) -> Flask:
         state = _require_loop_state()
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
-        return jsonify({'frame_overrides': state.get_frame_overrides()})
+        return jsonify({
+            'overridden_frames': state.get_all_overridden_frames(),
+            'overridden_sections': state.get_all_overridden_sections(),
+        })
 
-    @app.route('/api/overrides', methods=['DELETE'])
-    def api_clear_overrides():
+    @app.route('/api/override/reset', methods=['POST'])
+    def api_override_reset():
         state = _require_loop_state()
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
-        state.clear_frame_overrides()
-        return jsonify({'status': 'cleared'})
+        if state.get_status() == LoopStatus.RUNNING:
+            return jsonify({'error': 'Pause the loop before resetting overrides'}), 409
+        json_file = state.get_json_file()
+        animation_params = state.get_animation_params()
+        if json_file is None:
+            return jsonify({'error': 'No JSON file available for reset'}), 500
+        # Create a fresh SettingsManager from the original JSON (outside the
+        # LoopState lock — SM construction & validation can be slow).
+        sm = SettingsManager(json_file, animation_params)
+        sm.validate()
+        state.set_settings_manager(sm)
+        state.reset_all_overrides(sm)
+        state.delete_overrides_file()
+        return jsonify({'status': 'reset'})
 
     return app

@@ -57,26 +57,72 @@ def _make_mocks(loopsettings):
     sm = MagicMock()
     sm.get_elaborated_loopsettings_for_iter.return_value = loopsettings
     sm.get_wavefile.return_value = None
+    sm.get_total_iterations.return_value = 10
 
     return engine, sm
 
 
-class TestHandleRestartPreservesFrameOverrides:
-    """Regression: frame overrides set before restart must survive into _run_iteration."""
+def _init_state_with_pre_elaborated(state, sm, loopsettings):
+    """Initialize pre-elaborated settings on state using a mock SM."""
+    sm.get_elaborated_loopsettings_for_iter.side_effect = lambda i: _make_loopsettings(
+        **{k: getattr(loopsettings, k) for k in ['prompt', 'neg_prompt', 'denoise_amt',
+           'denoise_steps', 'cfg', 'seed', 'transforms', 'loras', 'canny', 'con_deltas',
+           'clip', 'checkpoint']}
+    )
+    state.init_pre_elaborated(sm, 'test.json', {})
+    # Reset side_effect so _handle_restart's call to _run_iteration works
+    sm.get_elaborated_loopsettings_for_iter.side_effect = None
+    sm.get_elaborated_loopsettings_for_iter.return_value = loopsettings
 
-    def test_overrides_applied_during_restart(self, tmp_path):
-        """Frame overrides set before _handle_restart should be applied to the loopsettings."""
+
+class TestHandleRestartWithStickyOverrides:
+    """Sticky frame overrides persist through restarts."""
+
+    def test_sticky_overrides_applied_during_restart(self, tmp_path):
+        """Sticky frame overrides should still be applied when restarting to that frame."""
         state = LoopState(total_iterations=10, output_folder=str(tmp_path))
         image_store = _create_image_store_with_images(tmp_path, 5)
         loop_img_path = os.path.join(tmp_path, 'looper.png')
         _make_test_image().save(loop_img_path)
         log_file = io.StringIO()
 
-        # User sets overrides, then requests restart from frame 3
-        state.set_frame_overrides({'denoise_amt': 0.99, 'cfg': 12.0})
+        loopsettings = _make_loopsettings()
+        engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
+
+        # Apply sticky override to frame 2 (iteration 2)
+        state.apply_frame_override(2, {'denoise_amt': 0.99, 'cfg': 12.0})
+
+        _handle_restart(
+            restart_from=3,  # This re-runs iteration 2
+            engine=engine,
+            sm=sm,
+            total_iter=10,
+            loop_img_path=loop_img_path,
+            output_folder=str(tmp_path),
+            log_file=log_file,
+            state=state,
+            image_store=image_store,
+        )
+
+        # The pre-elaborated settings for iter 2 should still have the overrides
+        ls = state.get_pre_elaborated(2)
+        assert ls.denoise_amt == 0.99
+        assert ls.cfg == 12.0
+
+    def test_overrides_persist_after_restart(self, tmp_path):
+        """After restart, frame overrides should still be present (they are persistent)."""
+        state = LoopState(total_iterations=10, output_folder=str(tmp_path))
+        image_store = _create_image_store_with_images(tmp_path, 5)
+        loop_img_path = os.path.join(tmp_path, 'looper.png')
+        _make_test_image().save(loop_img_path)
+        log_file = io.StringIO()
 
         loopsettings = _make_loopsettings()
         engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
+
+        state.apply_frame_override(2, {'denoise_amt': 0.5})
 
         _handle_restart(
             restart_from=3,
@@ -90,37 +136,9 @@ class TestHandleRestartPreservesFrameOverrides:
             image_store=image_store,
         )
 
-        # The overrides should have been applied to loopsettings by _run_iteration
-        assert loopsettings.denoise_amt == 0.99
-        assert loopsettings.cfg == 12.0
-
-    def test_overrides_cleared_after_consumption(self, tmp_path):
-        """After _handle_restart, frame overrides should be empty (consumed by _run_iteration)."""
-        state = LoopState(total_iterations=10, output_folder=str(tmp_path))
-        image_store = _create_image_store_with_images(tmp_path, 5)
-        loop_img_path = os.path.join(tmp_path, 'looper.png')
-        _make_test_image().save(loop_img_path)
-        log_file = io.StringIO()
-
-        state.set_frame_overrides({'denoise_amt': 0.5})
-
-        loopsettings = _make_loopsettings()
-        engine, sm = _make_mocks(loopsettings)
-
-        _handle_restart(
-            restart_from=3,
-            engine=engine,
-            sm=sm,
-            total_iter=10,
-            loop_img_path=loop_img_path,
-            output_folder=str(tmp_path),
-            log_file=log_file,
-            state=state,
-            image_store=image_store,
-        )
-
-        # Overrides should have been consumed (get_and_clear)
-        assert state.get_frame_overrides() == {}
+        # Overrides should NOT be cleared — they are persistent
+        assert state.is_field_overridden(2, 'denoise_amt')
+        assert state.get_all_overridden_frames() == {2: ['denoise_amt']}
 
     def test_restart_without_overrides_still_works(self, tmp_path):
         """Restart with no pending overrides should work normally."""
@@ -130,9 +148,9 @@ class TestHandleRestartPreservesFrameOverrides:
         _make_test_image().save(loop_img_path)
         log_file = io.StringIO()
 
-        # No overrides set
         loopsettings = _make_loopsettings(denoise_amt=0.7)
         engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
 
         next_iter, _ = _handle_restart(
             restart_from=3,
@@ -146,7 +164,5 @@ class TestHandleRestartPreservesFrameOverrides:
             image_store=image_store,
         )
 
-        # Should restart from redo_iter + 1
         assert next_iter == 3
-        # Engine should have been called
         engine.compute_iteration.assert_called_once()
