@@ -335,12 +335,12 @@
             <button class="btn-nav" id="btn-forward">&rsaquo;</button>
         </div>
         <div id="action-group">
-            <button class="btn-restart" id="btn-restart">&#8635; Restart</button>
+            <button class="btn-restart" id="btn-restart">&#8635; Reroll</button>
             <button class="btn-resume" id="btn-resume" style="display:none">&#9654; Resume</button>
             <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
             <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
             <button class="btn-export" id="btn-export">&#128190; Export</button>
-            <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9762;</button>
+            <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9724;</button>
         </div>
     </div>
     <div id="settings-panel">
@@ -715,7 +715,7 @@
     async function doRestart() {
         if (viewIndex < 1) return;
         if (viewIndex < latestIndex &&
-            !confirm('Restart from image ' + viewIndex + '?\n\nThis will delete image ' +
+            !confirm('Reroll from image ' + viewIndex + '?\n\nThis will delete image ' +
             viewIndex + ' and all images after it, then regenerate with a new seed.')) {
             return;
         }
