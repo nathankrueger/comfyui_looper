@@ -393,6 +393,8 @@ class LoopState:
             for field_name, value in overrides.items():
                 setattr(ls, field_name, value)
                 self._overridden_fields[iter][field_name] = value
+            # Clear stale cache so get_settings() falls back to updated _pre_elaborated
+            self._elaborated_settings.pop(iter, None)
 
     def re_elaborate_from(self, iter: int, sm: SettingsManager):
         """Re-elaborate frames from `iter` onward after a formula override,

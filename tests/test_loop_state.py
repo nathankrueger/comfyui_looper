@@ -238,6 +238,20 @@ class TestPreElaboratedSettings:
         assert state.is_field_overridden(1, 'cfg') is False
         assert state.is_field_overridden(0, 'seed') is False
 
+    def test_get_settings_reflects_frame_override(self):
+        """After applying a frame override, get_settings should return the overridden value."""
+        state = LoopState(total_iterations=3, output_folder='/tmp/test')
+        sm = _make_mock_sm(3)
+        state.init_pre_elaborated(sm, 'test.json', {})
+        # Simulate iteration running and caching settings (as _run_iteration does)
+        state.store_settings(1, '{"cfg": 7.0, "prompt": "original"}')
+        assert '"cfg": 7.0' in state.get_settings(1)
+        # Apply override — should invalidate the stale cache
+        state.apply_frame_override(1, {'cfg': 20.0})
+        settings_json = state.get_settings(1)
+        assert '20.0' in settings_json
+        assert '7.0' not in settings_json
+
     def test_reset_all_overrides(self):
         state = LoopState(total_iterations=3, output_folder='/tmp/test')
         sm = _make_mock_sm(3)

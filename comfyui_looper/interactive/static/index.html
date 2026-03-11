@@ -1258,6 +1258,25 @@
             } catch (e) { console.error('Failed to load raw settings:', e); }
         }
         updateOverrideInputVisibility();
+
+        // Auto-check checkboxes for fields that have existing frame overrides
+        if (mode === 'frame') {
+            try {
+                const resp = await fetch('/api/overrides');
+                const data = await resp.json();
+                const overridden = data.overridden_frames || {};
+                const iteration = viewIndex - 1;
+                const overriddenFields = overridden[iteration] || [];
+                overriddenFields.forEach(f => {
+                    const cb = document.getElementById('ovr-' + f + '-enable');
+                    if (cb && !cb.checked) {
+                        cb.checked = true;
+                        cb.dispatchEvent(new Event('change'));
+                    }
+                });
+            } catch (e) { /* ignore */ }
+        }
+
         loadOverrideIndicator();
     }
 
