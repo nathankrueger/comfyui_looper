@@ -121,7 +121,10 @@ def _handle_restart(
     4. Return (next_iter, prev_seed)
     """
     redo_iter = restart_from - 1
-    state.clear_frame_overrides()
+    # NOTE: do NOT clear frame overrides here.  _run_iteration() calls
+    # get_and_clear_frame_overrides() which atomically consumes them.
+    # Clearing here would discard overrides the user set *before* pressing
+    # restart (the primary workflow for one-shot frame tweaks).
     state.clear_timestamps_from(redo_iter)
 
     # Delete images from restart_from onward
