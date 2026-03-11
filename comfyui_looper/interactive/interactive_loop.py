@@ -42,8 +42,9 @@ def _run_iteration(
     prev_seed: int | None,
     force_new_seed: bool = False,
     no_input_image: bool = False,
-) -> int:
-    """Run a single iteration. Returns the seed used."""
+    always_save: bool = False,
+) -> tuple[int, bool]:
+    """Run a single iteration. Returns (seed_used, was_saved)."""
     loopsettings = state.get_pre_elaborated(iter)
 
     # First iteration with no input image: force full denoise (txt2img)
@@ -73,6 +74,10 @@ def _run_iteration(
 
     result_image = engine.compute_iteration(image, loopsettings)
 
+    # If paused during computation, discard the result (don't save)
+    if not always_save and state.get_status() == LoopStatus.PAUSED:
+        return seed, False
+
     loopsettings_json = loopsettings.to_json(indent=4)
     image_index = iter + 1
     pnginfo = PngInfo()
@@ -92,7 +97,7 @@ def _run_iteration(
     log_file.write(f"{output_image_filename}:\n{loopsettings_json}\n\n")
     log_file.flush()
 
-    return seed
+    return seed, True
 
 
 def _handle_restart(
@@ -139,9 +144,9 @@ def _handle_restart(
     else:
         raise FileNotFoundError(f"Cannot restart: {prev_filename} not found in image store")
 
-    # Regenerate with a new seed
+    # Regenerate with a new seed (always_save=True so restart can't be interrupted by pause)
     log_file.write(f"[RESTART from image {restart_from}]\n")
-    new_seed = _run_iteration(
+    new_seed, _ = _run_iteration(
         engine=engine,
         sm=sm,
         iter=redo_iter,
@@ -154,6 +159,7 @@ def _handle_restart(
         prev_seed=None,
         force_new_seed=True,
         no_input_image=no_input_image,
+        always_save=True,
     )
 
     # Next iteration to run
@@ -229,7 +235,7 @@ def interactive_looper_main(
                 backoff = RECONNECT_BACKOFF_SECS
                 while True:
                     try:
-                        prev_seed = _run_iteration(
+                        prev_seed, saved = _run_iteration(
                             engine=engine,
                             sm=sm,
                             iter=iter,
@@ -258,6 +264,11 @@ def interactive_looper_main(
                             time.sleep(1)
                         backoff = min(backoff * 2, RECONNECT_MAX_BACKOFF_SECS)
 
+                if not saved:
+                    # Iteration was discarded due to pause — don't advance.
+                    # Loop will re-check at top, block on pause, and re-run
+                    # this iteration on resume (or handle a restart request).
+                    continue
                 state.mark_iteration_complete()
                 iter += 1
 

@@ -8,7 +8,7 @@ import pytest
 from PIL import Image
 
 from interactive.loop_state import LoopState, LoopStatus
-from interactive.interactive_loop import _handle_restart
+from interactive.interactive_loop import _handle_restart, _run_iteration
 from utils.image_store import FilesystemImageStore
 from utils.json_spec import LoopSettings
 from utils.util import get_loop_img_filename
@@ -166,3 +166,81 @@ class TestHandleRestartWithStickyOverrides:
 
         assert next_iter == 3
         engine.compute_iteration.assert_called_once()
+
+
+class TestRunIterationPauseDiscard:
+    """In-flight iterations should be discarded (not saved) when paused."""
+
+    def test_discards_when_paused(self, tmp_path):
+        """_run_iteration returns (seed, False) when state is PAUSED after compute."""
+        state = LoopState(total_iterations=10, output_folder=str(tmp_path))
+        image_store = FilesystemImageStore(str(tmp_path))
+        loop_img_path = os.path.join(tmp_path, 'looper.png')
+        _make_test_image().save(loop_img_path)
+        log_file = io.StringIO()
+
+        loopsettings = _make_loopsettings()
+        engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
+
+        # Pause BEFORE calling _run_iteration (simulates pause arriving during compute)
+        state.pause()
+
+        seed, saved = _run_iteration(
+            engine=engine, sm=sm, iter=0, total_iter=10,
+            loop_img_path=loop_img_path, output_folder=str(tmp_path),
+            log_file=log_file, state=state, image_store=image_store,
+            prev_seed=None,
+        )
+
+        assert saved is False
+        # Engine still computed (can't cancel GPU work)
+        engine.compute_iteration.assert_called_once()
+        # Image should NOT be written to the store
+        assert not image_store.has_image(get_loop_img_filename(1))
+
+    def test_saves_when_running(self, tmp_path):
+        """_run_iteration returns (seed, True) when state is RUNNING."""
+        state = LoopState(total_iterations=10, output_folder=str(tmp_path))
+        image_store = FilesystemImageStore(str(tmp_path))
+        loop_img_path = os.path.join(tmp_path, 'looper.png')
+        _make_test_image().save(loop_img_path)
+        log_file = io.StringIO()
+
+        loopsettings = _make_loopsettings()
+        engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
+
+        seed, saved = _run_iteration(
+            engine=engine, sm=sm, iter=0, total_iter=10,
+            loop_img_path=loop_img_path, output_folder=str(tmp_path),
+            log_file=log_file, state=state, image_store=image_store,
+            prev_seed=None,
+        )
+
+        assert saved is True
+        assert image_store.has_image(get_loop_img_filename(1))
+
+    def test_always_save_ignores_pause(self, tmp_path):
+        """_run_iteration with always_save=True saves even when paused."""
+        state = LoopState(total_iterations=10, output_folder=str(tmp_path))
+        image_store = FilesystemImageStore(str(tmp_path))
+        loop_img_path = os.path.join(tmp_path, 'looper.png')
+        _make_test_image().save(loop_img_path)
+        log_file = io.StringIO()
+
+        loopsettings = _make_loopsettings()
+        engine, sm = _make_mocks(loopsettings)
+        _init_state_with_pre_elaborated(state, sm, loopsettings)
+
+        state.pause()
+
+        seed, saved = _run_iteration(
+            engine=engine, sm=sm, iter=0, total_iter=10,
+            loop_img_path=loop_img_path, output_folder=str(tmp_path),
+            log_file=log_file, state=state, image_store=image_store,
+            prev_seed=None, always_save=True,
+        )
+
+        assert saved is True
+        assert image_store.has_image(get_loop_img_filename(1))

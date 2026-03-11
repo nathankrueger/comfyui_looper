@@ -353,7 +353,7 @@
         </div>
         <div id="tab-override" class="tab-content">
             <div id="override-mode-toggle">
-                <label><input type="radio" name="override-mode" value="frame" checked> Frame (persistent for this frame)</label>
+                <label><input type="radio" name="override-mode" value="frame" checked> Frame (frame <span id="override-frame-label">?</span> only)</label>
                 <label><input type="radio" name="override-mode" value="formula"> Formula (entire section)</label>
             </div>
             <div id="override-fields">
@@ -422,8 +422,8 @@
             </div>
             <div class="ovr-json-error" id="ovr-json-error" style="display:none"></div>
             <div id="override-indicator" style="display:none"></div>
-            <div id="formula-pause-hint" style="display:none">
-                Pause the loop before applying formula overrides.
+            <div id="override-pause-hint" style="display:none">
+                Pause the loop before applying overrides.
             </div>
             <div id="override-buttons">
                 <button class="btn-nav" id="btn-override-clear">Clear Form</button>
@@ -750,13 +750,14 @@
         document.getElementById('btn-pause').style.display = isPaused ? 'none' : '';
         document.getElementById('btn-pause').disabled = (loopStatus === 'stopped' || loopStatus === 'completed');
 
-        // Keep override apply button and formula hint in sync
+        // Keep override apply button, pause hint, and frame label in sync
         if (typeof updateApplyButton === 'function') updateApplyButton();
-        const hint = document.getElementById('formula-pause-hint');
+        const hint = document.getElementById('override-pause-hint');
         if (hint) {
-            const mode = document.querySelector('input[name="override-mode"]:checked');
-            hint.style.display = (mode && mode.value === 'formula' && loopStatus === 'running') ? '' : 'none';
+            hint.style.display = (loopStatus === 'running') ? '' : 'none';
         }
+        const frameLabel = document.getElementById('override-frame-label');
+        if (frameLabel) frameLabel.textContent = viewIndex;
     }
 
     // --- Wire up buttons ---
@@ -1117,21 +1118,18 @@
                 expr.style.display = '';
             }
         }
-        // Formula pause hint
-        const hint = document.getElementById('formula-pause-hint');
-        hint.style.display = (mode === 'formula' && loopStatus === 'running') ? '' : 'none';
-        // Disable apply for formula when running
+        // Pause hint (applies to both modes)
+        const hint = document.getElementById('override-pause-hint');
+        hint.style.display = (loopStatus === 'running') ? '' : 'none';
+        // Update frame label
+        document.getElementById('override-frame-label').textContent = viewIndex;
+        // Disable apply when running
         updateApplyButton();
     }
 
     function updateApplyButton() {
-        const mode = getOverrideMode();
         const applyBtn = document.getElementById('btn-override-apply');
-        if (mode === 'formula' && loopStatus === 'running') {
-            applyBtn.disabled = true;
-        } else {
-            applyBtn.disabled = false;
-        }
+        applyBtn.disabled = (loopStatus === 'running');
     }
 
     // Checkbox enable/disable
@@ -1298,18 +1296,19 @@
         if (Object.keys(overrides).length === 0) return;
 
         try {
-            if (mode === 'frame') {
-                await fetch('/api/override/frame', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ iteration: viewIndex - 1, overrides })
-                });
-            } else {
-                await fetch('/api/override/formula', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ iteration: viewIndex - 1, overrides })
-                });
+            const url = mode === 'frame' ? '/api/override/frame' : '/api/override/formula';
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ iteration: viewIndex - 1, overrides })
+            });
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                errorEl.textContent = data.error || 'Override failed';
+                errorEl.style.display = '';
+                errorEl.style.color = '#ff4444';
+                setTimeout(() => { errorEl.style.display = 'none'; errorEl.style.color = ''; }, 2000);
+                return;
             }
             loadOverrideIndicator();
         } catch (e) { console.error('Override apply failed:', e); }

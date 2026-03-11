@@ -518,6 +518,8 @@ def create_app(app_state: AppState) -> Flask:
         state = _require_loop_state()
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
+        if state.get_status() != LoopStatus.PAUSED:
+            return jsonify({'error': 'Pause the loop before applying overrides'}), 409
         data = request.get_json()
         iteration = data.get('iteration')
         overrides_raw = data.get('overrides', {})
@@ -540,6 +542,8 @@ def create_app(app_state: AppState) -> Flask:
         state = _require_loop_state()
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
+        if state.get_status() != LoopStatus.PAUSED:
+            return jsonify({'error': 'Pause the loop before applying overrides'}), 409
         data = request.get_json()
         iteration = data.get('iteration')
         overrides = data.get('overrides', {})

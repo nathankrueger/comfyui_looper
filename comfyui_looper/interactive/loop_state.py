@@ -238,7 +238,14 @@ class LoopState:
 
     def get_settings(self, iter_num: int) -> Optional[str]:
         with self._lock:
-            return self._elaborated_settings.get(iter_num)
+            cached = self._elaborated_settings.get(iter_num)
+            if cached is not None:
+                return cached
+            # Fall back to pre-elaborated settings (e.g. after override cleared the cache)
+            ls = self._pre_elaborated.get(iter_num)
+            if ls is not None:
+                return ls.to_json(indent=4)
+            return None
 
     def clear_settings_from(self, iter_num: int):
         with self._lock:

@@ -71,6 +71,12 @@ Flask-based web interface for live loop control:
 - **`loop_state.py`** — Thread-safe shared state between GPU loop thread and Flask: `LoopStatus` (running/paused/stopped), pause/resume synchronization, restart requests (jump to any frame), frame override accumulation, iteration timing/ETA, export status tracking, elaborated settings cache.
 - **`interactive_loop.py`** — Modified loop runner that respects pause/resume events, handles restart requests (deletes images and regenerates from specified frame), applies one-shot frame overrides from the web UI, and tracks iteration timing.
 
+**Pause / Override / Restart semantics:**
+- **Pause**: The in-flight GPU iteration finishes (can't cancel remote work) but its result is discarded — not saved to disk, `latest_image_index` and `iter` don't advance.
+- **Resume** (no restart): Re-runs the discarded iteration with current (possibly overridden) settings. Never removes frames; always continues from where things left off regardless of viewed frame.
+- **Overrides**: Only allowed while paused (backend returns 409 otherwise). Modify pre-elaborated settings but don't trigger regeneration on their own.
+- **Restart from frame N**: Deletes images from N onward, regenerates frame N with a new seed (unless seed was explicitly overridden), then auto-resumes.
+
 ### Settings System (`comfyui_looper/utils/json_spec.py`)
 `LoopSettings` is a dataclass representing per-iteration config (prompts, seeds, denoise params, transforms, loras, canny, clip, etc.). Unset fields use sentinel values (`EMPTY_OBJECT`, `EMPTY_LIST`, `EMPTY_DICT`) that trigger inheritance from the previous `LoopSettings`.
 

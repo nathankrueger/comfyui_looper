@@ -1,12 +1,14 @@
 import json
 import os
 import pytest
+from unittest.mock import MagicMock
 from PIL import Image
 
 from interactive.loop_state import LoopState, LoopStatus
 from interactive.app_state import AppState
 from interactive.flask_app import create_app
 from utils.image_store import FilesystemImageStore
+from utils.json_spec import LoopSettings
 
 
 class _TestAppState:
@@ -197,3 +199,96 @@ class TestRestartEndpoint:
             assert state.get_status() == LoopStatus.RUNNING
             # But the restart request should still be set
             assert state.get_and_clear_restart_request() == 3
+
+
+def _make_mock_sm(total_iterations=10):
+    """Create a mock SettingsManager for override tests."""
+    sm = MagicMock()
+    sm.get_total_iterations.return_value = total_iterations
+    sm.workflow.frame_overrides = None
+    sm.workflow.formula_overrides = None
+    section_ls = LoopSettings(loop_iterations=total_iterations)
+    section_ls.offset = 0
+    sm.workflow.all_settings = [section_ls]
+
+    def make_ls(i):
+        ls = LoopSettings(loop_iterations=1)
+        ls.offset = 0
+        ls.prompt = f"prompt_{i}"
+        ls.neg_prompt = "neg"
+        ls.denoise_amt = 0.5
+        ls.denoise_steps = 20
+        ls.cfg = 7.0
+        ls.seed = 100 + i
+        ls.transforms = []
+        ls.loras = []
+        ls.canny = None
+        ls.con_deltas = []
+        ls.clip = []
+        ls.checkpoint = "test.safetensors"
+        return ls
+
+    sm.get_elaborated_loopsettings_for_iter.side_effect = make_ls
+    sm.get_loopsettings_for_iter.return_value = (0, section_ls)
+    return sm
+
+
+@pytest.fixture
+def app_with_overrides(tmp_path):
+    """Fixture that provides an app with pre-elaborated state for override tests."""
+    # Create a real JSON file so persist_overrides() can read it
+    json_path = str(tmp_path / 'workflow.json')
+    with open(json_path, 'w') as f:
+        json.dump({"all_settings": [{"loop_iterations": 10}], "version": 1}, f, indent=4)
+    output_dir = str(tmp_path / 'output')
+    os.makedirs(output_dir)
+    state = LoopState(total_iterations=10, output_folder=output_dir)
+    sm = _make_mock_sm(10)
+    state.init_pre_elaborated(sm, json_path, {})
+    state.set_settings_manager(sm)
+    image_store = FilesystemImageStore(output_dir)
+    app_state = _TestAppState(state, image_store=image_store)
+    app = create_app(app_state)
+    app.config['TESTING'] = True
+    return app, state
+
+
+class TestOverridePauseCheck:
+    def test_frame_override_rejected_when_running(self, app_with_overrides):
+        app, state = app_with_overrides
+        # State is RUNNING by default
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'iteration': 1, 'overrides': {'cfg': 10.0}}),
+                content_type='application/json')
+            assert resp.status_code == 409
+            data = resp.get_json()
+            assert 'Pause' in data['error']
+
+    def test_frame_override_accepted_when_paused(self, app_with_overrides):
+        app, state = app_with_overrides
+        state.pause()
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'iteration': 1, 'overrides': {'cfg': 10.0}}),
+                content_type='application/json')
+            assert resp.status_code == 200
+
+    def test_formula_override_rejected_when_running(self, app_with_overrides):
+        app, state = app_with_overrides
+        with app.test_client() as client:
+            resp = client.post('/api/override/formula',
+                data=json.dumps({'iteration': 1, 'overrides': {'cfg': '7.0'}}),
+                content_type='application/json')
+            assert resp.status_code == 409
+            data = resp.get_json()
+            assert 'Pause' in data['error']
+
+    def test_formula_override_accepted_when_paused(self, app_with_overrides):
+        app, state = app_with_overrides
+        state.pause()
+        with app.test_client() as client:
+            resp = client.post('/api/override/formula',
+                data=json.dumps({'iteration': 1, 'overrides': {'cfg': '7.0'}}),
+                content_type='application/json')
+            assert resp.status_code == 200

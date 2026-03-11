@@ -265,15 +265,21 @@ class TestPreElaboratedSettings:
         ls2 = state.get_pre_elaborated(2)
         assert ls2.cfg == 7.0
 
-    def test_re_elaborate_clears_view_cache(self):
+    def test_re_elaborate_refreshes_view_cache(self):
         state = LoopState(total_iterations=5, output_folder='/tmp/test')
         sm = _make_mock_sm(5)
         state.init_pre_elaborated(sm, 'test.json', {})
         state.store_settings(2, '{"old": true}')
         state.store_settings(3, '{"old": true}')
         state.re_elaborate_from(2, sm)
-        assert state.get_settings(2) is None
-        assert state.get_settings(3) is None
+        # Old cache is cleared, but get_settings falls back to pre-elaborated
+        settings_2 = state.get_settings(2)
+        assert settings_2 is not None
+        assert '"old"' not in settings_2
+        assert '"prompt_2"' in settings_2
+        # Frame before re-elaborate point retains its original cache
+        state.store_settings(1, '{"cached": true}')
+        assert state.get_settings(1) == '{"cached": true}'
 
     def test_stores_json_file_and_params(self):
         state = LoopState(total_iterations=3, output_folder='/tmp/test')
