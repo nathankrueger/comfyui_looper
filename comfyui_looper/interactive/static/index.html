@@ -644,6 +644,10 @@
             const data = await resp.json();
             document.getElementById('settings-content').textContent =
                 data.settings || data.error || 'No settings available';
+            // Refresh override fields if Override tab is visible
+            if (document.getElementById('tab-override').classList.contains('active')) {
+                loadOverrideDefaults();
+            }
         } catch (e) {
             document.getElementById('settings-content').textContent = 'Error loading settings';
         }

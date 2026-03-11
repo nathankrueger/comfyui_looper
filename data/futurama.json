@@ -1,0 +1,235 @@
+{
+    "all_settings": [
+        {
+            // planet express building
+            "loop_iterations": 5,
+            "checkpoint": "sdXL_v10VAEFix.safetensors",
+            "prompt": "planet express building, futurama, cartoon, green dome rooftop, new new york cityscape, year 3000, flying cars, neon signs, futuristic architecture, animated, vibrant, 4k, detailed",
+            "neg_prompt": "blurry, realistic, photograph, overexposed, dark",
+            "denoise_steps": 40,
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
+            "cfg": 7.0,
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.6
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // fry waking up from cryo tube
+            "loop_iterations": 5,
+            "prompt": "philip j fry, orange hair red jacket, waking up in cryogenic tube, year 3000, futurama, confused expression, frost and ice, cryo lab, cartoon style, sci-fi, psychedelic, 4k",
+            "neg_prompt": "blurry, realistic, overexposed",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.58",
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.15
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // bender at the bar
+            "loop_iterations": 5,
+            "prompt": "bender bending rodriguez, silver robot, cigar, beer bottle, futurama, cartoon robot at bar, neon bar signs, shiny metal, drinking, laughing, party, cartoon style, 4k",
+            "neg_prompt": "blurry, realistic, serious, overexposed",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
+            "cfg": 8.0,
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 0.8
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "rotate",
+                    "angle": 3.0
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "party, drunk, chaos, bite my shiny metal, fun",
+                    "neg": "sober, boring, quiet, calm",
+                    "strength": 0.5
+                }
+            ]
+        },
+        {
+            // planet express ship flying through space
+            "loop_iterations": 5,
+            "prompt": "planet express ship, green spaceship, flying through colorful nebula, stars, asteroid field, futurama, cartoon, deep space, psychedelic galaxy, warp speed, dmt, cosmic, 4k",
+            "neg_prompt": "blurry, realistic, ground, earth, overexposed",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.55",
+            "cfg": 7.0,
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "spiral",
+                    "strength": 0.8
+                },
+                {
+                    "name": "hue_shift",
+                    "shift_deg": "8*n"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.07
+                }
+            ]
+        },
+        {
+            // hypnotoad
+            "loop_iterations": 5,
+            "prompt": "hypnotoad, giant toad with swirling rainbow hypnotic eyes, all glory to the hypnotoad, futurama, psychedelic, lsd, dmt, vibrating colors, mind control, cartoon, mesmerizing, trippy, 4k",
+            "neg_prompt": "blurry, realistic, normal eyes, boring",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.62",
+            "cfg": 8.0,
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.1
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "kaleidoscope",
+                    "segments": 6
+                },
+                {
+                    "name": "color_channel_offset",
+                    "r_offset": 4,
+                    "g_offset": 0,
+                    "b_offset": -4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "hypnotic, swirling, rainbow, mesmerizing, psychedelic",
+                    "neg": "normal, calm, boring, mundane",
+                    "strength": 0.6
+                }
+            ]
+        },
+        {
+            // professor farnsworth's lab
+            "loop_iterations": 5,
+            "prompt": "professor farnsworth, old mad scientist, thick glasses, lab coat, futurama, good news everyone, crazy invention, doomsday device, glowing machinery, cartoon science lab, bubbling beakers, 4k",
+            "neg_prompt": "blurry, realistic, young, overexposed",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.58",
+            "cfg": 7.0,
+            "transforms": [
+                {
+                    "name": "fisheye",
+                    "strength": 0.18
+                },
+                {
+                    "name": "wave",
+                    "strength": 8,
+                    "period": 30,
+                    "rate": 4
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.05
+                }
+            ]
+        },
+        {
+            // leela action scene
+            "loop_iterations": 5,
+            "prompt": "turanga leela, purple hair ponytail, one eye, white tank top, futurama, kung fu fighting pose, spaceship corridor, laser blasts, action scene, cartoon, badass, dynamic, 4k",
+            "neg_prompt": "blurry, realistic, two eyes, overexposed, still",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
+            "cfg": 8.0,
+            "transforms": [
+                {
+                    "name": "perspective",
+                    "strength": 15,
+                    "shrink_edge": "top"
+                },
+                {
+                    "name": "zoom_in_right",
+                    "zoom_amt": 0.06
+                }
+            ],
+            "con_deltas": [
+                {
+                    "pos": "action, power, martial arts, fierce, heroic",
+                    "neg": "passive, weak, still, calm",
+                    "strength": 0.5
+                }
+            ]
+        },
+        {
+            // zoidberg why not
+            "loop_iterations": 5,
+            "prompt": "dr zoidberg, red lobster alien, futurama, sad pathetic creature, dumpster diving, why not zoidberg, cartoon, whoop whoop whoop, psychedelic ocean, underwater tentacles, dmt, trippy, 4k",
+            "neg_prompt": "blurry, realistic, rich, successful, overexposed",
+            "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
+            "loras": [
+                {
+                    "lora_path": "SDXL-PsyAI-v4.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
+                    "lora_path": "detailer_v5.safetensors",
+                    "lora_strength": 1.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "ripple",
+                    "amplitude": 5,
+                    "wavelength": 35,
+                    "phase": "0.8*n"
+                },
+                {
+                    "name": "zoom_in",
+                    "zoom_amt": 0.06
+                }
+            ]
+        }
+    ],
+    "version": 1
+}
