@@ -197,3 +197,62 @@ class TestRestartEndpoint:
             assert state.get_status() == LoopStatus.RUNNING
             # But the restart request should still be set
             assert state.get_and_clear_restart_request() == 3
+
+
+class TestFrameOverrideValidation:
+    def test_valid_override_accepted(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'denoise_amt': 0.8, 'cfg': 5.0}),
+                content_type='application/json')
+            assert resp.status_code == 200
+            assert state.get_frame_overrides()['denoise_amt'] == 0.8
+
+    def test_invalid_transform_name_rejected(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'transforms': [{'name': 'zoom_in_wide'}]}),
+                content_type='application/json')
+            assert resp.status_code == 400
+            data = resp.get_json()
+            assert 'Invalid transform' in data['error']
+            # Overrides should NOT have been stored
+            assert state.get_frame_overrides() == {}
+
+    def test_valid_transform_accepted(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'transforms': [{'name': 'zoom_in', 'zoom_amt': 1.05}]}),
+                content_type='application/json')
+            assert resp.status_code == 200
+
+    def test_denoise_amt_out_of_range_rejected(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'denoise_amt': 1.5}),
+                content_type='application/json')
+            assert resp.status_code == 400
+            assert 'denoise_amt' in resp.get_json()['error']
+            assert state.get_frame_overrides() == {}
+
+    def test_negative_cfg_rejected(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'cfg': -1.0}),
+                content_type='application/json')
+            assert resp.status_code == 400
+            assert 'cfg' in resp.get_json()['error']
+
+    def test_disallowed_field_rejected(self, app_and_state):
+        app, state, _ = app_and_state
+        with app.test_client() as client:
+            resp = client.post('/api/override/frame',
+                data=json.dumps({'not_a_real_field': 42}),
+                content_type='application/json')
+            assert resp.status_code == 400
+            assert 'not allowed' in resp.get_json()['error']

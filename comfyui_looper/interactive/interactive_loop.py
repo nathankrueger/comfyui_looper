@@ -16,8 +16,8 @@ from interactive.loop_state import LoopState, LoopStatus
 
 logger = logging.getLogger(__name__)
 
-RECONNECT_BACKOFF_SECS = 10
-RECONNECT_MAX_BACKOFF_SECS = 60
+RECONNECT_BACKOFF_SEQUENCE = [1, 3, 5, 7]
+RECONNECT_MAX_BACKOFF_SECS = 10
 
 
 def _apply_engine_defaults(engine: WorkflowEngine, loopsettings: LoopSettings):
@@ -234,7 +234,8 @@ def interactive_looper_main(
 
                 # Retry indefinitely on connection errors (e.g. laptop sleep).
                 # Keeps trying until ComfyUI comes back or the user stops.
-                backoff = RECONNECT_BACKOFF_SECS
+                # Backoff: 1, 3, 5, 7, 10, 10, ... seconds
+                retry_attempt = 0
                 while True:
                     try:
                         prev_seed = _run_iteration(
@@ -253,6 +254,11 @@ def interactive_looper_main(
                         state.set_warning(None)
                         break  # Success
                     except Exception as e:
+                        if retry_attempt < len(RECONNECT_BACKOFF_SEQUENCE):
+                            backoff = RECONNECT_BACKOFF_SEQUENCE[retry_attempt]
+                        else:
+                            backoff = RECONNECT_MAX_BACKOFF_SECS
+                        retry_attempt += 1
                         msg = f"Connection lost, retrying in {backoff}s..."
                         logger.warning("Iteration %d: %s — %s", iter, msg, e)
                         log_file.write(f"[WARNING] {msg} {e}\n")
@@ -264,7 +270,6 @@ def interactive_looper_main(
                                 state.set_status(LoopStatus.STOPPED)
                                 return
                             time.sleep(1)
-                        backoff = min(backoff * 2, RECONNECT_MAX_BACKOFF_SECS)
 
                 state.mark_iteration_complete()
                 iter += 1

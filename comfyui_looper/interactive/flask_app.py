@@ -10,6 +10,7 @@ from interactive.loop_state import LoopState, LoopStatus
 from interactive.app_state import AppState
 from image_processing.animator import make_animation
 from utils.json_spec import EMPTY_OBJECT, EMPTY_LIST, LoraFilter, Canny, ConDelta, SettingsManager
+from image_processing.transforms import Transform
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
 
@@ -508,6 +509,46 @@ def create_app(app_state: AppState) -> Flask:
             return value  # already list of dicts
         return value
 
+    def _validate_overrides(overrides: dict) -> str | None:
+        """Validate deserialized overrides. Returns error string or None."""
+        if 'transforms' in overrides:
+            transforms = [t for t in overrides['transforms'] if t is not None]
+            try:
+                Transform.validate_transformation_params(transforms)
+            except AssertionError:
+                names = [t.get('name', '?') for t in transforms]
+                return f"Invalid transform(s): {', '.join(names)}"
+        if 'canny' in overrides and isinstance(overrides['canny'], Canny):
+            try:
+                overrides['canny'].validate()
+            except AssertionError:
+                return "Invalid canny: thresholds and strength must be >= 0"
+        if 'loras' in overrides:
+            for lora in overrides['loras']:
+                try:
+                    lora.validate()
+                except AssertionError:
+                    return f"Invalid lora: {lora.lora_path}"
+        if 'con_deltas' in overrides:
+            for cd in overrides['con_deltas']:
+                try:
+                    cd.validate()
+                except AssertionError:
+                    return "Invalid con_delta: pos and neg must be non-empty"
+        if 'denoise_amt' in overrides:
+            v = overrides['denoise_amt']
+            if not (0.0 <= v <= 1.0):
+                return f"denoise_amt must be 0.0-1.0, got {v}"
+        if 'denoise_steps' in overrides:
+            v = overrides['denoise_steps']
+            if v < 1:
+                return f"denoise_steps must be >= 1, got {v}"
+        if 'cfg' in overrides:
+            v = overrides['cfg']
+            if v < 0:
+                return f"cfg must be >= 0, got {v}"
+        return None
+
     @app.route('/api/settings/<int:index>/raw')
     def api_settings_raw(index: int):
         state = _require_loop_state()
@@ -538,7 +579,13 @@ def create_app(app_state: AppState) -> Flask:
         for key, value in data.items():
             if key not in OVERRIDE_ALLOWED_FIELDS:
                 return jsonify({'error': f'Field {key} not allowed'}), 400
-            overrides[key] = _deserialize_override(key, value)
+            try:
+                overrides[key] = _deserialize_override(key, value)
+            except (ValueError, TypeError, KeyError) as e:
+                return jsonify({'error': f'Bad value for {key}: {e}'}), 400
+        error = _validate_overrides(overrides)
+        if error:
+            return jsonify({'error': error}), 400
         state.set_frame_overrides(overrides)
         return jsonify({'status': 'ok', 'overrides': list(overrides.keys())})
 
