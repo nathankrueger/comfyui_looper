@@ -1290,13 +1290,13 @@
             if (!document.getElementById('ovr-' + f + '-enable').checked) continue;
             if (SLIDER_FIELDS.includes(f)) {
                 if (mode === 'frame') {
-                    overrides[f] = document.getElementById('ovr-' + f + '-slider').value;
+                    overrides[f] = parseFloat(document.getElementById('ovr-' + f + '-slider').value);
                 } else {
                     const exprVal = document.getElementById('ovr-' + f + '-expr').value;
                     if (exprVal) overrides[f] = exprVal;
                 }
             } else if (f === 'seed') {
-                overrides[f] = document.getElementById('ovr-seed').value;
+                overrides[f] = parseInt(document.getElementById('ovr-seed').value, 10);
             } else if (JSON_FIELDS.includes(f)) {
                 const raw = document.getElementById('ovr-' + f).value.trim();
                 if (!raw) continue;
