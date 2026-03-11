@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# --- Resolve script directory (works even when invoked from elsewhere) ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # --- Platform detection ---
 is_wsl() {
     [ -f /proc/version ] && grep -qi 'microsoft\|wsl' /proc/version
@@ -9,7 +12,7 @@ is_wsl() {
 # --- Defaults for script-only flags ---
 COMFYUI_WAIT=10
 LOOPER_PORT=8080
-VENV_DIR=".venv"
+VENV_DIR="$SCRIPT_DIR/.venv"
 KEEP_COMFYUI=false
 
 if is_wsl; then
@@ -171,7 +174,7 @@ echo "  Port:     $LOOPER_PORT"
 echo "  Args:     ${PASSTHROUGH[*]:-(none)}"
 echo ""
 
-python comfyui_looper/main.py \
+python "$SCRIPT_DIR/comfyui_looper/main.py" \
     --interactive \
     --port "$LOOPER_PORT" \
     --comfyui-url "$COMFYUI_URL" \

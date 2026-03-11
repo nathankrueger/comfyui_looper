@@ -1,13 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: --- Resolve script directory (works even when invoked from elsewhere) ---
+set SCRIPT_DIR=%~dp0
+
 :: --- Defaults for script-only flags ---
 set COMFYUI_PYTHON=
 set COMFYUI_MAIN=
 set COMFYUI_URL=http://localhost:8188
 set COMFYUI_WAIT=30
 set LOOPER_PORT=8080
-set VENV_DIR=.venv
+set VENV_DIR=%SCRIPT_DIR%.venv
 set KEEP_COMFYUI=0
 set PASSTHROUGH=
 
@@ -102,7 +105,7 @@ echo   Port:     %LOOPER_PORT%
 echo   Args:     %PASSTHROUGH%
 echo.
 
-python comfyui_looper\main.py ^
+python "%SCRIPT_DIR%comfyui_looper\main.py" ^
     --interactive ^
     --port %LOOPER_PORT% ^
     --comfyui-url "%COMFYUI_URL%" ^
@@ -147,7 +150,7 @@ echo   -o ^<path^>     Output folder
 echo   -i ^<path^>     Input image
 echo   -w ^<type^>     Workflow type (default: sdxl)
 echo   -z            Use zip storage
-echo   ...and more. Run: python comfyui_looper\main.py --help
+echo   ...and more. Run: python "%SCRIPT_DIR%comfyui_looper\main.py" --help
 echo.
 echo Examples:
 echo   %~nx0                                          (opens workflow picker)

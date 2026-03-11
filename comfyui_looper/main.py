@@ -25,14 +25,15 @@ from utils.util import (
 )
 
 # constants
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LOG_BASENAME='looper_log.log'
-LOOP_IMG='output/looper.png'
+LOOP_IMG=str(PROJECT_ROOT / 'output' / 'looper.png')
 
 def get_default_output_folder(json_file: str) -> str:
     """Generate a default output folder name from the workflow JSON filename and a timestamp."""
     workflow_name = Path(json_file).stem
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    return os.path.join('output', f'{workflow_name}_{timestamp}')
+    return str(PROJECT_ROOT / 'output' / f'{workflow_name}_{timestamp}')
 
 def get_output_folder(output_folder_arg: str, total_reps: int, current_rep: int) -> str:
     if total_reps > 1:
