@@ -1,7 +1,7 @@
 from os.path import abspath, dirname
 import sys
 from typing import Any
-from PIL import Image, ImageOps, ImageEnhance
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 from dataclasses import dataclass
 import numpy as np
 import math
@@ -207,6 +207,42 @@ class ZoomInDownTransform(Transform):
         cropped = img.crop((left, top, right, bottom))
         result = cropped.resize((init_width, init_height))
         return result
+
+class ZoomOutTransform(Transform):
+    NAME = 'zoom_out'
+    REQUIRED_PARAMS = {'zoom_amt'}
+    EVAL_PARAMS = {'zoom_amt'}
+
+    def transform(self, img: Image) -> Image:
+        init_width, init_height = img.size
+        zoom_amt: float = self.params['zoom_amt']
+        fill_mode: str = self.params.get('fill_mode', 'reflect')
+        if zoom_amt == 0.0:
+            return img
+
+        new_width = int((1.0 - zoom_amt) * init_width)
+        new_height = int((1.0 - zoom_amt) * init_height)
+        shrunk = img.resize((new_width, new_height), Image.LANCZOS)
+
+        pad_left = (init_width - new_width) // 2
+        pad_top = (init_height - new_height) // 2
+
+        if fill_mode == 'blur':
+            blur_radius = max(init_width, init_height) * zoom_amt * 0.5
+            result = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+            result.paste(shrunk, (pad_left, pad_top))
+            return result
+        else:
+            # reflect mode (default)
+            arr = np.array(shrunk)
+            pad_bottom = init_height - new_height - pad_top
+            pad_right = init_width - new_width - pad_left
+            padded = np.pad(arr, (
+                (pad_top, pad_bottom),
+                (pad_left, pad_right),
+                (0, 0)
+            ), mode='reflect')
+            return Image.fromarray(padded)
 
 class FoldVerticalTransform(Transform):
     NAME = 'fold_vertical'
