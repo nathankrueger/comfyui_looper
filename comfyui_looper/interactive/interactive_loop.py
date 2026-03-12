@@ -178,6 +178,7 @@ def interactive_looper_main(
     state: LoopState,
     image_store: ImageStore = None,
     no_input_image: bool = False,
+    start_iter: int = 0,
 ):
     sm = SettingsManager(json_file, animation_params)
     sm.validate()
@@ -188,7 +189,7 @@ def interactive_looper_main(
         engine.setup()
         prev_seed = None
         total_iter = sm.get_total_iterations()
-        iter = 0
+        iter = start_iter
 
         while True:
             # Run iterations until complete

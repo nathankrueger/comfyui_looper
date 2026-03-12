@@ -599,7 +599,8 @@ class TestOverridePersistence:
         # Comments outside overrides preserved
         assert '// Top comment' in text
 
-    def test_delete_overrides_file(self, tmp_path):
+    def test_restore_clean_json_fresh_start(self, tmp_path):
+        """restore_clean_json re-copies from original when json_file != output copy."""
         json_path = _write_test_json(tmp_path / 'workflow.json')
         output_dir = str(tmp_path / 'output')
         os.makedirs(output_dir)
@@ -610,26 +611,34 @@ class TestOverridePersistence:
         state.persist_overrides()
         output_file = os.path.join(output_dir, 'workflow.json')
         assert os.path.exists(output_file)
-        state.delete_overrides_file()
-        assert not os.path.exists(output_file)
+        # restore should re-copy from original (no override fields)
+        state.restore_clean_json()
+        assert os.path.exists(output_file)
+        with open(output_file) as f:
+            text = f.read()
+        assert 'frame_overrides' not in text
 
-    def test_persist_empty_deletes(self, tmp_path):
+    def test_persist_empty_restores_clean(self, tmp_path):
+        """Persisting with no overrides restores a clean JSON (no override fields)."""
         json_path = _write_test_json(tmp_path / 'workflow.json')
         output_dir = str(tmp_path / 'output')
         os.makedirs(output_dir)
         state = LoopState(total_iterations=3, output_folder=output_dir)
         sm = _make_mock_sm(3)
         state.init_pre_elaborated(sm, json_path, {})
-        # Create a file first
+        # Create a file with overrides first
         state.apply_frame_override(0, {'cfg': 10.0})
         state.persist_overrides()
         output_file = os.path.join(output_dir, 'workflow.json')
         assert os.path.exists(output_file)
-        # Reset clears overrides, then persist should delete
+        # Reset clears overrides, then persist should restore clean JSON
         sm2 = _make_mock_sm(3)
         state.reset_all_overrides(sm2)
         state.persist_overrides()
-        assert not os.path.exists(output_file)
+        assert os.path.exists(output_file)
+        with open(output_file) as f:
+            text = f.read()
+        assert 'frame_overrides' not in text
 
     def test_persist_serializes_complex_types(self, tmp_path):
         """Canny and LoraFilter objects should be serialized to dicts."""

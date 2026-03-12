@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import time
 import threading
 from copy import deepcopy
@@ -452,24 +453,36 @@ class LoopState:
             return
 
         if not frame_ov and not formula_ov:
-            self.delete_overrides_file()
+            self.restore_clean_json()
             return
 
         output_path = os.path.join(output_folder, os.path.basename(json_file))
         _write_workflow_with_overrides(json_file, output_path, frame_ov, formula_ov)
 
-    def delete_overrides_file(self):
-        """Remove the overrides file from the output folder."""
+    def restore_clean_json(self):
+        """Restore the output folder JSON to a clean state (no override fields).
+
+        For a fresh start (json_file points to data/ folder), re-copies from the original.
+        For a resume (json_file IS the output folder copy), strips override fields in-place.
+        """
         with self._lock:
             json_file = self._json_file
             output_folder = self._output_folder
         if not json_file:
             return
-        path = os.path.join(output_folder, os.path.basename(json_file))
-        try:
-            os.remove(path)
-        except FileNotFoundError:
-            pass
+        output_path = os.path.join(output_folder, os.path.basename(json_file))
+
+        if os.path.abspath(json_file) != os.path.abspath(output_path):
+            # Fresh start: re-copy from original source
+            shutil.copy2(json_file, output_path)
+        else:
+            # Resume: strip override fields from the file in-place
+            with open(output_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            text = _remove_json_field(text, 'frame_overrides')
+            text = _remove_json_field(text, 'formula_overrides')
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(text)
 
     def is_field_overridden(self, iter: int, field: str) -> bool:
         """Check if a specific field was overridden by the user for a given iteration."""

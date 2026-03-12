@@ -1,9 +1,11 @@
+import glob
 import io
 import json as json_mod
 import os
 import re
 import shutil
 import threading
+import zipfile
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from interactive.loop_state import LoopState, LoopStatus
@@ -30,6 +32,11 @@ def _get_data_dir() -> str:
     """Return the path to the data/ directory at project root."""
     # interactive/flask_app.py -> interactive/ -> comfyui_looper/ -> project root
     return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+
+
+def _get_output_dir() -> str:
+    """Return the path to the output/ directory at project root."""
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'output')
 
 
 def create_app(app_state: AppState) -> Flask:
@@ -118,6 +125,91 @@ def create_app(app_state: AppState) -> Flask:
     def api_reset():
         app_state.stop_loop()
         return jsonify({'status': 'stopped'})
+
+    # --- Resume from previous output folder ---
+
+    @app.route('/api/output-folders')
+    def api_output_folders():
+        """List output folders that can be resumed (have a JSON file + images)."""
+        output_dir = _get_output_dir()
+        if not os.path.isdir(output_dir):
+            return jsonify([])
+        folders = []
+        for name in os.listdir(output_dir):
+            d = os.path.join(output_dir, name)
+            if not os.path.isdir(d):
+                continue
+            # Find workflow JSON files (skip hidden files)
+            json_files = [f for f in os.listdir(d)
+                          if f.endswith('.json') and not f.startswith('.')]
+            if not json_files:
+                continue
+            # Count images
+            zip_path = os.path.join(d, 'images.zip')
+            if os.path.exists(zip_path):
+                try:
+                    with zipfile.ZipFile(zip_path) as z:
+                        frame_count = len([n for n in z.namelist()
+                                           if n.startswith('loop_img_')])
+                except Exception:
+                    frame_count = 0
+            else:
+                frame_count = len(glob.glob(os.path.join(d, 'loop_img_*.png')))
+            if frame_count == 0:
+                continue
+            folders.append({
+                'name': name,
+                'frame_count': frame_count,
+                'json_name': json_files[0],
+            })
+        # Sort by modification time, newest first
+        folders.sort(key=lambda f: os.path.getmtime(os.path.join(output_dir, f['name'])),
+                     reverse=True)
+        return jsonify(folders)
+
+    @app.route('/api/output-folders/<name>/thumbnail')
+    def api_output_folder_thumbnail(name: str):
+        """Serve the latest image from a specific output folder."""
+        output_dir = _get_output_dir()
+        folder = os.path.join(output_dir, name)
+        if not os.path.isdir(folder):
+            return jsonify({'error': 'Folder not found'}), 404
+        # Prevent path traversal
+        if os.path.abspath(folder) != os.path.join(os.path.abspath(output_dir), name):
+            return jsonify({'error': 'Invalid folder name'}), 400
+
+        zip_path = os.path.join(folder, 'images.zip')
+        if os.path.exists(zip_path):
+            try:
+                with zipfile.ZipFile(zip_path) as z:
+                    loop_imgs = sorted([n for n in z.namelist()
+                                        if n.startswith('loop_img_')])
+                    if not loop_imgs:
+                        return jsonify({'error': 'No images'}), 404
+                    image_bytes = z.read(loop_imgs[-1])
+                    return send_file(io.BytesIO(image_bytes), mimetype='image/png')
+            except Exception:
+                return jsonify({'error': 'Failed to read zip'}), 500
+        else:
+            pngs = sorted(glob.glob(os.path.join(folder, 'loop_img_*.png')))
+            if not pngs:
+                return jsonify({'error': 'No images'}), 404
+            return send_file(pngs[-1], mimetype='image/png')
+
+    @app.route('/api/resume-run', methods=['POST'])
+    def api_resume_run():
+        """Resume a previous loop from an output folder. Starts paused."""
+        if app_state.is_loop_running():
+            return jsonify({'error': 'Loop already running'}), 409
+        data = request.get_json()
+        folder_name = data.get('folder_name')
+        if not folder_name:
+            return jsonify({'error': 'folder_name required'}), 400
+        try:
+            result = app_state.resume_loop(folder_name)
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     @app.route('/api/workflows/clone', methods=['POST'])
     def api_clone_workflow():
@@ -599,7 +691,7 @@ def create_app(app_state: AppState) -> Flask:
         sm.validate()
         state.set_settings_manager(sm)
         state.reset_all_overrides(sm)
-        state.delete_overrides_file()
+        state.restore_clean_json()
         return jsonify({'status': 'reset'})
 
     return app

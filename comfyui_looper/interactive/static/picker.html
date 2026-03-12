@@ -217,6 +217,29 @@
             font-size: 0.75em; color: #aaa; min-width: 32px; text-align: center;
         }
 
+        /* Resume list */
+        .resume-list {
+            max-height: 300px; overflow-y: auto; padding: 4px 0;
+        }
+        .resume-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; border-radius: 8px;
+            background: #0f172a; margin-bottom: 6px;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .resume-item:hover { background: #1e293b; }
+        .resume-item img {
+            width: 50px; height: 50px; object-fit: cover;
+            border-radius: 4px; border: 1px solid #334155;
+            flex-shrink: 0;
+        }
+        .resume-item-info { flex: 1; min-width: 0; }
+        .resume-item-name {
+            font-weight: 600; font-size: 0.85em;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .resume-item-meta { font-size: 0.75em; color: #888; }
+
         #app-links {
             width: 100%; max-width: 600px; text-align: center;
             margin: 16px 0 0 0; font-size: 0.8em;
@@ -259,6 +282,20 @@
             </div>
         </div>
         <div id="img-feedback"></div>
+    </div>
+
+    <!-- Resume Card -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Resume Previous Run</h2>
+            <button class="btn-clone" onclick="toggleResumeBrowser()">Browse</button>
+        </div>
+        <div id="resume-browser" style="display:none;">
+            <div id="resume-list" class="resume-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+        <div id="resume-feedback"></div>
     </div>
 
     <!-- Workflows Card -->
@@ -834,6 +871,63 @@
             });
         } catch (e) {
             grid.innerHTML = '<div class="error-msg">Failed to load images</div>';
+        }
+    }
+
+    // ===== Resume Previous Run =====
+
+    async function toggleResumeBrowser() {
+        const browser = document.getElementById('resume-browser');
+        if (browser.style.display === 'none') {
+            browser.style.display = '';
+            await loadResumeFolders();
+        } else {
+            browser.style.display = 'none';
+        }
+    }
+
+    async function loadResumeFolders() {
+        const list = document.getElementById('resume-list');
+        list.innerHTML = '<div class="loading">Loading...</div>';
+        try {
+            const resp = await fetch('/api/output-folders');
+            const folders = await resp.json();
+            if (folders.length === 0) {
+                list.innerHTML = '<div class="loading" style="color:#888;">No resumable runs found in output/</div>';
+                return;
+            }
+            list.innerHTML = '';
+            folders.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'resume-item';
+                item.onclick = () => resumeFromFolder(f.name);
+                item.innerHTML = `
+                    <img src="/api/output-folders/${encodeURIComponent(f.name)}/thumbnail" loading="lazy" alt="">
+                    <div class="resume-item-info">
+                        <div class="resume-item-name">${escapeHtml(f.name)}</div>
+                        <div class="resume-item-meta">${f.frame_count} frames &middot; ${escapeHtml(f.json_name)}</div>
+                    </div>`;
+                list.appendChild(item);
+            });
+        } catch (e) {
+            list.innerHTML = '<div class="error-msg">Failed to load output folders</div>';
+        }
+    }
+
+    async function resumeFromFolder(folderName) {
+        const feedback = document.getElementById('resume-feedback');
+        feedback.innerHTML = '';
+        try {
+            const resp = await fetch('/api/resume-run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_name: folderName }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Resume failed');
+            window.location.href = '/';
+        } catch (e) {
+            feedback.innerHTML = '<div class="error-msg">Resume failed: ' + escapeHtml(e.message) + '</div>';
         }
     }
 
