@@ -28,6 +28,7 @@ from utils.util import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LOG_BASENAME='looper_log.log'
 LOOP_IMG=str(PROJECT_ROOT / 'output' / 'looper.png')
+WSGI_THREADS=8
 
 def get_default_output_folder(json_file: str) -> str:
     """Generate a default output folder name from the workflow JSON filename and a timestamp."""
@@ -103,7 +104,7 @@ if __name__ == "__main__":
         app = create_app(app_state)
 
         from waitress import create_server
-        server = create_server(app, host='0.0.0.0', port=args.port)
+        server = create_server(app, host='0.0.0.0', port=args.port, threads=WSGI_THREADS)
 
         def shutdown_handler(signum, frame):
             print("\nShutting down...")
