@@ -298,6 +298,15 @@
             margin: 8px 0; padding: 6px 10px; background: #2d1b69;
             border-radius: 4px; font-size: 0.85em; color: #a5b4fc;
         }
+        .ovr-remove-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 14px; min-width: 14px; max-width: 14px; height: 14px;
+            border-radius: 3px; box-sizing: border-box;
+            cursor: pointer; color: #fca5a5; font-size: 0.7em; font-weight: bold;
+            border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.15);
+            padding: 0; line-height: 1; margin-right: 5px; vertical-align: middle;
+        }
+        .ovr-remove-btn:hover { color: #fff; background: rgba(239,68,68,0.5); border-color: #ef4444; }
         #override-buttons {
             display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;
         }
@@ -520,6 +529,7 @@
     let latestIndex = 0;
     let isLiveMode = true;
     let loopStatus = '';
+    let prevLoopStatus = '';
     let minImageIndex = 0;
     let scenes = [];  // [{start, length}, ...]
     const POLL_MS = 1500;
@@ -555,6 +565,12 @@
             scenes = scenesData.scenes || [];
             latestIndex = data.latest_image_index;
             loopStatus = data.status;
+            if (loopStatus !== prevLoopStatus) {
+                if (loopStatus === 'paused' || prevLoopStatus === 'paused') {
+                    loadOverrideIndicator();
+                }
+                prevLoopStatus = loopStatus;
+            }
             minImageIndex = data.has_input_image ? 0 : 1;
 
             // Update JSON name display
@@ -1360,17 +1376,62 @@
         } catch (e) { console.error('Reset overrides failed:', e); }
     }
 
+    async function removeOverride(type, key) {
+        var label = type === 'frame'
+            ? 'Frame ' + (parseInt(key) + 1)
+            : 'Scene ' + (parseInt(key) + 1);
+        if (!confirm('Remove all overrides for ' + label + '?')) return;
+        try {
+            var url = type === 'frame'
+                ? '/api/override/frame/' + key
+                : '/api/override/formula/' + key;
+            var resp = await fetch(url, { method: 'DELETE' });
+            if (!resp.ok) {
+                var data = await resp.json().catch(function() { return {}; });
+                alert(data.error || 'Failed to remove override');
+                return;
+            }
+            loadOverrideIndicator();
+        } catch (e) { console.error('Remove override failed:', e); }
+    }
+
     async function loadOverrideIndicator() {
         try {
-            const resp = await fetch('/api/overrides');
-            const data = await resp.json();
-            const ind = document.getElementById('override-indicator');
-            const overridden = data.overridden_frames || {};
-            const frameKeys = Object.keys(overridden);
-            if (frameKeys.length > 0) {
-                const parts = frameKeys.map(iter => {
-                    const imgIdx = parseInt(iter) + 1;
-                    return 'Frame ' + imgIdx + ': ' + overridden[iter].join(', ');
+            var resp = await fetch('/api/overrides');
+            var data = await resp.json();
+            var ind = document.getElementById('override-indicator');
+            var overridden = data.overridden_frames || {};
+            var sections = data.overridden_sections || {};
+            var entries = [];
+            // Frame overrides
+            Object.keys(overridden).forEach(function(iter) {
+                var imgIdx = parseInt(iter) + 1;
+                entries.push({
+                    sortKey: imgIdx,
+                    type: 'frame', key: iter,
+                    label: 'Frame ' + imgIdx,
+                    fields: overridden[iter].join(', ')
+                });
+            });
+            // Scene/formula overrides (use global scenes array for frame mapping)
+            Object.keys(sections).forEach(function(secIdx) {
+                var idx = parseInt(secIdx);
+                var frameNum = (scenes[idx] ? scenes[idx].start : idx + 1);
+                entries.push({
+                    sortKey: frameNum,
+                    type: 'formula', key: secIdx,
+                    label: 'Scene ' + (idx + 1) + ' (Frame ' + frameNum + ')',
+                    fields: sections[secIdx].join(', ')
+                });
+            });
+            if (entries.length > 0) {
+                entries.sort(function(a, b) { return a.sortKey - b.sortKey; });
+                var paused = loopStatus === 'paused';
+                var parts = entries.map(function(e) {
+                    var xBtn = paused
+                        ? ' <button class="ovr-remove-btn" onclick="removeOverride(\'' + e.type + '\', \'' + e.key + '\')">&times;</button>'
+                        : '';
+                    return xBtn + e.label + ': ' + e.fields;
                 });
                 ind.style.display = '';
                 ind.innerHTML = '<b>Persistent overrides:</b><br>' + parts.join('<br>');

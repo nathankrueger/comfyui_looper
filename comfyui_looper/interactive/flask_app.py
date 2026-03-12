@@ -664,6 +664,38 @@ def create_app(app_state: AppState) -> Flask:
         state.persist_overrides()
         return jsonify({'status': 'ok', 'section_idx': _section_idx})
 
+    @app.route('/api/override/frame/<int:iteration>', methods=['DELETE'])
+    def api_delete_frame_override(iteration: int):
+        state = _require_loop_state()
+        if state is None:
+            return jsonify({'error': 'No active loop'}), 503
+        if state.get_status() != LoopStatus.PAUSED:
+            return jsonify({'error': 'Pause the loop before removing overrides'}), 409
+        sm = state.get_settings_manager()
+        if sm is None:
+            return jsonify({'error': 'Settings manager not ready'}), 503
+        state.remove_frame_override(iteration, sm)
+        state.persist_overrides()
+        return jsonify({'status': 'ok', 'iteration': iteration})
+
+    @app.route('/api/override/formula/<int:section_idx>', methods=['DELETE'])
+    def api_delete_formula_override(section_idx: int):
+        state = _require_loop_state()
+        if state is None:
+            return jsonify({'error': 'No active loop'}), 503
+        if state.get_status() != LoopStatus.PAUSED:
+            return jsonify({'error': 'Pause the loop before removing overrides'}), 409
+        json_file = state.get_json_file()
+        animation_params = state.get_animation_params()
+        if json_file is None:
+            return jsonify({'error': 'No JSON file available'}), 500
+        sm_fresh = SettingsManager(json_file, animation_params)
+        sm_fresh.validate()
+        state.remove_formula_override(section_idx, sm_fresh)
+        state.set_settings_manager(sm_fresh)
+        state.persist_overrides()
+        return jsonify({'status': 'ok', 'section_idx': section_idx})
+
     @app.route('/api/overrides')
     def api_get_overrides():
         state = _require_loop_state()

@@ -397,6 +397,46 @@ class LoopState:
             # Clear stale cache so get_settings() falls back to updated _pre_elaborated
             self._elaborated_settings.pop(iter, None)
 
+    def remove_frame_override(self, iter: int, sm: SettingsManager):
+        """Remove all persistent frame overrides for a specific iteration and re-elaborate."""
+        with self._lock:
+            if iter not in self._overridden_fields:
+                return
+            del self._overridden_fields[iter]
+            self._pre_elaborated[iter] = sm.get_elaborated_loopsettings_for_iter(iter)
+            self._elaborated_settings.pop(iter, None)
+
+    def remove_formula_override(self, section_idx: int, sm_fresh: SettingsManager):
+        """Remove a formula override for a section and re-elaborate affected frames."""
+        with self._lock:
+            if section_idx not in self._formula_overrides:
+                return
+            del self._formula_overrides[section_idx]
+            # Re-apply remaining formula overrides to the fresh SM's all_settings
+            for idx, field_overrides in self._formula_overrides.items():
+                if idx < len(sm_fresh.workflow.all_settings):
+                    ls = sm_fresh.workflow.all_settings[idx]
+                    for field_name, value in field_overrides.items():
+                        setattr(ls, field_name, value)
+            # Compute the first iteration of the removed section
+            first_iter = 0
+            for i in range(section_idx):
+                if i < len(sm_fresh.workflow.all_settings):
+                    first_iter += sm_fresh.workflow.all_settings[i].loop_iterations
+            # Re-elaborate from that point onward
+            total = sm_fresh.get_total_iterations()
+            for i in range(first_iter, total):
+                self._pre_elaborated[i] = sm_fresh.get_elaborated_loopsettings_for_iter(i)
+                # Re-apply any per-frame overrides
+                if i in self._overridden_fields:
+                    ls = self._pre_elaborated[i]
+                    for field_name, value in self._overridden_fields[i].items():
+                        setattr(ls, field_name, value)
+            # Clear View tab cache for affected frames
+            keys_to_remove = [k for k in self._elaborated_settings if k >= first_iter]
+            for k in keys_to_remove:
+                del self._elaborated_settings[k]
+
     def re_elaborate_from(self, iter: int, sm: SettingsManager):
         """Re-elaborate frames from `iter` onward after a formula override,
         preserving any per-frame overrides."""
