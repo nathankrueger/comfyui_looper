@@ -214,6 +214,7 @@ class AppState:
             )
             loop_state.pause()  # Start paused so user can inspect/adjust
             loop_state.set_latest_image_index(latest_image_index)
+            loop_state.set_current_iteration(start_iter)
 
             # Pre-populate elaborated settings and settings manager so the
             # View tab works immediately (before the background thread starts).
