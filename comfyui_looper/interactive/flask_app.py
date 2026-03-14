@@ -7,6 +7,7 @@ import re
 import shutil
 import threading
 import zipfile
+from PIL import Image
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from interactive.loop_state import LoopState, LoopStatus
@@ -420,11 +421,19 @@ def create_app(app_state: AppState) -> Flask:
         if image_store is None:
             return jsonify({'error': 'No active loop'}), 503
         filename = _loop_img_filename(index)
-        if image_store.has_image(filename):
-            image_bytes = image_store.read_image_bytes(filename)
-            return send_file(io.BytesIO(image_bytes), mimetype='image/png')
-        else:
+        if not image_store.has_image(filename):
             return jsonify({'error': f'Image {index} not found'}), 404
+        image_bytes = image_store.read_image_bytes(filename)
+        quality = request.args.get('quality', 'png').lower()
+        if quality.startswith('jpg') and quality[3:].isdigit():
+            level = min(max(int(quality[3:]), 1), 10)
+            jpeg_quality = min(level * 10, 95)
+            img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=jpeg_quality)
+            buf.seek(0)
+            return send_file(buf, mimetype='image/jpeg')
+        return send_file(io.BytesIO(image_bytes), mimetype='image/png')
 
     @app.route('/api/settings/<int:index>')
     def api_settings(index: int):

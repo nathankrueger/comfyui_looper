@@ -141,6 +141,12 @@
         .btn-pause   { background: #d97706; color: white; }
         .btn-export  { background: #7c3aed; color: white; }
         .btn-reset-loop { background: #991b1b; color: white; min-width: 48px; padding: 10px 12px; }
+        #quality-select {
+            padding: 8px 10px; border: none; border-radius: 8px;
+            font-size: 0.85em; font-weight: 600; cursor: pointer;
+            background: #334155; color: #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
         #frame-table {
             border-collapse: separate; border-spacing: 0;
             margin: 0 auto;
@@ -352,6 +358,19 @@
             <button class="btn-pause" id="btn-pause">&#10074;&#10074; Pause</button>
             <button class="btn-sync" id="btn-sync">&#8600; Sync</button>
             <button class="btn-export" id="btn-export">&#128190; Export</button>
+            <select id="quality-select" title="Preview quality (lower = faster over slow connections)">
+                <option value="jpg1">JPG1</option>
+                <option value="jpg2">JPG2</option>
+                <option value="jpg3">JPG3</option>
+                <option value="jpg4">JPG4</option>
+                <option value="jpg5">JPG5</option>
+                <option value="jpg6">JPG6</option>
+                <option value="jpg7">JPG7</option>
+                <option value="jpg8">JPG8</option>
+                <option value="jpg9">JPG9</option>
+                <option value="jpg10">JPG10</option>
+                <option value="png" selected>PNG</option>
+            </select>
             <button class="btn-reset-loop" id="btn-reset-loop" title="Stop & return to workflow picker">&#9724;</button>
         </div>
     </div>
@@ -533,6 +552,7 @@
     let loopStatus = '';
     let prevLoopStatus = '';
     let minImageIndex = 0;
+    let loadingImageIndex = null;  // index currently being fetched
     let scenes = [];  // [{start, length}, ...]
     const POLL_MS = 1500;
 
@@ -554,12 +574,18 @@
         return eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+    function fetchWithTimeout(url, ms) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    }
+
     async function fetchStatus() {
         try {
             const [statusResp, progressResp, scenesResp] = await Promise.all([
-                fetch('/api/status'),
-                fetch('/api/progress'),
-                fetch('/api/scenes'),
+                fetchWithTimeout('/api/status', 10000),
+                fetchWithTimeout('/api/progress', 10000),
+                fetchWithTimeout('/api/scenes', 10000),
             ]);
             const data = await statusResp.json();
             const progress = await progressResp.json();
@@ -649,11 +675,16 @@
         if (!found) sp.textContent = '';
     }
 
-    function loadImage() {
+    function loadImage(force) {
+        // Skip if this exact index is already being fetched (slow connection guard)
+        if (!force && loadingImageIndex === viewIndex) return;
+        loadingImageIndex = viewIndex;
+        const idx = viewIndex;
+        const q = document.getElementById('quality-select').value;
         const img = document.getElementById('main-image');
-        img.src = '/api/image/' + viewIndex + '?t=' + Date.now();
-        img.onload = () => { img.hidden = false; };
-        img.onerror = () => { img.hidden = true; };
+        img.src = '/api/image/' + idx + '?t=' + Date.now() + '&quality=' + q;
+        img.onload = () => { img.hidden = false; loadingImageIndex = null; };
+        img.onerror = () => { img.hidden = true; loadingImageIndex = null; };
         updateFrameLabel();
     }
 
@@ -1481,6 +1512,17 @@
     document.getElementById('btn-override-apply').addEventListener('click', applyOverrides);
     document.getElementById('btn-override-clear').addEventListener('click', clearOverrideForm);
     document.getElementById('btn-override-reset').addEventListener('click', resetAllOverrides);
+
+    // --- Preview quality selector ---
+    (function() {
+        var sel = document.getElementById('quality-select');
+        var saved = localStorage.getItem('looper-preview-quality');
+        if (saved) sel.value = saved;
+        sel.addEventListener('change', function() {
+            localStorage.setItem('looper-preview-quality', sel.value);
+            loadImage(true);
+        });
+    })();
 
     // --- Polling ---
 
