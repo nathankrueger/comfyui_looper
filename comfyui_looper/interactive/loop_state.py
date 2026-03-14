@@ -180,6 +180,7 @@ class LoopState:
         self._export_status: Optional[str] = None
         self._export_error: Optional[str] = None
         self._export_file: Optional[str] = None
+        self._export_generation: int = 0
         self._warning: Optional[str] = None
         self._settings_manager: Optional[SettingsManager] = None
         self._iteration_timestamps: list[float] = []
@@ -340,6 +341,33 @@ class LoopState:
             self._export_status = None
             self._export_error = None
             self._export_file = None
+
+    def start_export(self, filepath: str) -> int:
+        """Prepare export state and return the generation token."""
+        with self._lock:
+            self._export_generation += 1
+            self._export_file = filepath
+            self._export_error = None
+            self._export_status = 'running'
+            return self._export_generation
+
+    def finish_export(self, generation: int, status: str, error: str = None):
+        """Set export result only if generation still matches (not cancelled)."""
+        with self._lock:
+            if self._export_generation != generation:
+                return
+            self._export_status = status
+            self._export_error = error
+
+    def cancel_export(self) -> Optional[str]:
+        """Cancel in-progress export. Returns the file path for cleanup."""
+        with self._lock:
+            self._export_generation += 1
+            filepath = self._export_file
+            self._export_status = 'cancelled'
+            self._export_error = None
+            self._export_file = None
+            return filepath
 
     # --- Pre-elaborated settings & persistent overrides ---
 

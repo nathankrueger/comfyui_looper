@@ -113,15 +113,15 @@
                     "lora_strength": 1.0
                 },
                 {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
                     "lora_path": "detailer_v5.safetensors",
                     "lora_strength": 1.0
                 }
             ],
             "transforms": [
-                {
-                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
-                    "lora_strength": 1.0
-                },
                 {
                     "name": "hue_shift",
                     "shift_deg": "1*(n - offset)"
@@ -269,7 +269,7 @@
                 },
                 {
                     "name": "hue_shift",
-                    "shift_deg": 6
+                    "shift_deg": 15
                 }
             ]
         }

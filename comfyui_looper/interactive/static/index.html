@@ -215,8 +215,9 @@
         .export-progress {
             display: none; margin-top: 12px; text-align: center;
             font-size: 0.95em; color: #a5b4fc;
+            align-items: center; justify-content: center; gap: 12px;
         }
-        .export-progress.active { display: block; }
+        .export-progress.active { display: flex; }
         .spinner {
             display: inline-block; width: 18px; height: 18px;
             border: 3px solid #334155; border-top-color: #7c3aed;
@@ -515,7 +516,8 @@
             </div>
 
             <div class="export-progress" id="export-progress">
-                <span class="spinner"></span> Exporting animation...
+                <span id="export-progress-text"><span class="spinner"></span> Exporting animation...</span>
+                <button class="btn-modal-cancel" id="btn-export-abort" style="display:none">Cancel</button>
             </div>
             <div class="modal-buttons" id="export-buttons">
                 <button class="btn-modal-cancel" id="btn-export-cancel">Cancel</button>
@@ -932,6 +934,8 @@
     const frameDelayInput = document.getElementById('export-frame-delay');
     const fpsHint = document.getElementById('fps-hint');
     const exportStartBtn = document.getElementById('btn-export-start');
+    const exportCancelBtn = document.getElementById('btn-export-abort');
+    const exportProgressText = document.getElementById('export-progress-text');
     const filenameInput = document.getElementById('export-filename');
 
     function openExportModal() {
@@ -999,8 +1003,9 @@
         };
 
         exportProgress.classList.add('active');
-        exportProgress.innerHTML = '<span class="spinner"></span> Exporting animation...';
+        exportProgressText.innerHTML = '<span class="spinner"></span> Exporting animation...';
         exportButtons.style.display = 'none';
+        exportCancelBtn.style.display = 'inline-block';
 
         try {
             const resp = await fetch('/api/export', {
@@ -1010,14 +1015,16 @@
             });
             const data = await resp.json();
             if (!resp.ok) {
-                exportProgress.innerHTML = 'Error: ' + (data.error || 'Unknown error');
+                exportProgressText.innerHTML = 'Error: ' + (data.error || 'Unknown error');
                 exportButtons.style.display = 'flex';
+                exportCancelBtn.style.display = 'none';
                 return;
             }
             pollExportStatus();
         } catch (e) {
-            exportProgress.innerHTML = 'Error: ' + e.message;
+            exportProgressText.innerHTML = 'Error: ' + e.message;
             exportButtons.style.display = 'flex';
+            exportCancelBtn.style.display = 'none';
         }
     }
 
@@ -1033,20 +1040,20 @@
         try {
             const file = new File([blob], filename, { type: mime });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                exportProgress.innerHTML = 'Opening share sheet...';
+                exportProgressText.innerHTML = 'Opening share sheet...';
                 await navigator.share({ files: [file] });
-                exportProgress.innerHTML = 'Shared!';
+                exportProgressText.innerHTML = 'Shared!';
                 return;
             }
         } catch (e) {
             if (e.name === 'AbortError') {
-                exportProgress.innerHTML = 'Share cancelled.';
+                exportProgressText.innerHTML = 'Share cancelled.';
                 return;
             }
         }
 
         // Fallback: blob URL download
-        exportProgress.innerHTML = 'Starting download...';
+        exportProgressText.innerHTML = 'Starting download...';
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1058,27 +1065,56 @@
         URL.revokeObjectURL(url);
     }
 
+    function stopExportUI() {
+        exportCancelBtn.style.display = 'none';
+        exportButtons.style.display = 'flex';
+        exportProgress.classList.remove('active');
+    }
+
     function pollExportStatus() {
+        let failures = 0;
+        const maxFailures = 30;
         const pollInterval = setInterval(async () => {
             try {
                 const resp = await fetch('/api/export/status');
                 const data = await resp.json();
+                failures = 0;
                 if (data.status === 'done') {
                     clearInterval(pollInterval);
-                    exportProgress.innerHTML = 'Export complete! Preparing file...';
+                    exportCancelBtn.style.display = 'none';
+                    exportProgressText.innerHTML = 'Export complete! Preparing file...';
                     await downloadExport();
                     setTimeout(() => closeExportModal(), 1500);
                 } else if (data.status === 'error') {
                     clearInterval(pollInterval);
-                    exportProgress.innerHTML = 'Export failed: ' + (data.error || 'Unknown error');
-                    exportButtons.style.display = 'flex';
+                    exportProgressText.innerHTML = 'Export failed: ' + (data.error || 'Unknown error');
+                    stopExportUI();
+                } else if (data.status === 'cancelled') {
+                    clearInterval(pollInterval);
+                    exportProgressText.innerHTML = 'Export cancelled.';
+                    stopExportUI();
+                } else {
+                    exportProgressText.innerHTML = '<span class="spinner"></span> Exporting animation...';
                 }
             } catch (e) {
-                clearInterval(pollInterval);
-                exportProgress.innerHTML = 'Poll error: ' + e.message;
-                exportButtons.style.display = 'flex';
+                failures++;
+                if (failures >= maxFailures) {
+                    clearInterval(pollInterval);
+                    exportProgressText.innerHTML = 'Poll error: ' + e.message;
+                    stopExportUI();
+                } else {
+                    exportProgressText.innerHTML = '<span class="spinner"></span> Connection lost, retrying... (' + failures + '/' + maxFailures + ')';
+                }
             }
         }, 1000);
+    }
+
+    async function cancelExport() {
+        try {
+            await fetch('/api/export/cancel', {method: 'POST'});
+        } catch (e) {
+            // Poll loop will handle the state change
+        }
     }
 
     exportModal.addEventListener('click', (e) => {
@@ -1087,6 +1123,7 @@
 
     document.getElementById('btn-export').addEventListener('click', openExportModal);
     document.getElementById('btn-export-cancel').addEventListener('click', closeExportModal);
+    document.getElementById('btn-export-abort').addEventListener('click', cancelExport);
     document.getElementById('btn-export-start').addEventListener('click', startExport);
     exportFormat.addEventListener('change', () => { updateFormatVisibility(); updateVbitrateCustom(); });
     bounceSelect.addEventListener('change', updateBounceVisibility);

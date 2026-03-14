@@ -516,9 +516,7 @@ def create_app(app_state: AppState) -> Flask:
 
         output_path = os.path.join(state.get_output_folder(), f'{filename}.{fmt}')
 
-        state.set_export_file(output_path)
-        state.set_export_error(None)
-        state.set_export_status('running')
+        generation = state.start_export(output_path)
 
         image_store = app_state.get_image_store()
 
@@ -535,10 +533,9 @@ def create_app(app_state: AppState) -> Flask:
                 finally:
                     if needs_cleanup:
                         shutil.rmtree(anim_folder, ignore_errors=True)
-                state.set_export_status('done')
+                state.finish_export(generation, 'done')
             except Exception as e:
-                state.set_export_error(str(e))
-                state.set_export_status('error')
+                state.finish_export(generation, 'error', str(e))
 
         threading.Thread(target=run_export, daemon=True).start()
         return jsonify({'status': 'started'})
@@ -552,6 +549,21 @@ def create_app(app_state: AppState) -> Flask:
             'status': state.get_export_status(),
             'error': state.get_export_error(),
         })
+
+    @app.route('/api/export/cancel', methods=['POST'])
+    def api_export_cancel():
+        state = _require_loop_state()
+        if state is None:
+            return jsonify({'error': 'No active loop'}), 503
+        if state.get_export_status() != 'running':
+            return jsonify({'error': 'No export in progress'}), 409
+        filepath = state.cancel_export()
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+        return jsonify({'status': 'cancelled'})
 
     @app.route('/api/export/download')
     def api_export_download():
