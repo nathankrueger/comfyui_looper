@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ComfyUI Looper generates psychedelic looping animations by repeatedly feeding img2img output back into a diffusion model via a remote ComfyUI server. It supports SDXL, SD3.5, and Flux.1D models, with features like audio-driven FFT parameter modulation, expression-based dynamic controls, 24+ image transforms, and an interactive web UI for live loop control.
+ComfyUI Looper generates psychedelic looping animations by repeatedly feeding img2img output back into a diffusion model via a remote ComfyUI server. It supports SDXL, SD3.5, and Flux.1D models, with features like audio-driven FFT parameter modulation, expression-based dynamic controls, 25+ image transforms, and an interactive web UI for live loop control.
 
 ## Commands
 
@@ -90,7 +90,7 @@ Workflow JSON files live in `data/` (built-in) and `data/user/` (user-created vi
 Expressions work in: `denoise_amt`, `denoise_steps`, `cfg`, `con_deltas` strength, `loras` strength, `canny` fields, and transform parameters.
 
 ### Image Transforms (`comfyui_looper/image_processing/transforms.py`)
-24 transform classes inheriting from `Transform` base class, discovered via `all_subclasses()`. Categories: zoom variants (5), fold/squeeze (4), distortions (wave, spiral, ripple, elastic, fisheye), geometric (rotate, perspective, pan, mirror, kaleidoscope), color (hue_shift, color_channel_offset, contrast_brightness), composite (paste_img), and retro (pixelate). Each transform has expression-evaluable parameters via `EVAL_PARAMS`.
+25 transform classes inheriting from `Transform` base class, discovered via `all_subclasses()`. Categories: zoom variants (5), fold/squeeze (4), distortions (wave, spiral, ripple, elastic, fisheye), geometric (rotate, perspective, pan, mirror, kaleidoscope), color (hue_shift, color_channel_offset, contrast_brightness), composite (paste_img, blend_ref), and retro (pixelate). Each transform has expression-evaluable parameters via `EVAL_PARAMS`.
 
 ### Image Store (`comfyui_looper/utils/image_store.py`)
 `ImageStore` ABC with two implementations:

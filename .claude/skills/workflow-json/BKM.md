@@ -261,6 +261,17 @@ Crop from the center and stretch back to original size. Similar to zoom but only
 {"name": "paste_img", "img_path": "/path/to/overlay.png", "opacity": 0.3}
 ```
 
+**`blend_ref`** — Advanced reference image blending with blend modes, gradient masks, and easing. Superior to `paste_img` for scene transitions where you want AI to create novel content guided by a reference image's layout.
+- `img_path`: Absolute path to the reference image. NOT an expression.
+- `opacity` (expr): Blend strength 0.0-1.0.
+- `blend_mode` (optional): `"normal"` (default), `"overlay"`, `"soft_light"`, `"screen"`, `"multiply"`. Overlay and soft_light preserve base structure while incorporating reference layout — best for guiding diffusion.
+- `mask` (optional): Spatial gradient mask. `"uniform"` (default), `"radial"` (center-out), `"horizontal"` (left-to-right), `"vertical"` (top-to-bottom).
+- `mask_invert` (optional): `true` to reverse the mask gradient direction. Default `false`.
+- `easing` (optional): Easing curve applied to opacity. `"linear"` (default), `"ease_in"`, `"ease_out"`, `"ease_in_out"`.
+```json
+{"name": "blend_ref", "img_path": "/path/to/scene.png", "opacity": "(n-offset)/30", "blend_mode": "overlay", "easing": "ease_in_out"}
+```
+
 ### Retro/Stylization
 
 **`pixelate`** — Downscale then upscale with nearest-neighbor interpolation for a blocky pixel-art look.

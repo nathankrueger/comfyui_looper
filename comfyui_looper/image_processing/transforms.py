@@ -1,4 +1,6 @@
-from os.path import abspath, dirname
+from os.path import abspath, dirname, isabs, isfile, join
+from pathlib import Path
+import os
 import sys
 from typing import Any
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
@@ -35,6 +37,7 @@ class Transform:
     NAME = None
     REQUIRED_PARAMS = None
     EVAL_PARAMS = set()
+    OPTIONAL_PARAMS = set()
 
     def __init__(self, params: dict[str, Any]):
         self.params = params
@@ -42,14 +45,18 @@ class Transform:
     @classmethod
     def get_name(cls) -> str:
         return cls.NAME
-    
+
     @classmethod
     def get_required_params(cls) -> set[str]:
         return cls.REQUIRED_PARAMS
-    
+
     @classmethod
     def get_eval_params(cls) -> set[str]:
         return cls.EVAL_PARAMS
+
+    @classmethod
+    def get_optional_params(cls) -> set[str]:
+        return cls.OPTIONAL_PARAMS
     
     def transform(self, img: Image) -> Image:
         # override me
@@ -93,7 +100,7 @@ class Transform:
             assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
             for key in tdict_params:
                 assert key not in AUTOMATIC_SEQUENCE_PARAMS
-                all_known_params = TRANSFORM_LIBRARY[t_name].get_eval_params() | TRANSFORM_LIBRARY[t_name].get_required_params()
+                all_known_params = TRANSFORM_LIBRARY[t_name].get_eval_params() | TRANSFORM_LIBRARY[t_name].get_required_params() | TRANSFORM_LIBRARY[t_name].get_optional_params()
                 if key not in all_known_params:
                     print(f"Warning, ignored transform param: {key} for transform {t_name}")
 
@@ -212,6 +219,7 @@ class ZoomOutTransform(Transform):
     NAME = 'zoom_out'
     REQUIRED_PARAMS = {'zoom_amt'}
     EVAL_PARAMS = {'zoom_amt'}
+    OPTIONAL_PARAMS = {'fill_mode'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -533,6 +541,17 @@ class RotateTransform(Transform):
         resized_result = Image.fromarray(image_rotated_cropped).resize((image_width, image_height))
         return resized_result
 
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+
+def _resolve_img_path(img_path: str) -> str:
+    """Resolve img_path: absolute paths used as-is, relative paths resolved against project root."""
+    if isabs(img_path):
+        return img_path
+    resolved = join(_PROJECT_ROOT, img_path)
+    if isfile(resolved):
+        return resolved
+    return img_path
+
 class PasteImageTransform(Transform):
     NAME = 'paste_img'
     REQUIRED_PARAMS = {'img_path', 'opacity'}
@@ -541,13 +560,107 @@ class PasteImageTransform(Transform):
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
         opacity: float = self.params['opacity']
-        paste_img_path = self.params['img_path']
+        paste_img_path = _resolve_img_path(self.params['img_path'])
 
-        paste_img = Image.open(paste_img_path)
+        paste_img = Image.open(paste_img_path).convert('RGB')
         paste_img = paste_img.resize((init_width, init_height))
         
         result = Image.blend(img, paste_img, opacity)
         return result
+
+def _apply_easing(opacity: float, easing: str) -> float:
+    t = max(0.0, min(1.0, opacity))
+    match easing:
+        case 'linear':
+            return t
+        case 'ease_in':
+            return t * t
+        case 'ease_out':
+            return 1.0 - (1.0 - t) * (1.0 - t)
+        case 'ease_in_out':
+            return t * t * (3.0 - 2.0 * t)
+        case _:
+            raise ValueError(f"Unknown easing function: {easing}")
+
+def _generate_mask(width: int, height: int, mask_type: str, invert: bool) -> np.ndarray:
+    match mask_type:
+        case 'uniform':
+            mask = np.ones((height, width), dtype=np.float32)
+        case 'radial':
+            cx, cy = width / 2.0, height / 2.0
+            max_radius = math.sqrt(cx**2 + cy**2)
+            y, x = np.mgrid[0:height, 0:width]
+            dist = np.sqrt((x - cx)**2 + (y - cy)**2)
+            mask = (1.0 - dist / max_radius).astype(np.float32)
+            mask = np.clip(mask, 0.0, 1.0)
+        case 'horizontal':
+            mask = np.linspace(0.0, 1.0, width, dtype=np.float32)
+            mask = np.broadcast_to(mask[np.newaxis, :], (height, width)).copy()
+        case 'vertical':
+            mask = np.linspace(0.0, 1.0, height, dtype=np.float32)
+            mask = np.broadcast_to(mask[:, np.newaxis], (height, width)).copy()
+        case _:
+            raise ValueError(f"Unknown mask type: {mask_type}")
+
+    if invert:
+        mask = 1.0 - mask
+
+    return mask
+
+def _blend_pixels(base: np.ndarray, ref: np.ndarray, blend_mode: str) -> np.ndarray:
+    match blend_mode:
+        case 'normal':
+            return ref
+        case 'overlay':
+            low = 2.0 * base * ref
+            high = 1.0 - 2.0 * (1.0 - base) * (1.0 - ref)
+            return np.where(base < 0.5, low, high)
+        case 'soft_light':
+            return (1.0 - 2.0 * ref) * (base ** 2) + 2.0 * ref * base
+        case 'screen':
+            return 1.0 - (1.0 - base) * (1.0 - ref)
+        case 'multiply':
+            return base * ref
+        case _:
+            raise ValueError(f"Unknown blend mode: {blend_mode}")
+
+class BlendRefTransform(Transform):
+    NAME = 'blend_ref'
+    REQUIRED_PARAMS = {'img_path', 'opacity'}
+    EVAL_PARAMS = {'opacity'}
+    OPTIONAL_PARAMS = {'blend_mode', 'mask', 'mask_invert', 'easing'}
+
+    def transform(self, img: Image) -> Image:
+        init_width, init_height = img.size
+        opacity: float = self.params['opacity']
+        img_path: str = _resolve_img_path(self.params['img_path'])
+        blend_mode: str = self.params.get('blend_mode', 'normal')
+        mask_type: str = self.params.get('mask', 'uniform')
+        mask_invert: bool = self.params.get('mask_invert', False)
+        easing: str = self.params.get('easing', 'linear')
+
+        ref_img = Image.open(img_path).convert('RGB')
+        ref_img = ref_img.resize((init_width, init_height))
+
+        eased_opacity = _apply_easing(opacity, easing)
+
+        if eased_opacity == 0.0:
+            return img
+
+        mask = _generate_mask(init_width, init_height, mask_type, mask_invert)
+        mask = mask * eased_opacity
+
+        base = np.array(img, dtype=np.float32) / 255.0
+        ref = np.array(ref_img, dtype=np.float32) / 255.0
+
+        blended = _blend_pixels(base, ref, blend_mode)
+        blended = np.clip(blended, 0.0, 1.0)
+
+        mask_3d = mask[:, :, np.newaxis]
+        result = base * (1.0 - mask_3d) + blended * mask_3d
+        result = np.clip(result, 0.0, 1.0)
+
+        return Image.fromarray((result * 255.0).astype(np.uint8))
 
 class WaveDistortionTransformation(Transform):
     NAME = 'wave'
@@ -1011,5 +1124,7 @@ TRANSFORM_LIBRARY: dict[str, Transform] = {t.get_name(): t for t in all_subclass
 def get_transform_help_string() -> str:
     result = 'Available transforms:\n'
     for tfname in TRANSFORM_LIBRARY:
-        result += f'\tname:{tfname} params:{TRANSFORM_LIBRARY[tfname].get_required_params()}\n'
+        optional = TRANSFORM_LIBRARY[tfname].get_optional_params()
+        optional_str = f' optional:{optional}' if optional else ''
+        result += f'\tname:{tfname} params:{TRANSFORM_LIBRARY[tfname].get_required_params()}{optional_str}\n'
     return result + '\n'

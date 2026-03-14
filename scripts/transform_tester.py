@@ -2,13 +2,12 @@ from os.path import (
     abspath,
     dirname,
     join,
-) 
+)
 from os import makedirs
 from shutil import copy
 import sys
 import argparse
 import tqdm
-import torchvision.transforms as T
 
 SCRIPT_DIR = dirname(abspath(__file__))
 sys.path.append(dirname(SCRIPT_DIR))
@@ -63,19 +62,19 @@ TRANSFORMS_TO_TEST = [
     #     "name": "squeeze_tall",
     #     "squeeze_amt": 0.0
     # },
-    # {
-    #     "name": "perspective",
-    #     "strength": 20,
-    #     "shrink_edge": "left"
-    # },
-    # {
-    #     "name": "zoom_in",
-    #     "zoom_amt": 0.035
-    # }
     {
-        "name": "fold_horizontal",
-        "fold_amt": "20"
+        "name": "perspective",
+        "strength": 8,
+        "shrink_edge": "bottom"
+    },
+    {
+        "name": "zoom_in",
+        "zoom_amt": 0.04
     }
+    # {
+    #     "name": "fold_horizontal",
+    #     "fold_amt": "20"
+    # }
 ]
 
 def get_filename_for_idx(idx: int, output_dir: str) -> str:
@@ -96,12 +95,9 @@ if __name__ == '__main__':
     for idx in tqdm.tqdm(range(args.loops)):
         curr_img_path = get_filename_for_idx(idx, args.output_folder)
         next_img_path = get_filename_for_idx(idx+1, args.output_folder)
-        torch_tensor, _ = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, idx, 0, args.loops)
-
-        torch_tensor = torch_tensor.squeeze(0)
-        torch_tensor = torch_tensor.permute(2, 0, 1)
-        img = T.ToPILImage()(torch_tensor)
-        img.save(next_img_path, pnginfo=None, compress_level=5)
+        auto_params = transforms.AutomaticTransformParams(n=idx, offset=0, total_n=args.loops, wavefile=None)
+        img, _ = transforms.load_image_with_transforms(curr_img_path, TRANSFORMS_TO_TEST, auto_params)
+        img.save(next_img_path, compress_level=5)
 
     animator.make_gif(
         input_folder=args.output_folder,

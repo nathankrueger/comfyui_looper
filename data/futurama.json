@@ -2,9 +2,9 @@
     "all_settings": [
         {
             // planet express building
-            "loop_iterations": 5,
+            "loop_iterations": 50,
             "checkpoint": "sdXL_v10VAEFix.safetensors",
-            "prompt": "planet express building, futurama, cartoon, green dome rooftop, new new york cityscape, year 3000, flying cars, neon signs, futuristic architecture, animated, vibrant, 4k, detailed",
+            "prompt": "planet express building, futurama, circuit, cartoon, green dome rooftop, new new york cityscape, year 3000, flying cars, neon signs, futuristic architecture, animated, vibrant, 4k, detailed",
             "neg_prompt": "blurry, realistic, photograph, overexposed, dark",
             "denoise_steps": 40,
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
@@ -15,27 +15,38 @@
                     "lora_strength": 0.6
                 },
                 {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
                     "lora_path": "detailer_v5.safetensors",
                     "lora_strength": 1.0
                 }
             ],
             "transforms": [
                 {
-                    "name": "zoom_in",
+                    "name": "blend_ref",
+                    "img_path": "data/img/planetexpress_futurama.png",
+                    "opacity": "0.15 + 0.1 * sin(n - offset)",
+                    "blend_mode": "soft_light",
+                    "mask": "radial"
+                },
+                {
+                    "name": "zoom_out",
                     "zoom_amt": 0.05
                 }
             ]
         },
         {
             // fry waking up from cryo tube
-            "loop_iterations": 5,
+            "loop_iterations": 50,
             "prompt": "philip j fry, orange hair red jacket, waking up in cryogenic tube, year 3000, futurama, confused expression, frost and ice, cryo lab, cartoon style, sci-fi, psychedelic, 4k",
             "neg_prompt": "blurry, realistic, overexposed",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.58",
             "transforms": [
                 {
                     "name": "fisheye",
-                    "strength": 0.15
+                    "strength": 0.08
                 },
                 {
                     "name": "zoom_in",
@@ -45,8 +56,8 @@
         },
         {
             // bender at the bar
-            "loop_iterations": 5,
-            "prompt": "bender bending rodriguez, silver robot, cigar, beer bottle, futurama, cartoon robot at bar, neon bar signs, shiny metal, drinking, laughing, party, cartoon style, 4k",
+            "loop_iterations": 90,
+            "prompt": "bender bending rodriguez, silver robot, cigar, cicrucit, cyborg, beer bottle, futurama, cartoon robot at bar, neon bar signs, shiny metal, drinking, laughing, party, cartoon style, 4k",
             "neg_prompt": "blurry, realistic, serious, overexposed",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
             "cfg": 8.0,
@@ -56,14 +67,25 @@
                     "lora_strength": 0.8
                 },
                 {
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
+                },
+                {
                     "lora_path": "detailer_v5.safetensors",
                     "lora_strength": 1.0
                 }
             ],
             "transforms": [
                 {
+                    "name": "blend_ref",
+                    "img_path": "data/img/bender.png",
+                    "opacity": "0.2 + 0.1 * sin(2 * (n - offset))",
+                    "blend_mode": "overlay",
+                    "mask": "uniform"
+                },
+                {
                     "name": "rotate",
-                    "angle": 3.0
+                    "angle": 2.0
                 },
                 {
                     "name": "zoom_in",
@@ -80,8 +102,8 @@
         },
         {
             // planet express ship flying through space
-            "loop_iterations": 5,
-            "prompt": "planet express ship, green spaceship, flying through colorful nebula, stars, asteroid field, futurama, cartoon, deep space, psychedelic galaxy, warp speed, dmt, cosmic, 4k",
+            "loop_iterations": 50,
+            "prompt": "planet express ship, circuits, motherboard, green spaceship, flying through colorful nebula, stars, asteroid field, futurama, cartoon, deep space, psychedelic galaxy, warp speed, dmt, cosmic, 4k",
             "neg_prompt": "blurry, realistic, ground, earth, overexposed",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.55",
             "cfg": 7.0,
@@ -97,22 +119,22 @@
             ],
             "transforms": [
                 {
-                    "name": "spiral",
-                    "strength": 0.8
+                    "lora_path": "Dark_Futuristic_Circuit_Boards.safetensors",
+                    "lora_strength": 1.0
                 },
                 {
                     "name": "hue_shift",
-                    "shift_deg": "8*n"
+                    "shift_deg": "1*(n - offset)"
                 },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.07
+                    "zoom_amt": 0.04
                 }
             ]
         },
         {
             // hypnotoad
-            "loop_iterations": 5,
+            "loop_iterations": 50,
             "prompt": "hypnotoad, giant toad with swirling rainbow hypnotic eyes, all glory to the hypnotoad, futurama, psychedelic, lsd, dmt, vibrating colors, mind control, cartoon, mesmerizing, trippy, 4k",
             "neg_prompt": "blurry, realistic, normal eyes, boring",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.62",
@@ -129,8 +151,10 @@
             ],
             "transforms": [
                 {
-                    "name": "kaleidoscope",
-                    "segments": 6
+                    "name": "elastic",
+                    "strength": 30,
+                    "smoothness": 10,
+                    "seed": 42
                 },
                 {
                     "name": "color_channel_offset",
@@ -140,7 +164,7 @@
                 },
                 {
                     "name": "zoom_in",
-                    "zoom_amt": 0.06
+                    "zoom_amt": 0.05
                 }
             ],
             "con_deltas": [
@@ -153,7 +177,7 @@
         },
         {
             // professor farnsworth's lab
-            "loop_iterations": 5,
+            "loop_iterations": 50,
             "prompt": "professor farnsworth, old mad scientist, thick glasses, lab coat, futurama, good news everyone, crazy invention, doomsday device, glowing machinery, cartoon science lab, bubbling beakers, 4k",
             "neg_prompt": "blurry, realistic, young, overexposed",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.58",
@@ -177,12 +201,20 @@
         },
         {
             // leela action scene
-            "loop_iterations": 5,
-            "prompt": "turanga leela, purple hair ponytail, one eye, white tank top, futurama, kung fu fighting pose, spaceship corridor, laser blasts, action scene, cartoon, badass, dynamic, 4k",
+            "loop_iterations": 50,
+            "prompt": "cyclops, turanga leela, purple hair ponytail, one eye, white tank top, futurama, kung fu fighting pose, spaceship corridor, laser blasts, action scene, cartoon, badass, dynamic, 4k",
             "neg_prompt": "blurry, realistic, two eyes, overexposed, still",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
             "cfg": 8.0,
             "transforms": [
+                {
+                    "name": "blend_ref",
+                    "img_path": "data/img/leela.png",
+                    "opacity": "0.18 + 0.12 * sin(1.5 * (n - offset))",
+                    "blend_mode": "normal",
+                    "mask": "radial",
+                    "easing": "ease_in_out"
+                },
                 {
                     "name": "perspective",
                     "strength": 15,
@@ -203,7 +235,7 @@
         },
         {
             // zoidberg why not
-            "loop_iterations": 5,
+            "loop_iterations": 80,
             "prompt": "dr zoidberg, red lobster alien, futurama, sad pathetic creature, dumpster diving, why not zoidberg, cartoon, whoop whoop whoop, psychedelic ocean, underwater tentacles, dmt, trippy, 4k",
             "neg_prompt": "blurry, realistic, rich, successful, overexposed",
             "denoise_amt": "0.8 if (n - offset) == 0 else 0.6",
@@ -219,6 +251,13 @@
             ],
             "transforms": [
                 {
+                    "name": "blend_ref",
+                    "img_path": "data/img/zoidberg.png",
+                    "opacity": "0.12 + 0.13 * sin(1.8 * (n - offset))",
+                    "blend_mode": "screen",
+                    "mask": "radial"
+                },
+                {
                     "name": "ripple",
                     "amplitude": 5,
                     "wavelength": 35,
@@ -227,6 +266,10 @@
                 {
                     "name": "zoom_in",
                     "zoom_amt": 0.06
+                },
+                {
+                    "name": "hue_shift",
+                    "shift_deg": 6
                 }
             ]
         }
