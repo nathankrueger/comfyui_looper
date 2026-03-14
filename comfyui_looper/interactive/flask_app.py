@@ -1,3 +1,4 @@
+import gc
 import glob
 import io
 import json as json_mod
@@ -536,6 +537,8 @@ def create_app(app_state: AppState) -> Flask:
                 state.finish_export(generation, 'done')
             except Exception as e:
                 state.finish_export(generation, 'error', str(e))
+            finally:
+                gc.collect()
 
         threading.Thread(target=run_export, daemon=True).start()
         return jsonify({'status': 'started'})

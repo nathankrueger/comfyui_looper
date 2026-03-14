@@ -90,21 +90,28 @@ def make_gif(input_folder: str, gif_output: str, params: dict[str, str] = None):
     frames = get_frames(input_folder=input_folder, max_dim=max_dim, params=params)
 
     # convert colors see: https://github.com/python-pillow/Pillow/issues/6832
-    frames = [frame.convert('RGBA') for frame in frames]
-    #frames = [frame.convert('P', palette=Image.Palette.ADAPTIVE) for frame in frames]
-    
+    # convert in-place to avoid holding two full frame lists simultaneously
+    for i, frame in enumerate(frames):
+        frames[i] = frame.convert('RGBA')
+        frame.close()
+
     # create the GIF animation
-    frame_one = frames[0]
-    frame_one.save(
-        gif_output,
-        format='gif',
-        append_images=frames,
-        save_all=True,
-        duration=frame_delay,
-        loop=0,
-        lossless=True,
-        optimize=False
-    )
+    try:
+        frame_one = frames[0]
+        frame_one.save(
+            gif_output,
+            format='gif',
+            append_images=frames,
+            save_all=True,
+            duration=frame_delay,
+            loop=0,
+            lossless=True,
+            optimize=False
+        )
+    finally:
+        for frame in frames:
+            frame.close()
+        frames.clear()
 
 def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None):
     # parse params
@@ -117,15 +124,21 @@ def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None):
 
     # create the video clip
     video_clip = ImageSequenceClip(frames, fps=fps)
+    audio_clip = None
 
-    # add sound to it if requested
-    if 'mp3_file' in params:
-        audio_clip = AudioFileClip(params['mp3_file'])
-        audio_clip = audio_clip.subclipped(0, video_clip.duration)
-        video_clip = video_clip.with_audio(audio_clip)
+    try:
+        # add sound to it if requested
+        if 'mp3_file' in params:
+            audio_clip = AudioFileClip(params['mp3_file'])
+            audio_clip = audio_clip.subclipped(0, video_clip.duration)
+            video_clip = video_clip.with_audio(audio_clip)
 
-    # write the video file
-    video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
+        # write the video file
+        video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
+    finally:
+        video_clip.close()
+        if audio_clip is not None:
+            audio_clip.close()
 
 def make_fft_animation(mp4_output: str, params: dict[str, str] = None):
     assert 'mp3_file' in params
