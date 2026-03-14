@@ -627,8 +627,8 @@ def _blend_pixels(base: np.ndarray, ref: np.ndarray, blend_mode: str) -> np.ndar
 class BlendRefTransform(Transform):
     NAME = 'blend_ref'
     REQUIRED_PARAMS = {'img_path', 'opacity'}
-    EVAL_PARAMS = {'opacity'}
-    OPTIONAL_PARAMS = {'blend_mode', 'mask', 'mask_invert', 'easing'}
+    EVAL_PARAMS = {'opacity', 'scale'}
+    OPTIONAL_PARAMS = {'blend_mode', 'mask', 'mask_invert', 'easing', 'scale'}
 
     def transform(self, img: Image) -> Image:
         init_width, init_height = img.size
@@ -638,20 +638,40 @@ class BlendRefTransform(Transform):
         mask_type: str = self.params.get('mask', 'uniform')
         mask_invert: bool = self.params.get('mask_invert', False)
         easing: str = self.params.get('easing', 'linear')
+        scale: float = self.params.get('scale', 1.0)
 
         ref_img = Image.open(img_path).convert('RGB')
-        ref_img = ref_img.resize((init_width, init_height))
 
         eased_opacity = _apply_easing(opacity, easing)
 
         if eased_opacity == 0.0:
             return img
 
-        mask = _generate_mask(init_width, init_height, mask_type, mask_invert)
-        mask = mask * eased_opacity
-
         base = np.array(img, dtype=np.float32) / 255.0
-        ref = np.array(ref_img, dtype=np.float32) / 255.0
+
+        scale = float(np.clip(scale, 0.01, 1.0))
+        if scale < 1.0:
+            scaled_w = max(1, int(init_width * scale))
+            scaled_h = max(1, int(init_height * scale))
+            ref_img = ref_img.resize((scaled_w, scaled_h))
+            ref_scaled = np.array(ref_img, dtype=np.float32) / 255.0
+
+            # place scaled ref centered on a canvas of base pixels
+            ref = base.copy()
+            x_off = (init_width - scaled_w) // 2
+            y_off = (init_height - scaled_h) // 2
+            ref[y_off:y_off + scaled_h, x_off:x_off + scaled_w] = ref_scaled
+
+            # placement mask: blend only where the ref was placed
+            placement_mask = np.zeros((init_height, init_width), dtype=np.float32)
+            placement_mask[y_off:y_off + scaled_h, x_off:x_off + scaled_w] = 1.0
+        else:
+            ref_img = ref_img.resize((init_width, init_height))
+            ref = np.array(ref_img, dtype=np.float32) / 255.0
+            placement_mask = np.ones((init_height, init_width), dtype=np.float32)
+
+        mask = _generate_mask(init_width, init_height, mask_type, mask_invert)
+        mask = mask * eased_opacity * placement_mask
 
         blended = _blend_pixels(base, ref, blend_mode)
         blended = np.clip(blended, 0.0, 1.0)
