@@ -114,6 +114,35 @@ class TestZoomOutTransform:
         transforms = [{'name': 'zoom_out', 'zoom_amt': 0.1}]
         Transform.validate_transformation_params(transforms)
 
+
+class TestValidationErrorMessages:
+    def test_unknown_transform_name(self):
+        with pytest.raises(AssertionError, match=r"Unknown transform 'zoom_left'"):
+            Transform.validate_transformation_params([{'name': 'zoom_left', 'zoom_amt': 0.1}])
+
+    def test_unknown_transform_lists_available(self):
+        with pytest.raises(AssertionError, match=r"Available:"):
+            Transform.validate_transformation_params([{'name': 'bogus'}])
+
+    def test_missing_name_field(self):
+        with pytest.raises(AssertionError, match=r"missing 'name' field"):
+            Transform.validate_transformation_params([{'zoom_amt': 0.1}])
+
+    def test_missing_required_params(self):
+        with pytest.raises(AssertionError, match=r"missing required params"):
+            Transform.validate_transformation_params([{'name': 'blend_ref'}])
+
+    def test_reserved_automatic_param(self):
+        with pytest.raises(AssertionError, match=r"reserved param"):
+            Transform.validate_transformation_params([{'name': 'zoom_in', 'zoom_amt': 0.1, 'n': 5}])
+
+    def test_valid_transform_passes(self):
+        Transform.validate_transformation_params([{'name': 'zoom_in', 'zoom_amt': 0.1}])
+
+    def test_empty_dict_passes(self):
+        Transform.validate_transformation_params([{}])
+
+
 def _make_ref_image(tmp_path, width=256, height=256):
     """Create a reference image that differs from the gradient test image."""
     arr = np.zeros((height, width, 3), dtype=np.uint8)

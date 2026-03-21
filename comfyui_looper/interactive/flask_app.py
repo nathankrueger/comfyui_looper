@@ -121,7 +121,8 @@ def create_app(app_state: AppState) -> Flask:
             result = app_state.start_loop(json_file, output_folder, input_img=input_img)
             return jsonify(result)
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            msg = str(e) or f"{type(e).__name__} (no details)"
+            return jsonify({'error': msg}), 500
 
     @app.route('/api/reset', methods=['POST'])
     def api_reset():

@@ -93,13 +93,15 @@ class Transform:
             if len(tdict) == 0:
                 continue
 
-            assert 'name' in tdict
+            assert 'name' in tdict, f"Transform missing 'name' field: {tdict}"
             t_name = tdict.pop('name')
-            assert t_name in TRANSFORM_LIBRARY
+            assert t_name in TRANSFORM_LIBRARY, f"Unknown transform '{t_name}'. Available: {sorted(TRANSFORM_LIBRARY.keys())}"
             tdict_params = tdict
-            assert set(tdict_params.keys()).issuperset(TRANSFORM_LIBRARY[t_name].get_required_params())
+            required = TRANSFORM_LIBRARY[t_name].get_required_params()
+            missing = required - set(tdict_params.keys())
+            assert not missing, f"Transform '{t_name}' missing required params: {missing}"
             for key in tdict_params:
-                assert key not in AUTOMATIC_SEQUENCE_PARAMS
+                assert key not in AUTOMATIC_SEQUENCE_PARAMS, f"Transform '{t_name}' uses reserved param '{key}'"
                 all_known_params = TRANSFORM_LIBRARY[t_name].get_eval_params() | TRANSFORM_LIBRARY[t_name].get_required_params() | TRANSFORM_LIBRARY[t_name].get_optional_params()
                 if key not in all_known_params:
                     print(f"Warning, ignored transform param: {key} for transform {t_name}")
