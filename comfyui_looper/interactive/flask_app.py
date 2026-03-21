@@ -12,7 +12,7 @@ from flask import Flask, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from interactive.loop_state import LoopState, LoopStatus
 from interactive.app_state import AppState
-from image_processing.animator import make_animation
+from image_processing.animator import make_animation, get_image_paths
 from utils.json_spec import (
     EMPTY_OBJECT, EMPTY_LIST, SettingsManager,
     serialize_override_value, deserialize_override_value,
@@ -533,12 +533,20 @@ def create_app(app_state: AppState) -> Flask:
         def run_export():
             try:
                 anim_folder, needs_cleanup = image_store.get_paths_for_animation()
+
+                total_frames = len(get_image_paths(input_folder=anim_folder, params=params))
+                state.set_export_progress(0.0, 'loading', total_frames)
+
+                def on_progress(fraction: float, phase: str):
+                    state.set_export_progress(fraction, phase)
+
                 try:
                     make_animation(
                         type=fmt,
                         input_folder=anim_folder,
                         output_animation=output_path,
-                        params=params
+                        params=params,
+                        progress_callback=on_progress
                     )
                 finally:
                     if needs_cleanup:
@@ -557,9 +565,13 @@ def create_app(app_state: AppState) -> Flask:
         state = _require_loop_state()
         if state is None:
             return jsonify({'error': 'No active loop'}), 503
+        progress, phase, total_frames = state.get_export_progress()
         return jsonify({
             'status': state.get_export_status(),
             'error': state.get_export_error(),
+            'progress': round(progress, 3),
+            'phase': phase,
+            'total_frames': total_frames,
         })
 
     @app.route('/api/export/cancel', methods=['POST'])
@@ -589,8 +601,11 @@ def create_app(app_state: AppState) -> Flask:
             return jsonify({'error': 'Export file not found'}), 404
 
         basename = os.path.basename(filepath)
+        file_size = os.path.getsize(filepath)
         state.clear_export()
-        return send_file(filepath, as_attachment=True, download_name=basename)
+        response = send_file(filepath, as_attachment=True, download_name=basename)
+        response.headers['Content-Length'] = file_size
+        return response
 
     # --- Settings overrides ---
 

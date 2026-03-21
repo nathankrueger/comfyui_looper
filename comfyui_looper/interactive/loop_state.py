@@ -181,6 +181,9 @@ class LoopState:
         self._export_error: Optional[str] = None
         self._export_file: Optional[str] = None
         self._export_generation: int = 0
+        self._export_progress: float = 0.0
+        self._export_progress_phase: str = ''
+        self._export_total_frames: int = 0
         self._warning: Optional[str] = None
         self._settings_manager: Optional[SettingsManager] = None
         self._iteration_timestamps: list[float] = []
@@ -336,11 +339,26 @@ class LoopState:
         with self._lock:
             self._export_file = filepath
 
+    def get_export_progress(self) -> tuple[float, str, int]:
+        with self._lock:
+            return (self._export_progress, self._export_progress_phase, self._export_total_frames)
+
+    def set_export_progress(self, progress: float, phase: str = '', total_frames: int = 0):
+        with self._lock:
+            self._export_progress = progress
+            if phase:
+                self._export_progress_phase = phase
+            if total_frames > 0:
+                self._export_total_frames = total_frames
+
     def clear_export(self):
         with self._lock:
             self._export_status = None
             self._export_error = None
             self._export_file = None
+            self._export_progress = 0.0
+            self._export_progress_phase = ''
+            self._export_total_frames = 0
 
     def start_export(self, filepath: str) -> int:
         """Prepare export state and return the generation token."""
@@ -349,6 +367,9 @@ class LoopState:
             self._export_file = filepath
             self._export_error = None
             self._export_status = 'running'
+            self._export_progress = 0.0
+            self._export_progress_phase = ''
+            self._export_total_frames = 0
             return self._export_generation
 
     def finish_export(self, generation: int, status: str, error: str = None):

@@ -223,7 +223,24 @@
             font-size: 0.95em; color: #a5b4fc;
             align-items: center; justify-content: center; gap: 12px;
         }
-        .export-progress.active { display: flex; }
+        .export-progress.active { display: flex; flex-direction: column; }
+        .export-bar-track {
+            width: 100%; height: 8px; background: #1e293b;
+            border-radius: 4px; overflow: hidden;
+            border: 1px solid #334155; margin-top: 10px;
+            display: none;
+        }
+        .export-bar-track.active { display: block; }
+        .export-bar-fill {
+            height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa);
+            border-radius: 4px; width: 0%;
+            transition: width 0.3s ease;
+        }
+        .export-bar-pct {
+            font-size: 0.8em; color: #a5b4fc; margin-top: 4px;
+            text-align: center; display: none;
+        }
+        .export-bar-pct.active { display: block; }
         .spinner {
             display: inline-block; width: 18px; height: 18px;
             border: 3px solid #334155; border-top-color: #7c3aed;
@@ -535,8 +552,14 @@
             </div>
 
             <div class="export-progress" id="export-progress">
-                <span id="export-progress-text"><span class="spinner"></span> Exporting animation...</span>
-                <button class="btn-modal-cancel" id="btn-export-abort" style="display:none">Cancel</button>
+                <div style="display:flex; align-items:center; justify-content:center; gap:12px">
+                    <span id="export-progress-text"><span class="spinner"></span> Exporting animation...</span>
+                    <button class="btn-modal-cancel" id="btn-export-abort" style="display:none">Cancel</button>
+                </div>
+                <div class="export-bar-track" id="export-bar-track">
+                    <div class="export-bar-fill" id="export-bar-fill"></div>
+                </div>
+                <div class="export-bar-pct" id="export-bar-pct"></div>
             </div>
             <div class="modal-buttons" id="export-buttons">
                 <button class="btn-modal-cancel" id="btn-export-cancel">Cancel</button>
@@ -1062,9 +1085,38 @@
     async function downloadExport() {
         const resp = await fetch('/api/export/download');
         if (!resp.ok) throw new Error('Download failed');
-        const blob = await resp.blob();
+
         const disposition = resp.headers.get('Content-Disposition') || '';
         const filename = disposition.match(/filename="?(.+?)"?$/)?.[1] || 'export';
+        const contentLength = parseInt(resp.headers.get('Content-Length') || '0', 10);
+
+        let blob;
+        if (contentLength > 0 && resp.body) {
+            // Stream download with progress
+            const reader = resp.body.getReader();
+            let received = 0;
+            const chunks = [];
+
+            exportProgressText.innerHTML = '<span class="spinner"></span> Downloading...';
+            setExportBar(0, '0% \u2014 Downloading');
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                received += value.length;
+                const pct = Math.round((received / contentLength) * 100);
+                const sizeMB = (received / (1024 * 1024)).toFixed(1);
+                const totalMB = (contentLength / (1024 * 1024)).toFixed(1);
+                setExportBar(pct, pct + '% \u2014 Downloading (' + sizeMB + ' / ' + totalMB + ' MB)');
+            }
+            blob = new Blob(chunks);
+            setExportBar(100, '100% \u2014 Download complete');
+        } else {
+            exportProgressText.innerHTML = '<span class="spinner"></span> Downloading...';
+            blob = await resp.blob();
+        }
+
         const mime = blob.type || 'application/octet-stream';
 
         // Use Web Share API on iOS for Camera Roll access
@@ -1100,11 +1152,33 @@
         exportCancelBtn.style.display = 'none';
         exportButtons.style.display = 'flex';
         exportProgress.classList.remove('active');
+        showExportBar(false);
+    }
+
+    function showExportBar(show) {
+        document.getElementById('export-bar-track').classList.toggle('active', show);
+        document.getElementById('export-bar-pct').classList.toggle('active', show);
+    }
+
+    function setExportBar(pct, label) {
+        document.getElementById('export-bar-fill').style.width = pct + '%';
+        document.getElementById('export-bar-pct').textContent = label;
     }
 
     function pollExportStatus() {
         let failures = 0;
         const maxFailures = 30;
+        showExportBar(true);
+        setExportBar(0, '');
+
+        const phaseLabels = {
+            'loading': 'Loading frames',
+            'converting': 'Converting frames',
+            'encoding': 'Encoding video',
+            'writing': 'Writing file',
+            'done': 'Complete'
+        };
+
         const pollInterval = setInterval(async () => {
             try {
                 const resp = await fetch('/api/export/status');
@@ -1112,32 +1186,40 @@
                 failures = 0;
                 if (data.status === 'done') {
                     clearInterval(pollInterval);
+                    setExportBar(100, '100%');
                     exportCancelBtn.style.display = 'none';
-                    exportProgressText.innerHTML = 'Export complete! Preparing file...';
+                    exportProgressText.innerHTML = 'Export complete! Downloading...';
                     await downloadExport();
                     setTimeout(() => closeExportModal(), 1500);
                 } else if (data.status === 'error') {
                     clearInterval(pollInterval);
+                    showExportBar(false);
                     exportProgressText.innerHTML = 'Export failed: ' + (data.error || 'Unknown error');
                     stopExportUI();
                 } else if (data.status === 'cancelled') {
                     clearInterval(pollInterval);
+                    showExportBar(false);
                     exportProgressText.innerHTML = 'Export cancelled.';
                     stopExportUI();
                 } else {
+                    const pct = Math.round((data.progress || 0) * 100);
+                    const phaseText = phaseLabels[data.phase] || 'Processing';
+                    const frameInfo = data.total_frames > 0 ? ' (' + data.total_frames + ' frames)' : '';
+                    setExportBar(pct, pct + '% \u2014 ' + phaseText + frameInfo);
                     exportProgressText.innerHTML = '<span class="spinner"></span> Exporting animation...';
                 }
             } catch (e) {
                 failures++;
                 if (failures >= maxFailures) {
                     clearInterval(pollInterval);
+                    showExportBar(false);
                     exportProgressText.innerHTML = 'Poll error: ' + e.message;
                     stopExportUI();
                 } else {
                     exportProgressText.innerHTML = '<span class="spinner"></span> Connection lost, retrying... (' + failures + '/' + maxFailures + ')';
                 }
             }
-        }, 1000);
+        }, 500);
     }
 
     async function cancelExport() {

@@ -2,15 +2,38 @@ from os.path import abspath, dirname
 import sys
 import re
 import tempfile
-from typing import Any
+from typing import Any, Callable, Optional
 import argparse
 from moviepy import ImageSequenceClip, AudioFileClip
+from proglog import ProgressBarLogger
 import glob
 from PIL import Image, ImageOps
 from PIL.ImageFile import ImageFile
 from tqdm import tqdm
 from pathlib import Path
 import matplotlib.pyplot as plt
+
+ProgressCallback = Optional[Callable[[float, str], None]]
+
+
+class _ExportProgressLogger(ProgressBarLogger):
+    """Captures MoviePy frame encoding progress and forwards to a callback."""
+
+    def __init__(self, callback: Callable[[float, str], None], loading_pct: float = 0.2):
+        super().__init__()
+        self._callback = callback
+        self._loading_pct = loading_pct  # fraction reserved for loading phase
+        self._total = 0
+
+    def bars_callback(self, bar, attr, value, old_value=None):
+        if attr == 'total' and value:
+            self._total = value
+        elif attr == 'index' and self._total > 0:
+            frac = self._loading_pct + (value / self._total) * (1.0 - self._loading_pct)
+            self._callback(min(frac, 1.0), 'encoding')
+
+    def callback(self, **kw):
+        pass
 
 try:
     from utils.util import parse_params
@@ -81,19 +104,36 @@ def get_frames(input_folder: str, max_dim: int, params: dict[str, str] = None) -
     
     return frames
 
-def make_gif(input_folder: str, gif_output: str, params: dict[str, str] = None):
-    # parse params
+def make_gif(input_folder: str, gif_output: str, params: dict[str, str] = None,
+             progress_callback: ProgressCallback = None):
     max_dim = int(get_animation_param_value('max_dim', params))
     frame_delay = int(get_animation_param_value('frame_delay', params))
 
-    # find all images
-    frames = get_frames(input_folder=input_folder, max_dim=max_dim, params=params)
+    frame_paths = get_image_paths(input_folder=input_folder, params=params)
+    total = len(frame_paths)
+    if progress_callback:
+        progress_callback(0.0, 'loading')
+
+    # load and resize frames
+    frames = []
+    for i, img_path in enumerate(frame_paths):
+        frame = ImageOps.exif_transpose(Image.open(img_path))
+        if max_dim > 0:
+            frame.thumbnail((max_dim, max_dim))
+        frames.append(frame)
+        if progress_callback:
+            progress_callback((i + 1) / total * 0.5, 'loading')
 
     # convert colors see: https://github.com/python-pillow/Pillow/issues/6832
     # convert in-place to avoid holding two full frame lists simultaneously
     for i, frame in enumerate(frames):
         frames[i] = frame.convert('RGBA')
         frame.close()
+        if progress_callback:
+            progress_callback(0.5 + (i + 1) / total * 0.3, 'converting')
+
+    if progress_callback:
+        progress_callback(0.8, 'writing')
 
     # create the GIF animation
     try:
@@ -113,32 +153,41 @@ def make_gif(input_folder: str, gif_output: str, params: dict[str, str] = None):
             frame.close()
         frames.clear()
 
-def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None):
-    # parse params
+    if progress_callback:
+        progress_callback(1.0, 'done')
+
+def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None,
+             progress_callback: ProgressCallback = None):
     v_bitrate = get_animation_param_value('v_bitrate', params)
     frame_delay = int(get_animation_param_value('frame_delay', params))
     fps = int(float(1) / float(frame_delay / 1000.0))
 
-    # find all images
-    frames = get_image_paths(input_folder=input_folder, params=params)
+    if progress_callback:
+        progress_callback(0.0, 'loading')
 
-    # create the video clip
+    frames = get_image_paths(input_folder=input_folder, params=params)
     video_clip = ImageSequenceClip(frames, fps=fps)
     audio_clip = None
 
+    if progress_callback:
+        progress_callback(0.2, 'encoding')
+
+    logger = _ExportProgressLogger(progress_callback) if progress_callback else 'bar'
+
     try:
-        # add sound to it if requested
         if 'mp3_file' in params:
             audio_clip = AudioFileClip(params['mp3_file'])
             audio_clip = audio_clip.subclipped(0, video_clip.duration)
             video_clip = video_clip.with_audio(audio_clip)
 
-        # write the video file
-        video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate)
+        video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate, logger=logger)
     finally:
         video_clip.close()
         if audio_clip is not None:
             audio_clip.close()
+
+    if progress_callback:
+        progress_callback(1.0, 'done')
 
 def make_fft_animation(mp4_output: str, params: dict[str, str] = None):
     assert 'mp3_file' in params
@@ -166,18 +215,21 @@ def make_fft_animation(mp4_output: str, params: dict[str, str] = None):
     finally:
         temp_directory.cleanup()
 
-def make_animation(type: str, input_folder: str, output_animation: str, params: dict[str, Any] = None):
+def make_animation(type: str, input_folder: str, output_animation: str, params: dict[str, Any] = None,
+                   progress_callback: ProgressCallback = None):
     if type == 'gif':
         make_gif(
             input_folder=input_folder,
             gif_output=output_animation,
-            params=params
+            params=params,
+            progress_callback=progress_callback
         )
     elif type == 'mp4':
         make_mp4(
             input_folder=input_folder,
             mp4_output=output_animation,
-            params=params
+            params=params,
+            progress_callback=progress_callback
         )
     elif type == 'fft_test':
         make_fft_animation(
