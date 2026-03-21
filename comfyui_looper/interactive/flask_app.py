@@ -198,6 +198,19 @@ def create_app(app_state: AppState) -> Flask:
                 return jsonify({'error': 'No images'}), 404
             return send_file(pngs[-1], mimetype='image/png')
 
+    @app.route('/api/output-folders/<name>', methods=['DELETE'])
+    def api_delete_output_folder(name: str):
+        """Delete an output folder permanently."""
+        output_dir = _get_output_dir()
+        folder = os.path.join(output_dir, name)
+        if not os.path.isdir(folder):
+            return jsonify({'error': 'Folder not found'}), 404
+        # Prevent path traversal
+        if os.path.abspath(folder) != os.path.join(os.path.abspath(output_dir), name):
+            return jsonify({'error': 'Invalid folder name'}), 400
+        shutil.rmtree(folder)
+        return jsonify({'status': 'deleted'})
+
     @app.route('/api/resume-run', methods=['POST'])
     def api_resume_run():
         """Resume a previous loop from an output folder. Starts paused."""
