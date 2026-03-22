@@ -518,8 +518,8 @@ def create_app(app_state: AppState) -> Flask:
             filename = 'export'
 
         params = {}
-        params['frame_delay'] = str(data.get('frame_delay', 250))
-        params['max_dim'] = str(data.get('max_dim', 768))
+        params['frame_delay'] = str(data.get('frame_delay', 125))
+        params['max_dim'] = str(data.get('max_dim', 1024))
 
         start_frame = data.get('start_frame', 0)
         end_frame = data.get('end_frame', -1)
@@ -529,14 +529,14 @@ def create_app(app_state: AppState) -> Flask:
             params['end_frame'] = str(end_frame)
 
         if fmt == 'mp4':
-            params['v_bitrate'] = str(data.get('v_bitrate', '4000k'))
+            params['v_bitrate'] = str(data.get('v_bitrate', '12000k'))
             mp3_file = data.get('mp3_file', '')
             if mp3_file:
                 params['mp3_file'] = mp3_file
 
         if data.get('bounce', False):
             params['bounce'] = 'true'
-            params['bounce_frame_skip'] = str(data.get('bounce_frame_skip', 0))
+            params['bounce_frame_skip'] = str(data.get('bounce_frame_skip', 3))
 
         output_path = os.path.join(state.get_output_folder(), f'{filename}.{fmt}')
 
@@ -546,13 +546,19 @@ def create_app(app_state: AppState) -> Flask:
 
         def run_export():
             try:
-                anim_folder, needs_cleanup = image_store.get_paths_for_animation()
+                state.set_export_progress(0.0, 'extracting')
+
+                def on_extract(frac):
+                    state.set_export_progress(frac * 0.15, 'extracting')
+
+                anim_folder, needs_cleanup = image_store.get_paths_for_animation(
+                    progress_callback=on_extract)
 
                 total_frames = len(get_image_paths(input_folder=anim_folder, params=params))
-                state.set_export_progress(0.0, 'loading', total_frames)
+                state.set_export_progress(0.15, 'encoding', total_frames)
 
                 def on_progress(fraction: float, phase: str):
-                    state.set_export_progress(fraction, phase)
+                    state.set_export_progress(0.15 + fraction * 0.85, phase)
 
                 try:
                     make_animation(

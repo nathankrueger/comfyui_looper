@@ -171,12 +171,17 @@ class ZipImageStore(ImageStore):
             with zipfile.ZipFile(self._zip_path, 'a', compression=zipfile.ZIP_STORED) as zf:
                 zf.writestr(filename, png_bytes)
 
-    def get_paths_for_animation(self) -> tuple[str, bool]:
+    def get_paths_for_animation(self, progress_callback=None) -> tuple[str, bool]:
         """Extract all images to a temp directory for the animator."""
         temp_dir = tempfile.mkdtemp(prefix='looper_anim_')
         with self._lock:
             with zipfile.ZipFile(self._zip_path, 'r') as zf:
-                zf.extractall(temp_dir)
+                members = zf.namelist()
+                total = len(members)
+                for i, member in enumerate(members):
+                    zf.extract(member, temp_dir)
+                    if progress_callback and total > 0:
+                        progress_callback((i + 1) / total)
         return (temp_dir, True)
 
     def close(self) -> None:

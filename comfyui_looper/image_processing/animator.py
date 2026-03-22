@@ -4,7 +4,9 @@ import re
 import tempfile
 from typing import Any, Callable, Optional
 import argparse
-from moviepy import ImageSequenceClip, AudioFileClip
+from moviepy import VideoClip, ImageSequenceClip, AudioFileClip
+from imageio.v3 import imread
+import numpy as np
 from proglog import ProgressBarLogger
 import glob
 from PIL import Image, ImageOps
@@ -19,18 +21,16 @@ ProgressCallback = Optional[Callable[[float, str], None]]
 class _ExportProgressLogger(ProgressBarLogger):
     """Captures MoviePy frame encoding progress and forwards to a callback."""
 
-    def __init__(self, callback: Callable[[float, str], None], loading_pct: float = 0.2):
+    def __init__(self, callback: Callable[[float, str], None]):
         super().__init__()
         self._callback = callback
-        self._loading_pct = loading_pct  # fraction reserved for loading phase
         self._total = 0
 
     def bars_callback(self, bar, attr, value, old_value=None):
         if attr == 'total' and value:
             self._total = value
         elif attr == 'index' and self._total > 0:
-            frac = self._loading_pct + (value / self._total) * (1.0 - self._loading_pct)
-            self._callback(min(frac, 1.0), 'encoding')
+            self._callback(min(value / self._total, 1.0), 'encoding')
 
     def callback(self, **kw):
         pass
@@ -162,15 +162,27 @@ def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None,
     frame_delay = int(get_animation_param_value('frame_delay', params))
     fps = int(float(1) / float(frame_delay / 1000.0))
 
-    if progress_callback:
-        progress_callback(0.0, 'loading')
+    frame_paths = get_image_paths(input_folder=input_folder, params=params)
 
-    frames = get_image_paths(input_folder=input_folder, params=params)
-    video_clip = ImageSequenceClip(frames, fps=fps)
+    if progress_callback:
+        progress_callback(0.0, 'encoding')
+
+    # Use lazy VideoClip instead of ImageSequenceClip to avoid loading all
+    # frames upfront for dimension validation. Frames load on-demand during
+    # encoding, tracked by the proglog logger.
+    _cache_idx = [-1]
+    _cache_frame = [None]
+
+    def frame_function(t):
+        idx = min(int(t * fps), len(frame_paths) - 1)
+        if idx != _cache_idx[0]:
+            _cache_frame[0] = imread(frame_paths[idx])[:, :, :3]
+            _cache_idx[0] = idx
+        return _cache_frame[0]
+
+    video_clip = VideoClip(frame_function, duration=len(frame_paths) / fps)
+    video_clip.fps = fps
     audio_clip = None
-
-    if progress_callback:
-        progress_callback(0.2, 'encoding')
 
     logger = _ExportProgressLogger(progress_callback) if progress_callback else 'bar'
 
