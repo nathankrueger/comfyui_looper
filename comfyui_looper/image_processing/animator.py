@@ -189,7 +189,8 @@ def make_mp4(input_folder: str, mp4_output: str, params: dict[str, str] = None,
     try:
         if 'mp3_file' in params:
             audio_clip = AudioFileClip(params['mp3_file'])
-            audio_clip = audio_clip.subclipped(0, video_clip.duration)
+            end_time = min(audio_clip.duration, video_clip.duration)
+            audio_clip = audio_clip.subclipped(0, end_time)
             video_clip = video_clip.with_audio(audio_clip)
 
         video_clip.write_videofile(mp4_output, codec='libx264', bitrate=v_bitrate, logger=logger)
