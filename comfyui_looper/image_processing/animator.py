@@ -27,10 +27,16 @@ class _ExportProgressLogger(ProgressBarLogger):
         self._total = 0
 
     def bars_callback(self, bar, attr, value, old_value=None):
+        if bar == 'chunk':
+            phase = 'encoding audio'
+        elif bar == 'frame_index':
+            phase = 'encoding'
+        else:
+            return
         if attr == 'total' and value:
             self._total = value
         elif attr == 'index' and self._total > 0:
-            self._callback(min(value / self._total, 1.0), 'encoding')
+            self._callback(min(value / self._total, 1.0), phase)
 
     def callback(self, **kw):
         pass

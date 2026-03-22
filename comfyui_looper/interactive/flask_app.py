@@ -557,8 +557,18 @@ def create_app(app_state: AppState) -> Flask:
                 total_frames = len(get_image_paths(input_folder=anim_folder, params=params))
                 state.set_export_progress(0.15, 'encoding', total_frames)
 
+                has_audio = 'mp3_file' in params
+
                 def on_progress(fraction: float, phase: str):
-                    state.set_export_progress(0.15 + fraction * 0.85, phase)
+                    if has_audio and phase == 'encoding audio':
+                        # Audio encoding: 15% → 25%
+                        state.set_export_progress(0.15 + fraction * 0.10, phase)
+                    elif has_audio:
+                        # Video encoding (with audio): 25% → 100%
+                        state.set_export_progress(0.25 + fraction * 0.75, phase)
+                    else:
+                        # Video encoding (no audio): 15% → 100%
+                        state.set_export_progress(0.15 + fraction * 0.85, phase)
 
                 try:
                     make_animation(
